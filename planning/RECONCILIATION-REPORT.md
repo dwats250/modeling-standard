@@ -44,8 +44,8 @@ Checking the sources also surfaced three things neither review had raised. They 
 
 ### Found while checking the sources
 
-1. **A proposed limit on responding.** The ratified vision contains a proposed free tier listing "responding to a limited number of moodboards and briefs" (VISION:479, marked proposed). The later July ruling says invitee participation is free. A count limit would put agreeing behind a plan. Added to D7.
-2. **Element 8 is singular.** "The final immutable PDF, delivered to all parties" (DOCTRINE:53) reads as one document for everyone, while DOCTRINE:55 and VISION:150 speak of participant-specific and relevant terms. This is evidence for Cory on topology and visibility; it is recorded in D2 and I13 and not resolved.
+1. **A proposed limit on responding.** The ratified vision contains a free-tier sketch listing "responding to a limited number of moodboards and briefs" (VISION:479), under a heading that marks it "PROPOSED... not final" (VISION:475). Ratification of the document does not promote the proposal: it stays an open proposal, not an [R] rule (adjudicated by Dustin, 2026-10-02). The later July ruling says invitee participation is free. A count limit would put agreeing behind a plan. Added to D7.
+2. **Element 8's wording is singular, and ambiguous.** "The final immutable PDF, delivered to all parties" (DOCTRINE:53) can be read as one document for everyone, but it was written without more than two parties in view, and DOCTRINE:55 and VISION:150 speak of participant-specific and relevant terms. It is not proof of one universal party-visible PDF. The question (one canonical artifact with party-specific views, one artifact per party, or one shared in full) sits inside D2a and D10 and is not resolved. (Adjudicated by Dustin, 2026-10-02.)
 3. **Delivery is ratified; ongoing retrieval is not.** Doctrine promises a portable artifact each participant "holds independently". That promise is met by delivering the artifact out of the product, and it survives every unanswered question about suspension, closure and retention. I13 now separates the two.
 
 ---
@@ -147,7 +147,7 @@ Kept: one deployable; PostgreSQL as the single system of record; reviewed migrat
 
 **Unresolved, and not for agents to resolve:**
 
-4. **Topology evidence is mixed.** Element 8 speaks of one PDF for all parties; other ratified lines speak of terms relevant to each participant. Neither Astra's party-specific reading nor the earlier collective one is supported over the other.
+4. **Topology evidence is mixed.** Element 8's singular wording is ambiguous; other ratified lines speak of terms relevant to each participant. Neither Astra's party-specific reading nor the earlier collective one is supported over the other, and the artifact question stays inside D2a and D10.
 5. **"Everyone on set has agreed"** requires the product to know who will be on set. How late additions are handled is in D2f, but whether the product should say anything about people it was never told about is not asked anywhere yet.
 6. **Attestation may not be Cory's alone to approve** for real use; counsel may have a view.
 7. **Whether a two-person first scenario is realistic.** The recommendation to take the fewest parties depends on what Cory actually shoots. If his typical shoot has crew, the topology and visibility questions block from the start.
@@ -171,7 +171,7 @@ The prototype repository's `GOVERNANCE.md`, `PROJECT-ROLES.md` and `CLAUDE.md` n
 
 After the revision, an independent pass by a reviewer that had not seen the drafting checked the reconciled documents against the pinned sources and against the charge:
 
-- **Citations.** All 172 source citations were opened. Every cited line exists and supports its claim; quotations match; no claim tagged [R] rests on a provisional, proposed or open line. Three items the doctrine marks DEFERRED had been tagged [R]; they now say "marked DEFERRED in doctrine".
+- **Citations.** All 172 source citations were opened. Every cited line exists and supports its claim; quotations match; no claim tagged [R] rests on a provisional, proposed or open line. Three items the doctrine marks DEFERRED had been tagged [R]; they now say "marked DEFERRED in doctrine". In staging, one more was corrected on the same principle: "the professional dashboard is not free tier" (VISION:493) is no longer tagged [R], because the vision keeps tiers open.
 - **Stage 0.** Passed the neutrality test against every decision D1 to D12 and against the charge's include and exclude lists.
 - **Consistency.** Decision numbers, invariant numbers, gates and cross-references matched across documents. One contradiction was found and fixed: D9 was listed as needed only for real use while F made in-product record access a Stage 1 piece.
 - **Residual defaults.** Five were found and corrected: C called two unratified positions "firm"; E and D described a party's evidence access as non-revocable, which half-answered D9; I still assumed presets and the organizer as author outside its table of examples; F said a finalized agreement "cannot be changed" until amendment rules exist, which touched D2e; H lacked two questions the charge requires (deleting a profile under D9; counterparties in the D10 grid).

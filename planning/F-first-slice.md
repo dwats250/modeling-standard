@@ -138,7 +138,7 @@ The previous version said the slice covered seven of the eight elements of the e
 | 5. Usage rights and the release documents they trigger | Usage rights yes; releases only if included | D8 |
 | 6. Each signature bound to the clauses it affirms | Yes | D4 (the interaction) |
 | 7. Timestamps and the identity or credential used | Yes, as the credential actually used | D3 |
-| 8. Final immutable PDF delivered to all parties | Yes | D2, D10 (one artifact or several; contents) |
+| 8. Final immutable PDF delivered to all parties | Yes: every party receives a portable artifact | D2a, D10 (one canonical artifact with party views, one per party, or one shared in full; contents). The singular wording is not read as deciding this. |
 
 Coverage is claimed for a built slice only after the corresponding decisions are answered and the acceptance evidence exists.
 

@@ -70,7 +70,7 @@ The stage 0 engineering foundation needs none of these (Deliverable G).
 - several agreements under one collaboration, each agreed by its own parties;
 - something else?
 
-The ratified text does not choose. The doctrine speaks of "the final immutable PDF, delivered to all parties" (DOCTRINE:53) and of compensation "signed by both parties" (DOCTRINE:48); the vision speaks of terms "relevant to them" and the doctrine of "participant-specific terms" (DOCTRINE:55). The practical difference: under one collective agreement a makeup artist who has not yet responded holds up the photographer and model; under related agreements each is final on its own, and what "everyone on set has agreed" means has to be said separately.
+The ratified text does not choose. The doctrine speaks of "the final immutable PDF, delivered to all parties" (DOCTRINE:53) and of compensation "signed by both parties" (DOCTRINE:48); the vision speaks of terms "relevant to them" and the doctrine of "participant-specific terms" (DOCTRINE:55). The singular "PDF" is ambiguous wording written before anyone considered more than two parties; it is not taken as a decision for one shared document (see D10). The practical difference: under one collective agreement a makeup artist who has not yet responded holds up the photographer and model; under related agreements each is final on its own, and what "everyone on set has agreed" means has to be said separately.
 
 (b) **When it is final.** When the last required person agrees, or only after a confirming step by the person who organized it? Organizer confirmation was in the prototype and appears in a doctrine journey that is marked provisional (DOCTRINE:96-104). It is not ratified, and the question was already parked (CORY-QUESTIONS:55).
 
@@ -163,7 +163,7 @@ The ratified text does not choose. The doctrine speaks of "the final immutable P
 
 **Decide.** What is free, what is paid, and where exactly the line falls. Not prices.
 
-**Already settled.** All consent documentation, model releases and their PDFs are free, with no exceptions, including when working with people who are not on the app **[R]** (VISION:469). Monetization is in volume and professional convenience, never in safety **[R]** (VISION:484). The professional dashboard is not free tier **[R]** (VISION:493). Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100). The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100). The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84). Pricing and tiers are marked DEFERRED in doctrine (DOCTRINE:68).
+**Already settled.** All consent documentation, model releases and their PDFs are free, with no exceptions, including when working with people who are not on the app **[R]** (VISION:469). Monetization is in volume and professional convenience, never in safety **[R]** (VISION:484). Cory's cost-discipline addendum says "the professional dashboard is definitively not free tier" (VISION:493); it sits in a monetization answer the vision marks "PARTIALLY ANSWERED" (VISION:484), and the vision keeps tiers and entitlements open (VISION:20, VISION:530), so it is direction for D7, not a ratified tier rule. Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100). The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100). The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84). Pricing and tiers are marked DEFERRED in doctrine (DOCTRINE:68).
 
 These do not add up to "everything safety-related is free, therefore creating a collaboration is free". Cory's July direction points the other way on initiation. The boundary is open.
 
@@ -171,7 +171,7 @@ These do not add up to "everything safety-related is free, therefore creating a 
 - What does "initiate" mean? Creating a draft; inviting another person; presenting terms; finalizing an agreement; or another act?
 - Is that act paid?
 - Can a person with no plan produce a free consent document or release for a shoot with someone who is not on the app, without initiating a collaboration? If documents exist only inside a collaboration and starting one is paid, the free documents are paywalled indirectly.
-- Is invited participation free without a limit on how many invitations a person may respond to? A proposed free tier inside the ratified vision lists "responding to a limited number of moodboards and briefs" (VISION:479, marked proposed); the later July ruling says invitee participation is free.
+- Is invited participation free without a limit on how many invitations a person may respond to? A free-tier sketch inside the ratified vision lists "responding to a limited number of moodboards and briefs" (VISION:479), under a heading that marks it "PROPOSED... not final" (VISION:475). It is a proposal, not a ratified rule. The later July ruling says invitee participation is free **[CA]**.
 
 **Unblocks.** Product access rules, any commercial claim, and whether documents can exist outside a collaboration. Billing is not built in the first stages either way, and the absence of billing is not evidence that initiation is free.
 
@@ -234,7 +234,10 @@ These do not add up to "everything safety-related is free, therefore creating a 
 | What changed between versions | | | | |
 | The final record | | | | |
 
-And one more: what does the person who organized the collaboration see that others do not?
+Two more:
+
+- What does the person who organized the collaboration see that others do not?
+- **The final artifact.** Doctrine requires a portable artifact delivered to every party (DOCTRINE:53). With several parties, should there be one canonical agreement record with a view for each party showing what that party is entitled to see; a separate artifact per party; or one document every party sees in full? The doctrine's singular "the final immutable PDF" does not settle this. The answer depends on D2a as well as this grid.
 
 **Unblocks.** Every presentation, notification, export and record view, and the evidence of what each party was shown (I11). With two parties most rows collapse, but contact details and location before agreement still need an answer.
 

@@ -109,7 +109,7 @@ collaboration state  ->  presentation to a party  ->  that party's response and 
 
 A **presentation** is what one party was actually shown: clauses, values, counterparties, and the version of the wording used. An **affirmation** binds to a presentation and names the clauses it covers. A version identifier and one hash over the whole collaboration are not enough, because they show that a party was associated with a version, not what was put in front of them. The previous design generated each party's view only when the record was rendered, after signing; if the visibility rule or the wording changed in between, the record could not show what was seen.
 
-How presentations relate to the final artifact (one artifact, one per party, or something else) is not fixed here. It depends on D2 and D10. Whatever the answer, giving different documents a shared identifier does not by itself establish that each faithfully represents the part of the agreement its holder is entitled to; the link from artifact back to presentation and affirmation has to exist.
+How presentations relate to the final artifact (one canonical artifact with party-specific views, one artifact per party, one document shared in full, or something else) is not fixed here. It depends on D2a and D10. The doctrine's singular "the final immutable PDF" (DOCTRINE:53) is treated as ambiguous wording, not as a choice among these. Whatever the answer, giving different documents a shared identifier does not by itself establish that each faithfully represents the part of the agreement its holder is entitled to; the link from artifact back to presentation and affirmation has to exist.
 
 ## 5. Working state and evidence
 

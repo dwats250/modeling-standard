@@ -51,7 +51,7 @@ Independently of its provisional status as doctrine, this is adopted as an **eng
 
 **Outcome [R].** "Full access to all consent documentation, all model releases, and the accompanying PDFs" at the free tier, "with no exceptions. Including when the user is working with people who are not on the app at all" (VISION:469). Monetization lives in volume and professional convenience, never in safety (VISION:484).
 
-**Related direction, not ratified.** Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100). The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100). The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84). "Safety capabilities are never paywalled" is **[R-prov]** (DOCTRINE:67). A proposed free-tier sketch inside the ratified vision lists "responding to a limited number of moodboards and briefs" and is marked there as proposed, not final (VISION:475-480).
+**Related direction, not ratified.** Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100). The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100). The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84). "Safety capabilities are never paywalled" is **[R-prov]** (DOCTRINE:67). A free-tier sketch inside the ratified vision lists "responding to a limited number of moodboards and briefs"; it is headed "CORY — PROPOSED free tier (needs a pass against the app, not final)" (VISION:475-480). Ratification of the vision does not promote a proposal inside it: this is an open proposal, not an [R] rule.
 
 **Proposed mechanisms [F].** None in the first stages; no billing exists. When entitlements exist, the proof is a traced journey: a person with no plan obtains every safety document, including for work with someone who never joins, without performing any act that requires a plan. A code-level import restriction between modules is a useful hygiene rule but does not prove this, and the absence of billing code proves nothing about what will be free.
 
@@ -131,7 +131,7 @@ Evidence must therefore show what this party reviewed and affirmed, not merely t
 
 ## I13. Each party holds their own evidence
 
-**Outcome [R].** "The final immutable PDF, delivered to all parties, as the portable artifact each participant holds independently" (DOCTRINE:53). Participants can retrieve the final brief "and the records they are authorized to access" (VISION:154).
+**Outcome [R].** "The final immutable PDF, delivered to all parties, as the portable artifact each participant holds independently" (DOCTRINE:53). What is ratified is that every party receives a portable artifact they hold independently. The sentence's singular "PDF" is ambiguous: it does not establish that one universal document, identical and fully visible to every party, is required. Participants can retrieve the final brief "and the records they are authorized to access" (VISION:154).
 
 Two things are distinguished:
 
@@ -140,7 +140,7 @@ Two things are distinguished:
 
 **Proposed mechanisms [F].** Deliver the artifact out of the product at finalization. Treat a party's in-product access to their evidence as a durable right attached to having been a party, separate from temporary operational credentials such as invitation links.
 
-**Open.** What each party's artifact contains (D10). Whether there is one artifact or one per party (D2, D10); the ratified sentence is singular, and the vision speaks of terms relevant to each participant. Continued in-product access after suspension, account closure, lost credentials, removal from a collaboration, and retention expiry (D9, D3). The previous draft's promise of retrieval "forever" outran its source and is withdrawn.
+**Open.** What each party's artifact contains, and whether there is one canonical artifact with party-specific views, one artifact per party, or one document everyone sees in full (D2a, D10). The singular wording of DOCTRINE:53 is an ambiguity to put to Cory inside those decisions, not evidence for any one answer; DOCTRINE:55 ("participant-specific terms") and VISION:150 ("the terms relevant to them") point the other way. Continued in-product access after suspension, account closure, lost credentials, removal from a collaboration, and retention expiry (D9, D3). The previous draft's promise of retrieval "forever" outran its source and is withdrawn.
 
 ---
 
