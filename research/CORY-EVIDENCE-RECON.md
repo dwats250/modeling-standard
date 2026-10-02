@@ -18,6 +18,8 @@ Citation form: `FILE:line`. All files under the ShootBriefGenerator repository's
 
 Tag key used below: `[R]` = ratified (in VISION/DOCTRINE, APPROVED docs). `[R-qual]` = in an approved doc but explicitly qualified/proposed. `[CA]` = Cory-attributed with date, but host document is not ratified. `[agent]` = agent-authored.
 
+> Note added 2026-10-02: `[R-qual]` is the predecessor label corresponding to the current `[R-prov]` concept used in the reconciled planning package. Tags in this file are left as originally written.
+
 ---
 
 ## 1. RATIFIED DECISIONS
@@ -358,7 +360,7 @@ Everything below is written confidently. Do not treat as approved.
 
 - DOCTRINE:20 claims PR #8 merged the ratification at commit `5d515388`; unverifiable here (single-commit checkout).
 - README.md:20-22 and VISION.md:18 both stress "repository provenance, not a quotation, signature."
-- The **human merge gate** governs future changes (GOVERNANCE.md; CLAUDE.md:55). "Explicit authorization for one action does not authorize another." (CLAUDE.md:124)
+- At the time of that source, the migration-era repository used a **human merge gate** for future changes (GOVERNANCE.md; CLAUDE.md:55), with the rule "Explicit authorization for one action does not authorize another." (CLAUDE.md:124). This describes the old repository's governance; it does not govern the greenfield repository.
 
 ---
 

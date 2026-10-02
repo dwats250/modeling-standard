@@ -30,6 +30,8 @@ No tag is upgraded because a recommendation is elegant, because an answer seems 
 4. `F-first-slice.md`: the envelope for the first collaboration slice and what still blocks it.
 5. `I-creative-direction.md`: how it should feel and look.
 
+The rest is there for deeper inspection and does not need to be read to make the decisions in H.
+
 For Dustin: `RECONCILIATION-REPORT.md`, then G (Stage 0), D, E and B.
 
 ## Everything in this package

@@ -53,6 +53,8 @@ Independently of its provisional status as doctrine, this is adopted as an **eng
 
 **Related direction, not ratified.** Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100). The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100). The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84). "Safety capabilities are never paywalled" is **[R-prov]** (DOCTRINE:67). A free-tier sketch inside the ratified vision lists "responding to a limited number of moodboards and briefs"; it is headed "CORY — PROPOSED free tier (needs a pass against the app, not final)" (VISION:475-480). Ratification of the vision does not promote a proposal inside it: this is an open proposal, not an [R] rule.
 
+The ratified principle constrains monetization direction; the exact entitlement boundary for particular safety capabilities remains subject to the doctrine's provisional status and D7.
+
 **Proposed mechanisms [F].** None in the first stages; no billing exists. When entitlements exist, the proof is a traced journey: a person with no plan obtains every safety document, including for work with someone who never joins, without performing any act that requires a plan. A code-level import restriction between modules is a useful hygiene rule but does not prove this, and the absence of billing code proves nothing about what will be free.
 
 **Open.** What "initiating" means and whether it is paid; whether a free document can be produced without a paid act; whether invited participation is free without a count limit (D7). The architecture must not make the free-document path depend on creating a collaboration until D7 is answered.
@@ -95,7 +97,7 @@ Independently of its provisional status as doctrine, this is adopted as an **eng
 
 **Outcome [R].** Every account holder is an adult; a minor is never a user (VISION:226; DOCTRINE:86). Adult and youth content are structurally separated (VISION:222-230). The youth path's open sub-decisions require professional legal review, "not an AI or the team" (VISION:463).
 
-**Deferred in doctrine.** Production launch of any youth path, until doctrine, professional review and validation are complete (DOCTRINE:89, marked DEFERRED there).
+**Deferred.** Production launch of any youth path, until doctrine, professional review and validation are complete (DOCTRINE:89, marked DEFERRED there). The vision also ratifies the deferral itself (VISION:463, VISION:531), so the deferral is **[R]**. That does not decide the eventual youth design, mechanics or operating model, which remain unresolved.
 
 **Related direction, not ratified.** Age is verified "never at signup; on the first act of participation", which includes "joining/creating a brief" **[CA]** (CORY-QUESTIONS:184). Adult-only "is a claim that must be enforced via age-gating" before any public upload **[CA]** (CORY-QUESTIONS:195).
 

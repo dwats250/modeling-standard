@@ -264,7 +264,7 @@ Two more:
 
 **Decide.** Whether everyone in the first slice acts only for themselves.
 
-**Already settled.** Nothing for the adult side. Guardian-managed profiles for minors are ratified **[R]** (DOCTRINE:86), and any youth launch is marked DEFERRED in doctrine (DOCTRINE:89). Agents and agencies appear in July tier thinking **[CA]** (CORY-QUESTIONS:163).
+**Already settled.** Nothing for the adult side. Guardian-managed profiles for minors are ratified **[R]** (DOCTRINE:86), and youth launch is deferred pending professional legal review **[R]** (VISION:463; DOCTRINE:89); that settles the deferral, not the youth design. Agents and agencies appear in July tier thinking **[CA]** (CORY-QUESTIONS:163).
 
 **Questions.**
 - In the D1 scenario, does every person sign only for themselves?

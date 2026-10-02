@@ -36,7 +36,7 @@ Modeling Standard is the professional operating system for independent shoot-bas
 | Photographers | Primary participant **[R]**; probably the larger paying segment **[F]** (an agent inference in the July reconciliation, not Cory's) | Cory is one; his warm network is photographers who bring their crews. Their protection is financial and contractual (payment, deliverables, terms). |
 | Crew: makeup artists, hair, wardrobe stylists, assistants | Must agree to the terms to be on set **[R]** | "If you have not agreed to the terms of the shoot, you are not on set." Their protection: financial, deliverables, consumables. |
 | Organizers and clients | Invitees, free **[CA]** | Fashion-week organizers (the only real brief example in the docs), grad/wedding/event clients. Brief creators as well as invitees. |
-| Guardian managers | Lead surface for the youth ecosystem **[R]**; youth launch marked DEFERRED in doctrine (DOCTRINE:89) | A minor is never an account holder. Not built, and not prepared for with placeholders, in the first stages. |
+| Guardian managers | Lead surface for the youth ecosystem **[R]**; youth launch deferred pending professional legal review **[R]** (VISION:463; DOCTRINE:89); the youth design itself is unresolved | A minor is never an account holder. Not built, and not prepared for with placeholders, in the first stages. |
 | Agents / agencies managing several adults | Named in tier thinking **[CA]** | Later. Representation is designed when Cory opens it; whether anyone acts for another party in the first slice is D12. |
 
 ## 4. Core value loop [F, built from R]
@@ -95,7 +95,7 @@ The loop is entered from the garden (a comp card to send, a concept to post, a c
 - Each party holds the final artifact independently. **[R]** How long records stay retrievable inside the product is subject to retention rules not yet set. **[R-prov]**
 - Explicit compensation; no negotiable; no user-to-user payments. **[R]**
 - No people directory; the work is public, the people are not; a person's professional material is seen only on request, from its owner, for a bounded time. **[R]**
-- Adults only as account holders; guardian manager as real infrastructure; youth is a sealed partition; youth launch deferred pending counsel. **[R]**
+- Adults only as account holders; guardian manager as real infrastructure; youth is a sealed partition; youth launch deferred pending professional legal review (VISION:463, VISION:531). **[R]** The [R] covers the deferral, not any future youth design, which is unresolved.
 - Documents and PDFs never paywalled. **[R]**
 - Greenfield replacement; diligence outranks any date. **[R]**
 - "A rollout that is too slow kills the trust... The launch must arrive substantially whole." **[R]** (VISION:409-411) (See Deliverable H, decision D6: this is in tension with slice-at-a-time delivery and must be reconciled by Cory, not by us.)
