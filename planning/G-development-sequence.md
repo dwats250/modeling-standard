@@ -1,28 +1,98 @@
 # Deliverable G. Development sequence
 
-Status: Fable proposal. Seven stages from empty repository to adult beta, plus two gated stages after. Each stage is one program of bounded slices for Opus 5.5 under Dustin's merge authority, with Cory approving the product decisions named for it.
+Status: REVIEW. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). Fable proposal **[F]**. Not implementation authority.
 
-A note on "launch whole" [R]: Cory has said a rollout in dribs looks unfinished and kills trust, and that the launch must arrive substantially whole. This sequence treats that as a constraint on the public launch, not on the build. Stages 0 to 2 produce a private tool used by Cory and his network on real shoots; stage 5 is a private beta; the public adult launch comes after stage 4's garden is real. Cory should confirm this reading (D6).
+Stage 0 and Stage 1 are reconciled in detail. Stages 2 to 7 are an outline for orientation only: they have been corrected where the reconciliation touched them and have not been re-derived. Each later stage needs its own decisions and its own planning pass before it is anything more than a direction.
 
-| Stage | Capability that becomes real | Why now | Prerequisite it establishes | Intentionally excluded | Evidence of completion |
-|---|---|---|---|---|---|
-| **0. Walking skeleton** | A deployable that does one thing end to end: sign in by code, create an empty shoot, see it, sign out. All of Deliverable D "decide now" exists in code: typed command array with policy and rate limits, two DB roles, evidence tables with triggers, canonical bytes, an S3-compatible store with the write-once evidence class, outbox with a real mailer, renderer in a child process, `createApp(deps)`, CI with every gate, health endpoints, container. | Everything later is cheaper if the gates exist before the first feature. The prototype's failures were absences of exactly these. | The invariants I1, I2, I3, I7, I8 are enforced by structure before any product code depends on them. | Any product behaviour beyond the walking path. Vendor choices other than mail. | CI green on a blank machine; authorization matrix runs against the (tiny) registry; an attempted SQL UPDATE on an empty evidence table as `app` fails; deleting an evidence blob with runtime credentials fails; a container boots and answers `/healthz`. |
-| **1. Agreement spine** (Deliverable F) | One adult shoot, n parties including the organizer, presented versions signed by the organizer, review events with affirmations, organizer confirmation, frozen record with one view per party under a common hash, archive and account closure without loss, adult attestation. Two system presets (paid, trade) with one leading. | It is the product. Nothing else is worth building until this is trustworthy. | The Version / ReviewEvent / Affirmation / Record model, the bearer-grant mechanism with the matching-email claim rule, the renderer, the phone-first participant experience. | Documents, media, profiles beyond name and role, anything public, discovery, scheduling, moderation UI, plans, per-term counter-proposals, inline document editing. | Deliverable F acceptance criteria 1 to 14 pass. In parallel, not as a gate on stage 2: Cory runs real trade or portfolio shoots with his own collaborators on it (D8 decides whether commercial shoots wait for releases) and the records survive his attempts to break them. |
-| **2. Records and documents** | Standard documents assembled from an agreed version (the essential set Cory picks: at minimum model release and photo release; usage terms trigger them), signed with the same affirmation primitive, bundled into the record. The "documents for people not on the app" path: a document generated from a shoot whose other party never creates an account is still complete and free. Post-shoot record view. | Cory's priority one is safety documents; they are only trustworthy once they hang off a frozen version. | Template versioning; the single signing primitive proves it generalizes. | Sensitive-content riders beyond what Cory selects; any legal-review claims; document tools outside a shoot. | Documents render from terms with no hand entry; signature rows bind to template versions; the record bundle hash covers documents; Cory approves the essential set and the wording of the "not legal advice" line. |
-| **3. Professional identity and media** | Profile with role modules (contents are Cory's to set; Deliverable I gives examples), one comp card and one portfolio per profile, share-forward links with scoped, expiring, owner-revocable grants. Media pipeline: EXIF strip, size classes, audience on every blob, scanning wired to a real provider and adult verification wired to a real provider before any upload can be made available to anyone. OAuth as linked identities. The design tokens package and the first real design system; inline document editing for the brief. | The wedge (comp cards) and the thing an invitee keeps after their first shoot. Media is the first real safety-cost surface, so it comes with scanning and verification, not before them. | BlobStore vendor chosen; Media domain; Presence grants; `AgeVerifier` and `ImageScanner` real. | Any listing, search or directory; public pages; the link page (needs a Cory decision on whether it exists); comp cards as a paid feature (no plans yet). | A card can be sent to one person for 14 days and revoked; a blob without a grant is unreachable; scanning blocks a flagged upload; an unverified account cannot upload; no command enumerates profiles. |
-| **4. The garden** | The weekly reason to return: a desk of "this week" (upcoming shoots, awaiting my acceptance, awaiting others, records ready), availability windows, reminders, a delivery note after the shoot, user-editable presets, concept posts (a moodboard with a mini-brief: what, city, when, audience) that accept replies from a shared link, per-participant version diffs, per-term counter-proposals if Cory chose them in D2, and the public link page at `modelingstandard.com/handle` if Cory decides it exists (the July "My Standard" decision is **[CA]**; VISION:445 leaves the question open). | Cory's central question: why would someone open it every week with no safety problem. Answer it before any public launch. | Server-rendered public page template; Scheduling domain; work-first reply as the only discovery. | Reviews, ratings, reputation of any kind; a people directory; messaging; payments. | A user with three shoots in flight sees what needs them today; a stranger arriving at a link page sees the work and one way to reach the person; concept posts show city only until agreement. |
-| **5. Trust, operations, private beta** | Reports from inside a shoot or from a shared item (structured reasons only), strikes recorded privately, blocks, suspension via admin with audit, admin console minimal. Observability, backups with a restore drill, error tracking, an invite gate with bot-dump detection, hosting vendor chosen and running. | The garden is now attractive enough that strangers will arrive; the walls must be operationally real. | Trust & Moderation domain; the operating runbook a two-person team can run. | Free-text reviews; public strikes; adjudication workflows; automated moderation beyond scanning. | Restore drill passes; a suspended account is blocked on the next request; an invite-gated cohort of Cory's network uses it for a month with real shoots; incident and support paths are written down and tried once. |
-| **6. Public adult launch and plans** | Capacity and convenience entitlements (Cory's July concept: documents-only free tier, paid initiating presence **[CA]**; the exact boundary is D7), billing through a provider behind the Billing adapter, currency by region, public marketing pages. | Only after beta has proved the spine and the garden. Pricing is DEFERRED doctrine and stays out of the architecture until here. | Entitlements domain with the import boundary tested; evidence retention policy set with counsel (D9). | Referrals; affiliate payouts; user-to-user payments (never). | Import-boundary test proves Agreement & Evidence, Documents and Communications cannot see Entitlements; an invitee with no plan can review, agree, retrieve their record and generate every document; Cory ratifies the plan definitions; D9 answered. |
-| **7. Represented profiles and the youth partition** (gated) | A holder account managing a profile that is not its own subject (agents first, adults only), then, if Cory and counsel approve, the youth partition: guardian-managed profiles, separate content pool and entry rules, the minor-and-nudity gate as a server rule, city-only location until agreement, no adult content inside the partition. | Only after professional legal review and Cory's explicit decision. The model has carried the seams since stage 0. | The represented-profile mechanism (holder acting for subject, with an audited authority record) that the youth partition reuses for guardians; the second audience value with its enforcement tests. | Anything before counsel; youth image hosting decisions (Cory has not chosen). | Counsel sign-off recorded; a test proves an adult content item cannot be presented inside the youth partition; guardian authority is verified, not declared. |
+A note on "launch whole" **[R]**: Cory has said a rollout in dribs looks unfinished and kills trust, and that the launch must arrive substantially whole (VISION:409-411). This sequence reads that as a constraint on the public launch rather than on the order of building. That reading is Fable's, and Cory confirms or corrects it in D6.
+
+---
+
+## Stage 0. Engineering foundation
+
+**Purpose.** Show that later approved behaviour can be built and tested safely. Stage 0 contains no collaboration workflow and no product data model. It needs no answer about what a collaboration, agreement, participant, organizer, identity, payment boundary or representation means.
+
+**Authorized by.** Gate 0: Dustin approves a Stage 0 PRD. No Cory decision is required.
+
+### Scope
+
+| Include | Completion evidence |
+|---|---|
+| Reproducible install, check, test, build and boot, from a small explicit dependency set | A clean machine with no external service accounts can run all five from the lockfile |
+| The real application composition: one way to construct the app, used by production and by tests; configuration validated at boot; uniform error handling; structured, redacted logging | The tested application is the shipped application; a missing or invalid setting fails at boot with a clear message; logs carry a request id and no secrets |
+| A mandatory authorization boundary | Synthetic protected operations, exercised with synthetic principals: an operation with no declared policy cannot be registered; a missing or wrong principal is rejected; the check is on the object acted on; an intentionally public operation must be classified public explicitly |
+| Explicit input and output validation | A synthetic request cannot write a field it did not declare; a response is a declared shape, never a raw stored row |
+| Local transactional persistence with reviewed migrations | Migration from an empty database; a transaction rollback test; a runtime database role separate from the migration role. One synthetic table for the tests; no collaboration tables |
+| A bounded evidence-mechanics probe | Synthetic bytes are stored, retrieved and verified against a hash; attempts to alter or delete them with runtime credentials fail; the threat model the probe is tested against is written down. A test fixture, not the future agreement schema |
+| Controllable seams only where Stage 0 exercises them | A controllable clock if the probe timestamps anything; configuration. No interface with only a null implementation |
+| Continuous integration proportional to what exists | Checks run against the real artifact on every pull request; a required suite cannot be skipped silently; the built artifact boots and answers a health check |
+
+### Exclusions
+
+Real login or signup. Account onboarding. Adult attestation. Invitation claiming. Profiles. Represented people. Adult or youth audience models. Shoot or collaboration creation. Participant roles. Compensation and terms schemas. Agreement states. Signatures. Record views. Retention periods. Real email delivery. Production evidence storage. Product PDF rendering. Billing. Navigation. Presets. Production copy.
+
+In Stage 0 the production build has no way to sign anyone in, so every protected operation is denied; the tests supply synthetic principals. That is deliberate: the boundary is proven before any credential exists to pass through it.
+
+### Why it is product-neutral
+
+The test: if Cory could answer an open product question differently and force a piece of Stage 0 work to change, that piece belongs in Stage 1 or later.
+
+| Open decision | Does any answer change Stage 0? |
+|---|---|
+| D1 scenario; D12 who may act | No. Stage 0 has no parties, roles or obligations. |
+| D2 topology and lifecycle | No. No agreement states or transitions exist. |
+| D3 credential | No. Principals are opaque identifiers supplied by tests; whether a principal will be an account, a code holder or a representative is not decided. |
+| D4 terms and affirmation | No. No terms, no signing. |
+| D5 vocabulary | No. Nothing a user reads exists. |
+| D7 initiation and paywall | No. Nothing can be created or charged for. |
+| D8 documents; D10 visibility | No. No documents, no views. |
+| D9 preservation and access | No. The probe stores synthetic bytes and proves protection mechanics; it sets no retention period and no access rule. |
+| D6 real use; D11 adult assurance | No. Nothing is usable by anyone. |
+
+What Stage 0 does decide is technical and is Dustin's: language and runtime, one application, the database, the migration discipline, the shape of the authorization boundary, test tooling and CI. Deliverable D gives the recommendations and the reasons.
+
+### What moved out of the previous Stage 0
+
+The previous "walking skeleton" signed in by code, created an empty shoot, and built evidence tables for versions, affirmations and records, an outbox with a real mail provider, a renderer subprocess and an object store with a write-once class. Signing in depends on D3; a shoot and its evidence tables depend on D1, D2, D4 and D10; adult attestation depends on D11. All of that moved to Stage 1, where each piece waits for its decision. Mail delivery, artifact rendering and artifact storage are built in Stage 1 when something real needs them.
+
+---
+
+## Stage 1. The first adult collaboration slice
+
+**Purpose.** Deliver the outcome envelope in Deliverable F for one Cory-selected scenario.
+
+**Authorized by.** Gate 1, piece by piece: each piece starts when Cory has answered the decisions it depends on (Deliverable F, section 4) and its PRD is approved.
+
+**Shape.** Conditional. See Deliverable F for the envelope, the proposed shape, the exclusions, the engineering obligations and the acceptance evidence.
+
+**Completion evidence.** The acceptance evidence in Deliverable F, section 8, demonstrated with synthetic participants.
+
+**Real use.** Not part of Stage 1's completion. Running real collaborations is Gate 2 and has its own prerequisites (Deliverable F, section 6).
+
+---
+
+## Stages 2 to 7: outline only
+
+| Stage | Direction | Depends on | Corrections made in the reconciliation |
+|---|---|---|---|
+| **2. Documents** | Standard documents (the essential set Cory selects) assembled and signed, free | D8, D7 | Whether a document can be produced outside a collaboration, for work with someone not on the app, is open (D7, D8). The previous exclusion of "document tools outside a shoot" is withdrawn: not rebuilding the prototype's twenty-two disconnected tools is a greenfield choice, but a standalone free-document path may be exactly what VISION:469 requires. If the Stage 1 scenario triggers a release, that release is part of the real-use gate and does not wait for this stage. |
+| **3. Professional identity and media** | Profiles, a comp card and a portfolio, sharing by scoped, expiring, owner-revocable grants; media handling; image scanning and adult verification real before any upload is available to anyone **[CA]** (CORY-QUESTIONS:195) | Role-module contents; vendor choices | Scanning and verification interfaces are introduced here with real implementations, not earlier as placeholders. A general sharing-grant mechanism is designed here, when it has a real use. |
+| **4. The garden** | The weekly reason to return: a desk, availability, reminders, delivery notes, concept posts that accept replies | Link-page decision (VISION:445); D2c if per-term counters were chosen for later | Unchanged in direction. |
+| **5. Trust, operations, private beta** | Structured reports, private strikes, suspension with audit; backups and a restore drill; hosting chosen | Moderation posture **[R]** (VISION:513); D6 | What suspension blocks is decided in D9 before this stage, not assumed. A scheduled integrity scan over stored evidence is an operations decision made here. |
+| **6. Public adult launch and plans** | Entitlements, billing, public marketing | D7; pricing (deferred doctrine); D9 with counsel | The proof that safety documentation is free is a traced journey by a person with no plan (I4), not an import rule alone. |
+| **7. Represented profiles and the youth partition** (gated) | Representation for adults first; the youth partition only after counsel and Cory's explicit decision | Counsel; VISION:463 | The previous claim that "the model has carried the seams since stage 0" is withdrawn. The partition is designed here, against Cory's ratified three-state description, not prepared in advance with a column. |
+
+---
 
 ## Sequencing rules
 
-- One stage in flight at a time. A stage begins when the previous stage's evidence exists and Cory has answered the decisions the stage names.
-- Within a stage, slices are vertical (screen to database) and each is a PR with acceptance criteria, never a horizontal "build all the tables first".
-- The invariants (Deliverable B) are re-tested by CI on every PR in every stage; a stage cannot weaken one.
-- Nothing in stages 0 to 2 selects a hosting, blob or age-verification vendor; the mail vendor is the one exception because the spine is email.
-- Documentation stays inside the repository as one short `docs/` directory: this package, one PRD per slice, the decision log. No parallel governance apparatus.
+- Three gates, in the root `README.md`: technical authorization for Stage 0, semantic authorization for each piece of Stage 1, and a separate authorization for real use. Passing one does not open the next.
+- A piece of work whose product semantics are unresolved does not start. A configurable placeholder is still a default.
+- Within a stage, slices are vertical and each is a pull request with acceptance criteria.
+- The outcomes in Deliverable B are re-tested on every pull request once the thing they govern exists; a stage cannot weaken one.
+- No hosting, storage, mail or verification vendor is selected before the stage that needs it.
+- Documentation stays in this repository: this package, one PRD per slice, a decision log. No parallel governance apparatus.
 
 ## What is not on this roadmap
 
-Referral mechanics (Cory parked them), user-to-user payments (never), an unstructured messaging system (Cory's July model **[CA]** is notes bound to terms and per-term counters that converge, with contact exchanged on mutual acceptance; slice 1 carries structured concerns and D2 asks when the counters arrive), migration of anything from the prototype, an Explore page, six brief builders, twenty-two standalone document tools.
+Referral mechanics (parked by Cory). User-to-user payments (never; DOCTRINE:66). An unstructured messaging channel (Cory's July model **[CA]** is notes bound to terms). Migration of anything from the prototype, its URLs, or compatibility with it. An Explore page that lists people. Six separate brief builders.

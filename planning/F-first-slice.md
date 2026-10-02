@@ -1,78 +1,155 @@
-# Deliverable F. First vertical slice recommendation
+# Deliverable F. Stage 1: the first adult collaboration slice
 
-Status: Fable recommendation, revised after independent review. The charge's candidate (§23) is accepted with two changes forced by ratified doctrine and two recommendations that depend on Cory's answers to D2 and D3.
+Status: REVIEW. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). **A conditional envelope, not a build specification.** Not implementation authority.
 
-## 1. The slice: one adult shoot, agreed by everyone in it, with a record in every party's hands
+The previous version of this document described a fixed workflow with fourteen acceptance criteria drafted under Fable's preferred answers. It is replaced by three things: the outcomes Cory's existing direction supports, a proposed shape for the smallest useful first slice, and the decisions that still block its precise behaviour. PRDs for Stage 1 are written piece by piece as those decisions are answered (Gate 1 in the root `README.md`).
 
-**Story.** An adult organizer (a photographer or a model) creates a shoot from a preset, fills in the terms in a structured form beside a live document preview, adds one or more participants by name, role and email, and presents the terms, signing them as a party. Each participant receives an invitation on their phone, reads the version presented (the common terms and their own terms; what else they see is D10), and accepts with an affirmation bound to the term blocks, declines, or raises a structured concern on a specific block. If the organizer changes the terms, a new version is presented with the changed blocks listed, and acceptance starts again. When every listed party has accepted the current version and the organizer confirms, the agreement freezes: a record is rendered and every party can retrieve their view of it, under one common hash, from their own account, forever, including after the shoot is archived or an account is closed.
+## 1. The outcome envelope
 
-**Changes from the charge's §23 candidate**
+These are what Cory's ratified direction supports. Any first slice has to deliver them; none of them says how.
 
-| Charge §23 | This slice | Basis |
+| # | Outcome | Source |
 |---|---|---|
-| "Invite another adult" (two parties) | Any number of listed participants, each a party, the organizer included | Forced by doctrine [R]: crew who have not agreed "are not on set"; compensation "signed by both parties". |
-| "Accepts, declines or raises defined concerns" | Acceptance carries an affirmation bound to term blocks, with legal name, credential and timestamp; the organizer affirms every version they present | Forced by doctrine [R]: signatures are load-bearing; per-clause binding and credential are in the 8-element set. |
-| "Invitee joins or claims the invitation" | Read by bearer link; accept with an account whose verified email matches the invitation, or by one-time code with an account offered after | Recommendation pending D3. Either way, a claim by a non-matching account is refused. |
-| "Final agreement is frozen" | Frozen by the organizer's confirming affirmation after all acceptances | Recommendation pending D2. |
+| 1 | Relevant collaborators establish explicit professional terms before the work | [R] VISION:136, DOCTRINE:29 |
+| 2 | Required participants agree to the terms relevant to them | [R] VISION:150, VISION:374 |
+| 3 | Signatures are bound to the specific clauses they affirm | [R] DOCTRINE:51 |
+| 4 | Compensation, deliverables, usage and boundaries are preserved | [R] DOCTRINE:47-50 |
+| 5 | A change cannot silently rewrite an earlier agreement | [R] DOCTRINE:46, DOCTRINE:56 |
+| 6 | Affected people return to review when a change requires it | [R] VISION:152; the rule itself is [OPEN] D2 |
+| 7 | Each party receives an authorized, independently holdable artifact containing the evidence they are entitled to | [R] DOCTRINE:53, VISION:154 |
+| 8 | Ordinary archival or account cleanup does not destroy another party's agreement evidence | [R] DOCTRINE:56 |
+| 9 | The product does not claim to witness what happened on set | [R] DOCTRINE:40-42 |
+| 10 | The product does not claim identity verification or legal enforceability beyond what it performs | [R] DOCTRINE:59, DOCTRINE:93, VISION:316-317 |
 
-**What the slice-1 record covers of the ratified 8-element evidence set.** Elements 1, 2, 3 (amount, deposit, timing), 4, 6, 7 and 8 in full. Element 5 (usage rights *and the release documents they trigger*) only in part: usage terms are recorded; the documents arrive in stage 2 (D8 asks whether real shoots may run on slice-1 records before then).
+## 2. Proposed shape of the first slice [F]
 
-## 2. Why this slice is first
+A recommendation for the smallest slice that delivers the envelope. Every line depends on a Cory decision and is marked.
 
-- It is the spine. Every later feature either produces a shoot or consumes a record. If this is trustworthy, the garden can be built on it; if it is not, nothing else matters (Cory: false protection is disqualifying).
-- It is the smallest thing that is genuinely useful. Cory and his network can run real shoots on it with no other feature present.
-- It exercises every invariant except I6 (nothing browsable), which it satisfies by having nothing to browse, and it forces the technical foundations that are expensive to retrofit: immutable evidence, deny-by-default policy, the bearer-grant mechanism, the outbox, the renderer, n parties.
-- It is the acquisition loop in miniature: the invitee's first contact with the product is a real shoot on a phone.
+- **One scenario, selected by Cory** (D1). Not a paid preset and a trade preset; one real collaboration, with the fields and wording it needs.
+- **Adults acting for themselves.** A proposed constraint that needs Cory's approval (D12), together with how adulthood is assured (D11). If the chosen scenario includes someone who signs for another party, this constraint does not hold.
+- **Private.** Nothing public, nothing browsable (I6). The visibility and invitation rules inside the collaboration are approved explicitly (D10, D3), not assumed.
+- **As many parties as the scenario has, and no more.** The model treats parties as a set from the start, so nothing is hard-wired to two. If the scenario has two people, the topology question (D2a) and most of the visibility grid (D10) do not block the first slice and return with the first three-party slice. If it has more, they block.
+- **Obligations stated as who owes what to whom** (Deliverable E, section 2), for the obligations the scenario actually contains. No obligation is implied by an "organizer" role.
+- **Only the terms the scenario and the ratified evidence set require** (D4). No inherited field vocabulary.
+- **One journey end to end**: create, present, respond, finalize, artifact delivered to each party, archive without loss.
+- **Amendment and cancellation only once their rules are settled** (D2e, D2g, D2h). The first journey can be built and demonstrated without either; neither is offered until Cory has decided how it works.
+- **Releases included if the scenario triggers them** (D8). If the scenario's usage terms trigger a release and no approved template exists, the slice is a demonstration and is not used for real work.
 
-## 3. Which Cory goals it proves
+## 3. What the slice excludes
 
-- "Make 'we never agreed to that' impossible to say." [R]
-- Records free, including for participants who create an account only to respond. [R] (Documents follow in stage 2.)
-- Explicit compensation before the day of work, deposit included; no negotiable. [R]
-- The record protects the photographer as much as the model: the organizer's obligations are signed by the organizer. [R]
-- Every person on set agreed to the terms. [R]
-- Nothing is browsable; a signed-in invitee sees only the shoot they were invited to. [R]
-- The product freezes the agreement and claims nothing about what happens on set. [R]
-- The garden principle: the reading and agreeing experience must already feel like a professional standard. [R]; "not a form" is Fable's gloss (Deliverable I).
+Images and uploads of any kind. Public pages, handles, comp cards, portfolios, concept posts. Discovery. Availability and calendar. Reports, strikes and moderation tooling. Plans, tiers and billing. Youth, guardians, organizations and representatives. Profiles beyond what a party needs to be named in an agreement. User-editable presets. Delivery tracking after the shoot.
 
-## 4. What it deliberately excludes
+Excluding something here does not make it unnecessary for real use. If the chosen scenario needs a release, adult assurance, record recovery or anything else on this list, it moves into the real-use gate (section 6).
 
-No images or file uploads of any kind (so no media pipeline and no scanning obligation, and no public uploads, which is what Cory's age-verification line gates on). No standard documents (releases) yet; usage and boundary terms are recorded as terms only. No public pages, handles, comp cards, portfolios or concept posts. No discovery of any kind. No availability or calendar. No reports, strikes or admin console beyond a CLI to suspend an account. No plans, tiers or billing. No youth, guardians or represented profiles. No OAuth. No notifications other than email. No editing of presets by users. No per-participant term diff (the changed-blocks list is at block level). No per-term counter-proposal loop (Cory's compliance-percentage model is D2's option (b), stage 4 if chosen for later). No inline document editing (structured form plus live preview in slice 1; document-first editing in stage 3 with the design system). No delivery tracking after the shoot.
+## 4. Decisions that block each piece
 
-## 5. Technical foundations it requires (all of Deliverable D "decide now")
+A piece of Stage 1 starts when every decision in its row is answered and its PRD is approved. Nothing starts on a preferred answer.
 
-Monorepo and CI gates; `createApp(deps)`; Fastify with a typed command array and deny-by-default policy; Postgres with reviewed migrations, two roles, evidence triggers; evidence blob storage class; internal account, passwordless login with rate limits, adult attestation; bearer grants and the matching-email claim rule; Shoot and TermsDraft with eight term blocks; Version, PresentationEvent, ReviewEvent, Affirmation, Record, RecordView; renderer with one HTML template for screen and PDF in an isolated child process; Communications outbox with a real mail provider; structured logging and health endpoints; Playwright at phone viewport.
+| Piece of work | Needs | Notes |
+|---|---|---|
+| Scenario scope; parties and obligations | D1, D12 | Everything else depends on this |
+| Terms content and validation | D1, D4 | |
+| Invitation and participation credential | D3, D11, D12 | Includes what is recorded as the credential used |
+| What each party is shown | D10, D4; D2a if more than two parties | Produces the per-party presentation that evidence binds to |
+| Response, signing and finalization | D2b to D2d, D4 | D2a if more than two parties |
+| Roster changes | D2f | Only if the scenario needs them |
+| Amendments | D2g, D2h | May follow the first journey |
+| Cancellation of a finalized collaboration | D2e | May follow the first journey |
+| Artifact content and delivery | D10, D2, D5; D8 if a release is triggered | |
+| Screens, emails and artifact wording | D5; D11 for any assurance wording | Internal code names do not wait |
+| In-product access to records after account changes | D9, D3 | Delivery of the portable artifact does not wait for D9. This piece may be the last of Stage 1; it must be done before real use. |
+| Any statement that creating or inviting is free or paid | D7 | Billing itself is not in this stage |
 
-## 6. Acceptance criteria
+## 5. The synthetic demonstration
 
-Product (each is a Playwright journey or a command test). Criteria marked (D2), (D3), (D10), (D11) are drafted under the preferred answers in Deliverable H and are rewritten if Cory decides otherwise.
+Once the pieces are built on Cory's answers, a demonstration with invented people and inboxes the team controls can prove:
 
-1. An organizer can create a shoot from a preset, edit terms, add three participants with different roles and different compensation (one paid with a deposit, two trade), record their adult attestation (D11), and present. Presenting writes the organizer's affirmation. Presentation is refused while any participant's compensation is unspecified, or while any block Cory has made mandatory (D4) is empty.
-2. Each participant receives an email within one minute; opening the link on a phone shows the common terms and their own terms (D10), readable without horizontal scroll, with their own terms clearly marked. Contact details of other parties are not shown before agreement (D10).
-3. (D3) A participant accepts only from an account whose verified email matches the invitation; creating one takes one email round trip and no password. 3b. A claim from an account with a different verified email is refused with a plain explanation, and the organizer is told.
-4. Accepting requires affirming each term block and typing a legal name; the affirmation row records actor, credential, adult attestation (D11), timestamp and blocks. Declining and raising a concern (on a named block, with a short note) are recorded and visible to the organizer. 4b. A participant who raised a concern can accept the same version afterwards without a new version.
-5. (D2) Editing any term after presentation and presenting again produces version 2 with a new hash and a new organizer affirmation; version 1 is byte-identical to before; every participant's standing returns to pending for version 2; each participant sees the list of blocks that changed since the version they last accepted; the organizer sees who accepted which version.
-6. (D2) When every listed party has accepted the current version, the organizer confirms with a second affirmation; the record is rendered within one minute; every party can download their view; all views carry the same common hash; the record contains an affirmation from every party, the organizer included. 6b. An edit after the freeze produces version 3; when it is agreed, record 3 is issued and record 1 remains retrievable and is marked superseded.
-7. The organizer archives the shoot; the participants can still retrieve the record. A participant's account is closed; the organizer can still retrieve the record and it still names that participant.
-8. A suspended account cannot perform any command. An expired bearer link is refused with a plain explanation.
-9. Nothing about any person is reachable except through a shoot the actor is party to. There is no command that lists accounts or profiles.
+- the application flow end to end;
+- authorization, including wrong-person and wrong-collaboration attempts;
+- versioning: earlier presented states are unchanged by later edits;
+- evidence mechanics: what each party was shown and affirmed can be reconstructed and checked;
+- privacy boundaries between parties;
+- behaviour under concurrency and failure (section 7);
+- artifact creation and delivery.
 
-Engineering (CI gates):
+A synthetic demonstration is built on approved semantics like everything else in Stage 1; it is synthetic because of who uses it, not because its rules are provisional. It is labelled as a demonstration wherever it is shown.
 
-10. Every command in the registry has a policy and passes the authorization matrix (unauthenticated, wrong account, suspended, expired or revoked bearer, non-matching claim).
-11. Attempts to UPDATE or DELETE any evidence row through the API return 4xx; through SQL as the `app` role they fail; deleting or overwriting a record PDF with runtime credentials fails.
-12. Renderer golden tests are byte-stable; a changed template version is recorded on new versions; the version hash recomputes from the stored canonical bytes.
-13. Clean install, typecheck, migrate-from-empty, tests, build, boot smoke all pass on a machine with no accounts anywhere; the mail provider is faked.
-14. No page component exceeds the size budget; the main bundle is under budget; no `any` in server code; every command that sends email declares a rate limit.
+## 6. Real use is a separate gate
 
-## 7. Decisions that require Cory
+A working demonstration is not readiness for real professional use. Before any real collaboration between real people runs on the product (Gate 2), Cory approves real use for a named scenario, and each of these is resolved for that scenario:
 
-Block acceptance of slice 1 (engineering can start; copy, presets and validation lists are configurable until answered): D1 (leading story and walkthrough), D4 (required blocks, affirmation form, compensation kinds and ranges), D5 (vocabulary).
+| Prerequisite | Decision |
+|---|---|
+| Real private use is permitted before the public launch | D6 |
+| The releases the scenario's usage terms trigger exist, with approved templates | D8 |
+| Adult assurance: the method, and Cory's approval of any departure from verifying at first participation | D11 |
+| Identity claims in the product match what it actually checks | D3, D11, I7 |
+| Record access and recovery after lost credentials, closure and suspension | D9, D3 |
+| Retention | D9, counsel |
+| Legal review of whatever Cory or counsel marks as needing it | D8, D9 |
+| The scenario is within the approved scope | D1, D12 |
 
-Block the state machine and screens as drafted: D2 (confirmation, re-acceptance, withdrawal, counter-proposals), D3 (account or one-time code to accept), D10 (per-party visibility), D11 (adult attestation).
+Trade and portfolio work is not exempt from any of these. It involves usage rights and can trigger a release as readily as paid work.
 
-None of them changes the data model in Deliverable E beyond the flagged rows.
+## 7. Engineering obligations once the transitions are approved
 
-## 8. Size
+When Cory has settled the state transitions (D2), the Stage 1 PRDs specify behaviour for each of the following. None is designed before the transitions exist.
 
-One implementation program for Opus 5.5 under Dustin's review, in the order: walking skeleton (Deliverable G, stage 0), then the organizer authoring flow, then the participant flow, then versioning, then freeze and record, then archival and closure tests. Each of those is a reviewable PR against the acceptance criteria above. The independent review judged the slice large enough to prove the architecture and at the upper edge of one program, with the risk in UX rather than architecture; the structured-form-plus-preview choice for authoring is the scope control.
+- Concurrent edits to the same terms.
+- An acceptance arriving while the terms are being changed.
+- A withdrawal arriving during finalization.
+- Finalization triggered twice.
+- Retries of any step.
+- Artifact rendering fails.
+- Artifact storage fails.
+- Finalization partly completes.
+- Idempotency of every operation that can be retried.
+- Recovery from an interrupted operation.
+
+The target is the smallest transactional model that handles the approved semantics correctly. This does not call for event sourcing.
+
+## 8. Acceptance evidence
+
+Stated as outcomes; each PRD turns its share into exact criteria.
+
+- A party cannot see anything about another party that the approved visibility rules withhold, through any screen, notification, export or artifact.
+- Every obligation in the scenario is affirmed by the party who undertakes it, including obligations undertaken by whoever organized the collaboration.
+- Authorization holds against the wrong person, the wrong collaboration and the wrong object within a collaboration.
+- Anything presented earlier is unchanged, byte for byte, by anything that happens later.
+- For each party, the evidence shows the clauses and values they were shown, who they were told the counterparties were, what they affirmed, when, and with which credential (Deliverable E, section 4).
+- Finalization is correct under races and retries, and is not duplicated.
+- A failed render or store is recoverable without altering evidence or issuing two different artifacts for one agreement.
+- Each party's artifact is delivered to them and faithfully represents the part of the agreement they are entitled to hold.
+- Archiving the collaboration, or removing one party's account, leaves every other party's evidence intact.
+- Record access behaves as Cory approved after each account-state change. This item waits for D9 and is completed when D9 is answered; it does not hold up the rest of the first journey, because each party already holds their delivered artifact.
+
+**Proposed criteria that remain proposals [F].** From the previous version, to be justified in a PRD or dropped: every email and artifact within one minute; byte-stable renderer output; two presets; one affirmation control per term block; a typed legal name. Artifact integrity and faithful rendering matter. Regenerating byte-identical PDF files is a separate technical choice and is not required by any outcome above.
+
+## 9. Coverage of the ratified evidence set
+
+The previous version said the slice covered seven of the eight elements of the evidence set (DOCTRINE:46-53) "in full". That was overstated. What the envelope targets:
+
+| Element | In the envelope | Depends on |
+|---|---|---|
+| 1. Exact clause text as presented at signing | Yes | Per-party presentation capture (D10) |
+| 2. Agreed parameters as values | Yes | D4 |
+| 3. Compensation terms, signed by the parties to them | Yes | D1, D4 (who owes whom) |
+| 4. Deliverables and delivery timing | Yes | D1, D4 |
+| 5. Usage rights and the release documents they trigger | Usage rights yes; releases only if included | D8 |
+| 6. Each signature bound to the clauses it affirms | Yes | D4 (the interaction) |
+| 7. Timestamps and the identity or credential used | Yes, as the credential actually used | D3 |
+| 8. Final immutable PDF delivered to all parties | Yes | D2, D10 (one artifact or several; contents) |
+
+Coverage is claimed for a built slice only after the corresponding decisions are answered and the acceptance evidence exists.
+
+## 10. Why this slice is first
+
+- It is what Cory calls the product: "the consent record is the point. The workflow only exists to produce it" **[R]** (VISION:350).
+- It is the part where being wrong is disqualifying: false protection is Cory's first failure mode **[R]** (VISION:499).
+- It forces the foundations that are expensive to retrofit: evidence that cannot be altered, authorization on every operation, per-party privacy.
+
+The previous version also argued that Cory and his network "can run real shoots on it with no other feature present". That is a real-use claim and is now subject to section 6.
+
+## 11. Sequence and size
+
+After Gate 0 (the engineering foundation in Deliverable G) and as Cory's answers arrive: parties and obligations; terms; invitation and participation; presentation; response and finalization; artifact; archival and account-change behaviour; amendments if and when settled. Each is a reviewable pull request against a PRD. The first web screens arrive with the first piece that has an approved journey.

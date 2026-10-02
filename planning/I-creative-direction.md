@@ -1,6 +1,23 @@
 # Deliverable I. Creative direction
 
-Status: Fable direction for Cory's reaction; Cory decides. No mockups yet; the first real screens are the stage 1 participant flow, and they should be designed against this document rather than against the prototype's pages. The prototype's editorial black-and-white with Playfair Display and Inter is evidence of an aspiration, not a specification; the guidelines file says so itself.
+Status: REVIEW. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). Advisory: Fable direction **[F]** for Cory's reaction; Cory decides. No mockups yet. The prototype's editorial black-and-white with Playfair Display and Inter is evidence of an aspiration, not a specification; the guidelines file says so itself.
+
+**What in this document is an example, not a decision.** The feeling, the tone and the visual direction stand on their own. The concrete screens described below are illustrations drawn under assumptions that Cory has not made, and each changes with its decision in Deliverable H:
+
+| Illustration | Depends on |
+|---|---|
+| The signing controls (one control per section, a typed name, one confirming action) | D4 |
+| The organizer signing when presenting and confirming with a second signature | D2, D4 |
+| "One email round trip to get an account" and any account flow | D3 |
+| The version line and "changed since you agreed" | D2 |
+| What a participant sees of other people's terms; the record looking like what was read | D10 |
+| The freeze "ceremony" and everyone receiving the record at once | D2, D10 |
+| The four navigation destinations, and "Shoots" as the first of them | D5, D7, and the later stages that would fill them |
+| The eight headed sections of the brief | D1, D4 |
+| Presets pre-filling the terms; the organizer as the one who authors and edits | D1, D4, D2 |
+| The record-page wording ("what everyone agreed to") | D2, D10, D5 |
+| References to a design system, tokens or inline editing arriving in "stage 3" | Not scheduled; Deliverable G lists later stages as outline only |
+| Every product word used here (brief, shoot, record, agree, confirm) | D5 |
 
 ## 1. The feeling
 
@@ -11,15 +28,15 @@ Words to design away from: urgent, protective, alarming, playful, corporate, soc
 
 The test for every screen: would a working photographer or model be proud to send this to a stranger they want to work with? If a screen looks like a security dashboard, a legal form, a SaaS admin panel or a social feed, it is wrong.
 
-## 2. Hierarchy: the shoot is the unit
+## 2. Hierarchy: the shoot at the centre
 
-Everything hangs off shoots. The first-level objects a person owns are: shoots (past, in flight, upcoming), records (the frozen outcomes of shoots), and themselves (identity, cards, work). Later, availability and posted concepts join at the same level. There is no "home feed"; there is a desk.
+Fable's proposal is that the desk is organized around shoots. This is a design thesis, not a rule that every future capability must hang from a shoot (Deliverable C, section 4). The first-level objects a person owns would be: shoots (past, in flight, upcoming), records (the frozen outcomes of shoots), and themselves (identity, cards, work). Later, availability and posted concepts join at the same level. There is no "home feed"; there is a desk.
 
 Priority of information on any screen: what needs me, then what is coming, then what is done. Never metrics first. Cory's later "Standing" and analytics ideas belong behind identity, not on the desk.
 
-## 3. Navigation
+## 3. Navigation (example)
 
-Four destinations at most, in this order, and the same on every device:
+An illustration of where the product could arrive, not a specification for the first slice, which has almost nothing to navigate. Four destinations at most, in this order, and the same on every device:
 
 - **Shoots.** The desk. In flight first, then upcoming, then archive. Each shoot is a document, not a form.
 - **Records.** Every frozen agreement and its documents, searchable by person, date and title. This is the archive a professional keeps. It should feel like a filing cabinet that is always in order.
@@ -30,7 +47,7 @@ Settings live under Me. Admin is a separate, unstyled surface. There is no inbox
 
 ## 4. The brief is a document you read, not a form you fill
 
-The single most important design decision in stage 1, applied first to reading and only later to writing. The brief is rendered as a document with headed sections in the eight term blocks (purpose and concept; when and where; who; compensation; expenses; deliverables and delivery; usage; boundaries and safety), each a plain-language rendering of the current values. In slice 1 the organizer edits through a structured form beside a live preview of that document; presets pre-fill the whole thing so the first view is "nearly finished" (Cory's onboarding principle: ask once, appear everywhere, magically finished). Required blocks that are still empty read as a gap in the preview, not as red validation text. Editing the document in place, with inline controls, arrives in stage 3 with the design system; it is the same document either way.
+The single most important design idea for stage 1, applied first to reading and only later to writing. The principle is Fable's and stands on its own; the specific sections, controls and signing steps in the next two paragraphs are examples that depend on D1, D2, D4 and D10. The brief is rendered as a document with headed sections in the eight term blocks (purpose and concept; when and where; who; compensation; expenses; deliverables and delivery; usage; boundaries and safety), each a plain-language rendering of the current values. In slice 1 the organizer edits through a structured form beside a live preview of that document; presets pre-fill the whole thing so the first view is "nearly finished" (Cory's onboarding principle: ask once, appear everywhere, magically finished). Required blocks that are still empty read as a gap in the preview, not as red validation text. Editing the document in place, with inline controls, arrives in stage 3 with the design system; it is the same document either way.
 
 The participant reads the document on a phone: the common terms and their own terms (what else they see is Cory's, D10), their own terms visibly theirs. At the end of each block, one control: agree to this section. At the end, their legal name and one confirming action. Concerns are raised on a specific block with a short note, in place, and the block shows that a concern is open. The organizer signs the document when presenting it, and confirms with a second signature when everyone has agreed. The record each party later downloads looks like the document they read, because it is the same template.
 
@@ -44,7 +61,7 @@ The link page (stage 4, if Cory decides it exists) is the one public face: the w
 
 ## 6. How the collaboration workflow should feel
 
-Like the calm version of arranging a shoot with a professional who has done it many times. The organizer's experience is authoring and then waiting well: the shoot page says exactly who has read, who has agreed to which version, who has raised what, and what the organizer's next action is. The participant's experience is reading and deciding on a phone in five minutes, with nothing to install and one email round trip to get an account.
+Like the calm version of arranging a shoot with a professional who has done it many times. The steps named below (who confirms, when the record is issued, how an account is obtained) are examples under D2 and D3. The organizer's experience is authoring and then waiting well: the shoot page says exactly who has read, who has agreed to which version, who has raised what, and what the organizer's next action is. The participant's experience is reading and deciding on a phone in five minutes, with nothing to install and one email round trip to get an account.
 
 The freeze is a moment worth a small ceremony: the record renders, everyone receives it, and the shoot page changes character from "in negotiation" to "agreed", with the record pinned at the top. After the shoot, the page becomes a place to record delivery (stage 4) and nothing else; the product does not follow people onto set.
 

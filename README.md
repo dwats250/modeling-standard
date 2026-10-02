@@ -6,35 +6,54 @@ This repository intentionally begins with product planning rather than applicati
 
 ## Current state
 
-**Planning / owner review.** No implementation has begun.
+**Planning / owner review. No implementation has begun.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The reconciled package is itself awaiting human review.
 
 ## Product authority
 
-Cory owns product vision and material product decisions. Nothing in this repository is a product decision unless Cory has made it; the documents say so line by line.
+Cory's vision is the sole product authority. Nothing in this repository is a product decision unless Cory has made it; the documents say so line by line.
 
-- **Cory**: sole product authority.
-- **Dustin**: technical orchestration, repository control, human merge authority.
-- **Fable 5.1**: product architecture, planning, creative reasoning, PRDs, owner-decision framing.
-- **Opus 5.5**: implementation, once approved PRDs exist.
-- No agent may silently convert an open product question into policy.
-- No implementation begins because a planning document proposes it.
+## Operating rule
+
+- **Cory** owns product direction.
+- **Dustin** owns technical orchestration, repository control and merge authority.
+- **Fable** supports planning, creative and product architecture, and PRD work.
+- **Opus** supports bounded implementation from an approved PRD.
+- **Astra** may perform adversarial review.
+- Agents do not resolve Cory-owned product seams. An open product question stays open until Cory answers it; "configurable later" does not authorize a default now.
+- Human review occurs at material product boundaries and at every merge.
+
+This is the whole operating model. The prototype repository's `GOVERNANCE.md`, `PROJECT-ROLES.md` and `CLAUDE.md` describe a migration-era arrangement (one agent interface, an acting migration lead) and do not govern this repository; they stay where they are as history.
 
 ## Start here
 
 1. `planning/README.md`
-2. `planning/H-cory-decision-packet.md`
-3. The other A to I planning documents as desired
-4. `planning/REVIEW-FINDINGS.md` for the adversarial review and the corrections it produced
+2. `planning/RECONCILIATION-REPORT.md` for what changed in the reconciliation and why
+3. `planning/H-cory-decision-packet.md` for the decisions that are Cory's
+4. The other A to I planning documents as desired
+5. `planning/REVIEW-FINDINGS.md` and `planning/ASTRA-REVIEW.md` for the two reviews
 
 ## Provenance
 
-Documents distinguish:
+Every claim in the planning documents carries one of five tags. A tag is never upgraded by repetition, by plausibility, or because later documents depend on it.
 
-- **[R]** Ratified Cory direction
-- **[CA]** Cory-attributed but not ratified
-- **[F]** Planning recommendation
-- **[OPEN]** Requires decision
+- **[R]** Ratified Cory direction: stated as approved in `VISION.md` or `PRODUCT-DOCTRINE.md` of the prototype repository.
+- **[R-prov]** Appears in a ratified document but is marked PROVISIONAL there. It keeps that status.
+- **[CA]** Cory-attributed direction recorded only in a document that was not itself ratified.
+- **[F]** Fable recommendation, interpretation or proposed mechanism.
+- **[OPEN]** Unresolved product decision.
 
-## Implementation gate
+Primary sources are pinned at `seeravenproductions/ShootBriefGenerator` commit `bfbf5f1`: `docs/VISION.md` and `docs/PRODUCT-DOCTRINE.md`. Citations of the form `DOCTRINE:56` or `VISION:374` are line numbers in those files at that commit. `CORY-QUESTIONS:n`, `COST-REALITY:n` and `FEATURE-REVIEW:n` are line numbers in `docs/CORY-QUESTIONS.md`, `docs/COST-REALITY-2026-07.md` and `docs/FEATURE-REVIEW-2026-07-17.md` at the same commit; none of those three is ratified, so anything cited to them is **[CA]** at most.
 
-No Stage 0 or product implementation begins until the owner-review seams required for the first PRDs are resolved. After this initial baseline, work happens on branches through human-reviewed pull requests.
+## Implementation gates
+
+Three separate gates. Passing one does not open the next.
+
+| Gate | What it authorizes | Who approves | What it requires |
+|---|---|---|---|
+| **Gate 0: Stage 0 technical authorization** | The product-neutral engineering foundation in `planning/G-development-sequence.md`, and nothing else | Dustin | An approved Stage 0 PRD that passes the neutrality test below. No Cory decision is needed, by construction. |
+| **Gate 1: Stage 1 semantic authorization** | Building one piece of the first collaboration slice | Cory for the product decisions, then Dustin for the PRD | Cory has answered every decision that piece depends on (the dependency table is in `planning/F-first-slice.md`), and a PRD for that piece is approved. A piece whose decisions are unanswered does not start. No preferred answer is built as a stand-in. |
+| **Gate 2: Real-use authorization** | Any real collaboration between real people run on the product | Cory, with counsel where a decision is marked counsel-dependent | The real-use prerequisites in `planning/F-first-slice.md` are resolved for the named scenario. A working synthetic demonstration is not real-use approval. |
+
+**Neutrality test for Stage 0.** If Cory could answer an open product question differently and force a piece of Stage 0 work to change, that piece belongs in Stage 1 or later. Ordinary technical choices (language, database, test tooling) are not product questions and are Dustin's.
+
+No implementation begins because a planning document proposes it. All work after this baseline happens on branches through human-reviewed pull requests.

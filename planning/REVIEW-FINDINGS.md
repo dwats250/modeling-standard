@@ -8,6 +8,19 @@ Severity: **blocker** (fix before Cory or Opus acts on the package), **should-fi
 
 ---
 
+> **Disposition note, 2026-10-02.** This review is preserved as written. Its findings were accepted and applied to the first draft. A later adversarial review (`ASTRA-REVIEW.md`) found that several of the fixes it recommended had themselves been written into the package as settled structure. The reconciliation (`RECONCILIATION-REPORT.md`) keeps the problems this review identified and reclassifies these fixes as recommendations **[F]** pending Cory's decisions:
+>
+> | Finding here | Fix applied then | Status now |
+> |---|---|---|
+> | 1. The organizer never signs | Organizer affirms every version they present; optional second confirming affirmation | The problem stands: whoever undertakes obligations must sign them. When and how the organizer signs, and whether a confirming step exists, are open (D2, D4). |
+> | 2. Per-party visibility | One version, a rendered view per party under one common hash | Visibility stays open (D10). The agreement's structure with several parties is also open (D2); a common hash is not assumed. |
+> | 4. Adults claimed, not enforced | Adult self-attestation recorded on account and affirmation | Attestation departs from July direction to verify at first participation; it needs Cory's approval (D11). |
+> | 5. Forwarded links | Claim only by an account whose verified email matches the invitation | Kept as a security recommendation; forwarded and mis-addressed invitations are a product question (D3). |
+> | 6. State machine | Append-only review events; withdrawal; supersession after freeze | Transitions are open (D2); no state machine is fixed. |
+> | 9. Evidence-set coverage | "Seven of eight elements in full" | Overstated; coverage is claimed only after the decisions it depends on (`F-first-slice.md`, section 9). |
+> | 10. Record PDF outside immutability | Write-once evidence storage class from stage 0 | The outcome stands; the storage mechanism is chosen from a Stage 0 probe (`D-technical-architecture.md`, section 4). |
+> | Evidence-fidelity row 24 ("six costumes") | Downstream prose corrected | The upstream research lines are now corrected too. |
+
 ## TOP 10
 
 1. **Blocker. The organizer never signs.** `E §2` (OrganizerConfirmation = `version_id, account_id, confirmed_at`), `C §3.4`, `F §6 AC6`. Doctrine element 3 ("compensation... visible to and signed by both parties") and element 6 ("each party's signature bound to the specific clauses it affirms") are APPROVED (DOCTRINE:44-53). As drawn, the photographer or organizer's own obligations (paying, delivering, usage limits) carry no affirmation, legal name or credential. If Cory picks "last acceptance freezes" (D2a), the organizer leaves no evidence at all. **Fix:** make the organizer a `Participant` (role `organizer` plus a working role) who gives an `Affirmation` on every version they present. Organizer confirmation becomes that affirmation, or a second affirmation after everyone else accepts, depending on D2. Add to F AC6: "the record contains an affirmation from every party including the organizer."
