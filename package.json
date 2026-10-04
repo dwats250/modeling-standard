@@ -1,0 +1,41 @@
+{
+  "name": "modeling-standard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modeling Standard application. Stage 0: engineering foundation only.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "node --env-file-if-exists=.env src/scripts/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:drift": "drizzle-kit generate && git diff --exit-code -- migrations && test -z \"$(git status --porcelain -- migrations)\"",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm run lint && npm run db:drift",
+    "test": "vitest run",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "node --env-file-if-exists=.env src/main.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.3",
+    "fastify": "5.12.5",
+    "pg": "8.23.1",
+    "pino": "10.4.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.3"
+  }
+}
