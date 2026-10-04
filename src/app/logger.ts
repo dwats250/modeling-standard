@@ -3,11 +3,13 @@ import pino, { type DestinationStream, type Logger, type LevelWithSilent } from 
 /**
  * Structured JSON logging with deliberate serializers.
  *
- * - Requests are logged as method + URL only: no headers, so no credentials
- *   or principal identifiers reach the log.
- * - Errors are logged as type, message, code and stack only. Driver errors are
- *   reduced further: PostgreSQL `detail` can contain row values, and Drizzle's
- *   query errors embed bound parameters in their message.
+ * - Requests are logged as method + path only: no headers and no query
+ *   string, so no credentials, codes or principal identifiers reach the log.
+ * - Errors are logged as type, message, code and stack only. Database errors
+ *   are reduced further: a PostgreSQL error's message, detail and stack can
+ *   contain row or parameter values, and Drizzle's query errors embed bound
+ *   parameters in their message. Those keep only their SQLSTATE and the names
+ *   of the objects involved.
  */
 
 interface ErrorLike {
@@ -18,6 +20,10 @@ interface ErrorLike {
   query?: unknown;
   params?: unknown;
   cause?: unknown;
+  severity?: unknown;
+  table?: unknown;
+  column?: unknown;
+  constraint?: unknown;
 }
 
 export interface SerializedError {
@@ -25,7 +31,15 @@ export interface SerializedError {
   message: string;
   code?: string;
   stack?: string;
+  table?: string;
+  column?: string;
+  constraint?: string;
   cause?: SerializedError;
+}
+
+/** A PostgreSQL server error as raised by `pg`: a SQLSTATE code plus a severity. */
+function isPostgresError(e: ErrorLike): boolean {
+  return typeof e.code === 'string' && /^[0-9A-Z]{5}$/.test(e.code) && typeof e.severity === 'string';
 }
 
 const MAX_CAUSE_DEPTH = 3;
@@ -36,6 +50,15 @@ export function serializeError(error: unknown, depth = 0): SerializedError {
   }
   const e = error as ErrorLike;
   const type = typeof e.name === 'string' ? e.name : 'Error';
+
+  if (isPostgresError(e)) {
+    const pgError: SerializedError = { type, message: 'database error', code: e.code as string };
+    if (typeof e.table === 'string') pgError.table = e.table;
+    if (typeof e.column === 'string') pgError.column = e.column;
+    if (typeof e.constraint === 'string') pgError.constraint = e.constraint;
+    return pgError;
+  }
+
   // A Drizzle query error carries `query` and `params`; its message repeats
   // both. Keep neither: the SQL text is in the code, the parameters are data.
   const isQueryError = 'query' in e && 'params' in e;
@@ -63,7 +86,7 @@ export function createLogger(level: LevelWithSilent, destination?: DestinationSt
     level,
     base: null,
     serializers: {
-      req: (req: RequestLike) => ({ method: req.method, url: req.url }),
+      req: (req: RequestLike) => ({ method: req.method, url: req.url?.split('?')[0] }),
       res: (res: ReplyLike) => ({ statusCode: res.statusCode }),
       err: serializeError,
     },

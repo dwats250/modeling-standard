@@ -18,12 +18,15 @@ import type { Database } from '../infrastructure/database/client.ts';
  *
  *   1. access classification: public (with a reason) or protected (with a
  *      policy); anything else fails at registration, i.e. at boot;
- *   2. principal presence for protected operations, before input is read;
+ *   2. principal presence for protected operations, checked in the route's
+ *      onRequest hook, i.e. before the body is read or parsed;
  *   3. strict input: undeclared fields are rejected, never silently dropped;
  *   4. authorization on the loaded target;
  *   5. strict output: a response is the declared shape or a 500, never a row.
  *
- * It also refuses any route not created here, so nothing can bypass 1 to 5.
+ * It also refuses any route not created here. (Hooks and not-found handlers
+ * are a different Fastify mechanism; ESLint confines them to src/app/create-app.ts
+ * and this file.)
  */
 
 type StrictObject = z.ZodObject<z.ZodRawShape, z.core.$strict>;
@@ -204,16 +207,23 @@ export function registerOperations(
     }
   });
 
+  // The principal resolved for each request, before its body is parsed.
+  const principals = new WeakMap<FastifyRequest, SyntheticPrincipal | null>();
+
   for (const operation of operations) {
     const op = operation as ErasedOperation;
-    const handler = async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
-      const principal = deps.resolvePrincipal(request);
 
-      // A protected operation reads nothing about the request until a
-      // principal is present: no validation messages, no database access.
-      if (op.access.kind === 'protected' && principal === null) {
-        throw new AppError(401, 'unauthenticated');
-      }
+    // Runs before body parsing: an unauthenticated request to a protected
+    // operation gets 401 without the server reading its body, validating its
+    // input, or touching the database.
+    const onRequest = async (request: FastifyRequest): Promise<void> => {
+      const principal = deps.resolvePrincipal(request);
+      if (op.access.kind === 'protected' && principal === null) throw new AppError(401, 'unauthenticated');
+      principals.set(request, principal);
+    };
+
+    const handler = async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
+      const principal = principals.get(request) ?? null;
 
       const params = op.input.params.safeParse(request.params ?? {});
       if (!params.success) throw invalidInput('params', params.error);
@@ -225,8 +235,9 @@ export function registerOperations(
 
       let target: unknown = undefined;
       if (op.access.kind === 'protected') {
-        // principal is non-null here (checked above).
-        const outcome = await authorize(op.access, principal as SyntheticPrincipal, input, deps.db);
+        // Already enforced in onRequest; repeated so this path can never run without one.
+        if (principal === null) throw new AppError(401, 'unauthenticated');
+        const outcome = await authorize(op.access, principal, input, deps.db);
         if (!outcome.allowed) {
           throw outcome.reason === 'not_found' ? new AppError(404, 'not_found') : new AppError(403, 'forbidden');
         }
@@ -250,6 +261,6 @@ export function registerOperations(
     };
 
     ownHandlers.add(handler);
-    app.route({ method: op.method, url: op.path, handler });
+    app.route({ method: op.method, url: op.path, onRequest, handler });
   }
 }

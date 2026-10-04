@@ -11,7 +11,9 @@ services:
       - ./db/provision.sql:/docker-entrypoint-initdb.d/provision.sql:ro
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d modeling_standard"]
+      # TCP, not the socket: the init-time server (running provision.sql) listens
+      # only on the socket, so this passes only once provisioning has finished.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres"]
       interval: 2s
       timeout: 5s
       retries: 30

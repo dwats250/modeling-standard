@@ -5,7 +5,7 @@ import type { ResolvePrincipal } from '../authorization/access.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { registerOperations } from '../http/operations.ts';
 import { AppError, type ErrorBody } from './errors.ts';
-import { operations } from './operations.ts';
+import { operations } from './operation-list.ts';
 
 /**
  * Everything the application needs from outside. Production (`src/main.ts`)

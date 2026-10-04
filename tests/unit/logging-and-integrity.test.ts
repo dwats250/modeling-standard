@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { inject } from 'vitest';
 import { serializeError } from '../../src/app/logger.ts';
+import { withClient } from '../support/sql.ts';
 import { sha256, verifyEvidence } from '../../src/stage0/synthetic-evidence.ts';
 
 describe('error serialization keeps data out of logs', () => {
@@ -21,6 +23,22 @@ describe('error serialization keeps data out of logs', () => {
     expect(serialized).not.toContain('private-value');
     expect(serialized).toContain('23505');
     expect(serialized).toContain('DrizzleQueryError');
+  });
+
+  it('reduces a real PostgreSQL error to its SQLSTATE, dropping the value it quotes', async () => {
+    const error = await withClient(inject('runtimeUrl'), async (c) => {
+      try {
+        await c.query('select $1::int', ['Secret-Param-Value']);
+      } catch (caught) {
+        return caught;
+      }
+      throw new Error('expected the query to fail');
+    });
+    // The raw error does contain the value; the serialized form must not.
+    expect(String((error as Error).message)).toContain('Secret-Param-Value');
+    const serialized = serializeError(error);
+    expect(serialized.code).toBe('22P02');
+    expect(JSON.stringify(serialized)).not.toContain('Secret-Param-Value');
   });
 
   it('keeps type, message and code, and nothing else, for ordinary errors', () => {

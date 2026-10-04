@@ -38,6 +38,11 @@ describe('health, request ids, error boundary and logging', () => {
     expect(text).not.toContain('principal-should-not-be-logged');
     expect(text).not.toContain('should-not-be-logged');
   });
+
+  it('does not log query strings', async () => {
+    await t.app.inject({ method: 'GET', url: '/health?code=Query-Secret-Value' });
+    expect(t.logs.text()).not.toContain('Query-Secret-Value');
+  });
 });
 
 describe('health reports an unreachable database without leaking credentials', () => {

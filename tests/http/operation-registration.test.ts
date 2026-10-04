@@ -1,7 +1,9 @@
 import Fastify from 'fastify';
 import { z } from 'zod';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { operations } from '../../src/app/operations.ts';
+import { createApp } from '../../src/app/create-app.ts';
+import { createLogger } from '../../src/app/logger.ts';
+import { operations } from '../../src/app/operation-list.ts';
 import { publicAccess, resolveNoPrincipal } from '../../src/authorization/access.ts';
 import {
   defineOperation,
@@ -133,17 +135,9 @@ describe('the real application exposes nothing outside the operation list', () =
 });
 
 describe('a route added outside registerOperations is refused', () => {
-  it('throws when anything tries to add a route directly', async () => {
-    const t = await startTestApp();
-    try {
-      // After ready() Fastify refuses new routes on its own; check before ready too.
-      expect(() => t.app.get('/sneaky', async () => ({ leaked: true }))).toThrow();
-    } finally {
-      await t.close();
-    }
-
-    const app = Fastify();
-    registerOperations(app, [validOperation()], { db: {} as never, resolvePrincipal: resolveNoPrincipal });
+  it('throws on the shipped composition, before it is ready', async () => {
+    const logger = createLogger('silent');
+    const app = createApp({ db: {} as never, logger, resolvePrincipal: resolveNoPrincipal });
     expect(() => app.get('/sneaky', async () => ({ leaked: true }))).toThrow(/was not registered as an operation/);
     await app.register(async (child) => {
       expect(() => child.post('/nested-sneaky', async () => ({}))).toThrow(/was not registered as an operation/);

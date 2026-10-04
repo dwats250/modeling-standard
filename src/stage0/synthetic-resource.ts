@@ -61,7 +61,15 @@ export const createSyntheticResourceOperation = defineOperation({
   path: '/stage0/synthetic-resources',
   successStatus: 201,
   input: {
-    body: z.strictObject({ label: z.string().trim().min(1).max(200) }),
+    body: z.strictObject({
+      // PostgreSQL text cannot hold NUL; reject it here so it is a 400, not a 500.
+      label: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .refine((value) => !value.includes('\u0000'), { error: 'must not contain NUL characters' }),
+    }),
   },
   output: syntheticResourceDto,
   access: {

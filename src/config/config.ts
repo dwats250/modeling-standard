@@ -37,11 +37,11 @@ const postgresUrl = z
 const appConfigSchema = z.object({
   DATABASE_URL: postgresUrl,
   HOST: z.string().min(1, { error: 'must not be empty' }).default('127.0.0.1'),
-  PORT: z.coerce
-    .number({ error: 'must be an integer between 0 and 65535' })
-    .int({ error: 'must be an integer between 0 and 65535' })
-    .min(0, { error: 'must be an integer between 0 and 65535' })
-    .max(65535, { error: 'must be an integer between 0 and 65535' })
+  PORT: z
+    .string()
+    .regex(/^\d{1,5}$/, { error: 'must be an integer between 0 and 65535' })
+    .transform(Number)
+    .pipe(z.number().max(65535, { error: 'must be an integer between 0 and 65535' }))
     .default(3000),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'], {

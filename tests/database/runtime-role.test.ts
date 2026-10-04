@@ -27,20 +27,47 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime table privileges are exactly the Stage 0 set', async () => {
-    const grants = await withClient(inject('runtimeUrl'), (c) =>
-      c.query(`
-        select table_name, string_agg(privilege_type, ',' order by privilege_type) as privileges
-        from information_schema.table_privileges
-        where table_schema = 'public'
-          and grantee in (select rolname from pg_roles where pg_has_role(current_user, oid, 'USAGE'))
-        group by table_name
-        order by table_name`),
-    );
-    expect(grants.rows).toEqual([
-      { table_name: 'synthetic_evidence', privileges: 'INSERT,SELECT' },
-      { table_name: 'synthetic_resource', privileges: 'INSERT,SELECT' },
-    ]);
+  it('runtime effective table privileges are exactly the Stage 0 set', async () => {
+    // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
+    // to PUBLIC or to any role ms_runtime belongs to also shows up here.
+    const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
+    const expected: Record<string, string[]> = {
+      synthetic_resource: ['SELECT', 'INSERT'],
+      synthetic_evidence: ['SELECT', 'INSERT'],
+    };
+    await withClient(inject('runtimeUrl'), async (c) => {
+      const tables = await c.query<{ table_name: string }>(
+        `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
+      );
+      expect(tables.rows.map((r) => r.table_name).sort()).toEqual(Object.keys(expected).sort());
+
+      for (const table of Object.keys(expected)) {
+        const held: string[] = [];
+        for (const privilege of privileges) {
+          const res = await c.query<{ held: boolean }>('select has_table_privilege(current_user, $1, $2) as held', [
+            `public.${table}`,
+            privilege,
+          ]);
+          if (res.rows[0]?.held) held.push(privilege);
+        }
+        expect({ table, held }).toEqual({ table, held: expected[table] });
+
+        // Column-level grants are separate from table-level ones; none may allow writes.
+        for (const privilege of ['UPDATE', 'REFERENCES']) {
+          const col = await c.query<{ held: boolean }>(
+            'select has_any_column_privilege(current_user, $1, $2) as held',
+            [`public.${table}`, privilege],
+          );
+          expect({ table, privilege, held: col.rows[0]?.held }).toEqual({ table, privilege, held: false });
+        }
+      }
+    });
+  });
+
+  it('runtime role cannot create temporary tables in the database', async () => {
+    await withClient(inject('runtimeUrl'), async (c) => {
+      expect(await sqlErrorCode(c, 'create temporary table runtime_temp (id int)')).toBe(INSUFFICIENT_PRIVILEGE);
+    });
   });
 
   it('runtime role cannot change the schema', async () => {

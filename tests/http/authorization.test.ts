@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { count } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { operations } from '../../src/app/operations.ts';
+import { operations } from '../../src/app/operation-list.ts';
 import { resolveNoPrincipal } from '../../src/authorization/access.ts';
 import { syntheticResource } from '../../src/stage0/tables.ts';
 import { PRINCIPAL_HEADER, startTestApp, type TestApp } from '../support/app.ts';
@@ -26,8 +26,8 @@ afterAll(async () => {
   await t.close();
 });
 
-async function resourceCount(): Promise<number> {
-  const [row] = await t.database.db.select({ n: count() }).from(syntheticResource);
+async function rowsWithLabel(label: string): Promise<number> {
+  const [row] = await t.database.db.select({ n: count() }).from(syntheticResource).where(eq(syntheticResource.label, label));
   return row?.n ?? 0;
 }
 
@@ -49,11 +49,15 @@ describe('every protected operation rejects an absent principal (generated from 
 
   for (const op of protectedOperations) {
     it(`${op.name}: 401 with a valid-looking request and no side effects`, async () => {
-      const before = await resourceCount();
-      const res = await t.app.inject({ method: op.method, url: urlFor(op.path), ...(op.method === 'POST' ? { payload: { label: 'x' } } : {}) });
+      const label = `unauthenticated-${randomUUID()}`;
+      const res = await t.app.inject({
+        method: op.method,
+        url: urlFor(op.path),
+        ...(op.method === 'POST' ? { payload: { label } } : {}),
+      });
       expect(res.statusCode).toBe(401);
       expect(res.json()).toEqual({ error: { code: 'unauthenticated', requestId: expect.any(String) } });
-      expect(await resourceCount()).toBe(before);
+      expect(await rowsWithLabel(label)).toBe(0);
     });
 
     it(`${op.name}: 401 before input is examined (no validation detail leaks)`, async () => {
@@ -65,6 +69,21 @@ describe('every protected operation rejects an absent principal (generated from 
       expect(res.statusCode).toBe(401);
       expect(res.json().error.issues).toBeUndefined();
     });
+
+    if (op.method === 'POST') {
+      it(`${op.name}: 401 before the body is read (malformed, wrong type or oversized)`, async () => {
+        const url = urlFor(op.path);
+        const malformed = await t.app.inject({ method: 'POST', url, headers: { 'content-type': 'application/json' }, payload: '{' });
+        const wrongType = await t.app.inject({ method: 'POST', url, headers: { 'content-type': 'text/plain' }, payload: 'x' });
+        const oversized = await t.app.inject({
+          method: 'POST',
+          url,
+          headers: { 'content-type': 'application/json' },
+          payload: JSON.stringify({ label: 'x'.repeat(2 * 1024 * 1024) }),
+        });
+        expect([malformed.statusCode, wrongType.statusCode, oversized.statusCode]).toEqual([401, 401, 401]);
+      });
+    }
   }
 });
 

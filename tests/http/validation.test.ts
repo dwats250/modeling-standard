@@ -59,6 +59,17 @@ describe('input', () => {
     expect(res.json().error.issues[0]).toMatchObject({ location: 'body', path: 'label' });
   });
 
+  it('rejects a value the database cannot store as a 400, not a 500', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/stage0/synthetic-resources',
+      headers: asA,
+      payload: { label: 'a\u0000b' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.issues[0]).toMatchObject({ location: 'body', path: 'label' });
+  });
+
   it('rejects a missing required field', async () => {
     const res = await t.app.inject({ method: 'POST', url: '/stage0/synthetic-resources', headers: asA, payload: {} });
     expect(res.statusCode).toBe(400);

@@ -39,6 +39,16 @@ describe('application configuration fails closed', () => {
     expect(problems.map((p) => p.split(':')[0])).toEqual(['DATABASE_URL', 'PORT', 'LOG_LEVEL']);
   });
 
+  it('accepts only plain decimal ports', () => {
+    expect(loadAppConfig({ DATABASE_URL: validUrl, PORT: '0' }).port).toBe(0);
+    expect(loadAppConfig({ DATABASE_URL: validUrl, PORT: '8080' }).port).toBe(8080);
+    for (const port of [' ', '0x10', '1e3', '-1', '3000.5', '65536']) {
+      expect(problemsOf(() => loadAppConfig({ DATABASE_URL: validUrl, PORT: port }))).toEqual([
+        'PORT: must be an integer between 0 and 65535',
+      ]);
+    }
+  });
+
   it('rejects a postgres URL with no database name', () => {
     expect(problemsOf(() => loadAppConfig({ DATABASE_URL: 'postgres://u:p@host:5432' }))).toEqual([
       'DATABASE_URL: must be a postgres:// URL that names a database',

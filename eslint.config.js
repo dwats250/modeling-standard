@@ -9,6 +9,11 @@ const disabledTestModifiers = ['skip', 'skipIf', 'runIf', 'todo', 'only', 'fails
   })),
 );
 
+// Fastify hooks, handlers and plugins can serve responses without going through
+// an operation. They are confined to the two files that compose the HTTP surface.
+const fastifyCompositionMethods =
+  'CallExpression[callee.property.name=/^(addHook|setNotFoundHandler|setErrorHandler|register|decorate|decorateRequest|decorateReply)$/]';
+
 export default tseslint.config(
   { ignores: ['dist/', 'node_modules/', 'migrations/'] },
   js.configs.recommended,
@@ -26,6 +31,19 @@ export default tseslint.config(
       'no-restricted-properties': [
         'error',
         { object: 'process', property: 'env', message: 'Read configuration via src/config; only entry points read process.env.' },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['src/app/create-app.ts', 'src/http/operations.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: fastifyCompositionMethods,
+          message: 'Fastify hooks, handlers and plugins belong in src/app/create-app.ts or src/http/operations.ts only.',
+        },
       ],
     },
   },
