@@ -1,137 +1,117 @@
 # Deliverable D. Technical architecture
 
-Status: Fable recommendation. Technical choices are Dustin's to accept or amend; none of them is a Cory decision. The charge's §16 hypothesis (TypeScript, React, Vite, Node, PostgreSQL, Drizzle or equivalent, Zod or equivalent, one deployable) survives review: recon C found no defect attributable to language, framework or database. What changes is how the stack is assembled.
+Status: REVIEW. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). Fable recommendation **[F]** throughout. Every choice here is Dustin's to accept or change. None is a Cory decision, and none is product doctrine. Not implementation authority.
 
-## 1. Topology
+The previous version mixed product choices into this document (how people sign in, adult attestation, who may claim an invitation, when the organizer signs, what a signature records, how long records are retrievable). Those are Cory's and have moved to Deliverable H. What remains is technical.
 
-One repository, one deployable, one database, one blob bucket, one outbound mail provider.
+## 1. Recommended stack, and why
 
-```
-repo/
-  apps/web        React + Vite single-page app (served as static files)
-  apps/server     Node 24 LTS service: HTTP API, outbox worker, CLI commands
-  packages/kernel shared value types (Actor, Audience, Role, Compensation, Usage, Boundary terms), command input and output types
-  db/             SQL migrations (generated then hand-reviewed), seed and fixture builders
-  infra/          Dockerfile, compose for local Postgres, S3-compatible store and mail catcher
-```
+TypeScript on Node (current LTS), one deployable application, PostgreSQL, SQL migrations that are generated and then reviewed, a schema-validation library at the boundary, and a web client added when the first screen exists.
 
-The server serves the API under `/api` and the built web app as static files. No separate gateway. The outbox worker runs inside the same process (single instance) with a lock so a second instance would not double-send; if the product ever needs two instances the worker moves to a second process of the same image. No queue infrastructure.
+The previous justification was that the prototype's defects were not caused by its stack. That is the absence of a reason. The reasons for the recommendation:
 
-## 2. Frontend and backend relationship
+- **One language across server, client and shared types**, which keeps a small team's review surface small.
+- **PostgreSQL gives the evidence mechanics natively**: transactions, role-based privileges that can deny UPDATE and DELETE to the runtime role, and constraints that hold whatever the application does. The mechanism this plan leans on hardest is a database feature.
+- **Mature and unremarkable.** Nothing here needs novel infrastructure, and nothing in it is specific to the prototype's host.
 
-- The API is a **command registry**, not a set of hand-written routes: a typed array of `defineCommand({ name, input, output, policy, rateLimit?, handler })` objects. At boot the array registers Fastify routes and fails if any entry lacks a `policy` (or lacks a `rateLimit` when it sends email). The authorization test iterates the same array. No code generation: the web app imports input and output types from `packages/kernel` directly. No OpenAPI document; there is no consumer for one.
-- Transport is JSON over HTTPS with conventional paths. TanStack Query for data; React Router for navigation; route-level code splitting from day one; a bundle-size budget in CI.
-- No DB row is ever returned. Every response is a DTO declared on the command.
-- Bearer flows (an invitee opening a link) hit the same registry with `actor.kind = bearer`; there is no second API.
+The stack is a recommendation, not an inheritance. The reviewer's own fluency is a legitimate input: every merge passes through Dustin, and a stack he reviews confidently is worth more than one that is merely conventional. If he prefers another that keeps PostgreSQL's guarantees, nothing in the product plan depends on this one.
 
-**HTTP framework**: Fastify. Reasons: schema-first validation and typed request context are native, which is the exact property the prototype lacked (141 `req: any` handlers); plugin encapsulation gives one place for actor resolution and policy hooks; mature and boring. Express with a mandatory typed wrapper or Hono would both satisfy the requirement; the requirement is "no untyped request and no route without a policy", not the framework.
+## 2. Decisions needed for Stage 0
 
-## 3. Database approach
+These are the only technical decisions required now.
 
-- PostgreSQL 16 or later. Driver: `postgres` (postgres.js) or `pg` against a plain connection string; not the serverless WebSocket driver.
-- Drizzle for typed queries and schema-as-code; `drizzle-kit generate` produces SQL migrations that are reviewed and committed; never `push`. Triggers, grants and check constraints are hand-written SQL in the same migration files.
-- **Two database roles**: `app` (used at runtime) and `migrate`. The `app` role has no UPDATE or DELETE privilege on evidence tables. A trigger on those tables rejects UPDATE and DELETE for every role except a purge role that does not exist until Cory and counsel define retention.
-- Foreign keys default to RESTRICT. Migration lint (a small script over the SQL) fails on any CASCADE toward an evidence table.
-- Generated insert schemas are never used as API validators. API input shapes are written per command in the registry.
-- All enum-like columns are Postgres enums or checked text, never free text.
+| Decision | Recommendation | Why it is needed in Stage 0 |
+|---|---|---|
+| Language and runtime | TypeScript, strict; Node current LTS | Everything is written in it |
+| Application shape | One server application, one process | The composition root and boot checks need a shape |
+| Composition | One constructor for the app, taking its dependencies; production and tests both use it | So that what is tested is what ships |
+| Configuration | Parsed and validated once at boot into a typed object | Fail at boot, never at first use |
+| Logging and errors | Structured logs with a request id and redaction; one error-handling path | Needed before the first operation exists |
+| Authorization boundary | Operations are declared in one enumerable list; each declares a policy or is explicitly public; registration fails otherwise; the check runs on the loaded target | The Stage 0 completion evidence tests exactly this |
+| Input and output validation | Each operation declares its input and output shapes; stored rows are never returned directly | Same |
+| Database | PostgreSQL; a plain driver; migrations as reviewed SQL, never schema push | The probe and the rollback test need it |
+| Privilege separation | A runtime role and a migration role | Justified by the evidence probe: the runtime role is what must be unable to alter evidence |
+| Evidence-mechanics probe | See section 4 | Proves the protection approach before any product evidence exists |
+| Tests | Real disposable PostgreSQL in tests; no critical suite skipped for missing environment | The rollback, privilege and probe tests are meaningless against a fake |
+| CI | Clean install, lint, typecheck, migrate from empty, test, build, boot and health check, on every pull request | Proportional to what exists |
 
-## 4. Authentication model
+**On the authorization boundary.** The adversarial review listed a "custom command-registration abstraction" among things the evidence does not yet require. The outcome is required in Stage 0: no operation reachable without a declared policy, and a test that enumerates the real operations. Something must make operations enumerable for that to be structural rather than a convention. The recommendation is the smallest thing that does it: a typed list of operation definitions that the server registers at boot and the test iterates. No code generation, no client generation, no rate-limit or mail fields until something sends mail. If Dustin prefers framework-native route metadata that gives the same two guarantees, that is equally acceptable.
 
-- **Internal account id** (UUIDv7) is the only identity the rest of the system sees. External identities are rows in `external_identity (provider, subject, email, verified, linked_at)`.
-- **Passwordless email** is the first and, in slice 1, only login method: a one-time code (the primary path, since phone mail apps open links in in-app browsers) with a link as convenience, valid for a short window, single use. This matches Cory's stated signup feel ("I'd almost not know I signed up") **[CA]** and is the smallest secure implementation. OAuth links (Google, Apple) are added later as linked identities, not as primary keys.
-- Login requests, invitations and presentations are rate-limited per address, per IP and per account, and login requests answer uniformly whether or not the address exists; a two-person team cannot absorb an email-bombing or deliverability incident.
-- Sessions are server-side rows in Postgres, referenced by an httpOnly, Secure, SameSite=Lax cookie. Origin checks on mutating requests.
-- Actor resolution runs before every command and loads the account row (so suspension is enforced on every request, not only at login).
-- Adult attestation (D11) is recorded on the account at first participation and copied into every affirmation. Adult verification is an adapter interface (`AgeVerifier`) with a null implementation in slice 1 and a real one required before stage 3 uploads. The Actor carries `verified: unverified | adult`.
-- No product state is created inside the auth callback. "Claim invitation" is an explicit Identity command, and it succeeds only when the claiming account's verified email matches the invited address.
+## 3. Technical decisions deferred to Stage 1 or later
 
-## 5. Authorization architecture
+Each waits for the thing that needs it. Most also wait for a Cory decision, shown where it applies.
 
-- **Deny by default.** A command with no policy declaration fails registration at boot.
-- Policies are functions over `(actor, target)` evaluated after the target is loaded, so the check is on the object being mutated (never a parent).
-- Repository methods take a scope parameter (`forAccount(id)`, `forShoot(id)`, `forGrant(id)`); there is no `update(id)` or `delete(id)` on any repository.
-- Actor kinds: `account`, `bearer` (a scoped grant: invitation, share link, access grant), `system` (outbox, scheduled commands), `admin` (an account with an admin role, still subject to policy).
-- A generated test iterates every registry entry and asserts: unauthenticated is rejected; a wrong account is rejected; a suspended account is rejected; an expired or revoked bearer is rejected; the declared happy actor succeeds against a fixture. A command without a fixture fails CI.
+| Decision | When | Waits for |
+|---|---|---|
+| Sign-in mechanics, sessions, cookies | With the first piece that signs someone in | D3 |
+| Invitation credential (scoped, expiring) | With the invitation piece | D3 |
+| Mail delivery; whether an outbox with retries is needed; rate limits on operations that send mail | With the first operation that sends mail | D3 |
+| Web client toolchain and layout | With the first approved screen | D5 for anything a user reads |
+| Repository layout beyond a single package | When a second package has a reason to exist | A web client or shared types |
+| Artifact rendering (how a PDF is produced) | With the artifact piece | D10, D4 |
+| Artifact storage (in the database or in an object store) | Informed by the Stage 0 probe; chosen with the artifact piece | The probe result |
+| Background work | When something must run outside a request | Rendering or mail |
+| Hosting, mail, storage, verification, scanning, error-tracking vendors | The stage that needs each | Requirements |
 
-## 6. Persistence, immutable evidence
+## 4. Protecting evidence: outcome, threat model, mechanisms
 
-- Working state (Shoot, TermsDraft, Participant, Invitation) is ordinary mutable rows with soft-archive.
-- **Versions** are written once by the `present` command: canonical terms as exact bytes (RFC 8785 canonicalization, stored as `text`/`bytea`, never as `jsonb`, so the hash recomputes from what is stored), the rendered clause text produced by the renderer at that moment, the renderer template version, a hash per term block and a hash for the whole. Sequence number per shoot. The organizer's presenting affirmation is written in the same transaction.
-- **Review events and Affirmations** reference `version_id`; each is one immutable row. An affirmation stores the actor kind and id, the credential id (session), typed legal name, adult attestation, the term blocks affirmed, timestamp, and request metadata (IP, user agent) as a default Cory can veto (D4).
-- **Records** are written once when the agreement freezes: a common hash over the canonical version and its affirmations, and one rendered view per party stored in the **evidence storage class** (write-once: a bucket or prefix with object lock or versioning where the vendor supports it, which runtime credentials can write but not delete or overwrite, excluded from every purge job by construction). Any party to the version can retrieve their view forever; retrieval is logged.
-- Integrity: a `verify record` command recomputes hashes from stored bytes and reports mismatch; a nightly job does the same over all records and alerts.
-- No evidence table has an UPDATE or DELETE path in the application (section 3), and a test proves that deleting an evidence blob with runtime credentials fails.
+**Outcome (Deliverable B, I1 and I2) [R].** Finalized agreement evidence cannot be silently altered or destroyed through normal application behaviour.
 
-## 7. Media strategy
+**Threat model, to be declared in the Stage 0 PRD [F].** Proposed: evidence must survive ordinary application behaviour, application bugs, and a compromised runtime credential. A database administrator or infrastructure owner acting deliberately is out of scope for Stage 0 and is addressed later by backups and audit. Dustin sets the threat model; the probe is tested against whatever is declared.
 
-- Slice 1 has no user-uploaded media. The blob adapter is still built in the walking skeleton because Records need it, with two storage classes from the start: `evidence` (write-once, no expiry, never purged) and `working` (expiry allowed).
-- `BlobStore` interface with an S3-compatible implementation and a local-disk fake used in tests. Every blob has an owner, an audience, a storage class, a size class (`original | web | thumb`), a content type, an optional expiry (working class only), and a scan status.
-- Ingest pipeline (stage 3): strip EXIF and location metadata, derive web and thumbnail sizes, keep originals only where the product requires them, mark expiry for transit media.
-- `ImageScanner` interface with a null implementation; a real implementation is required before any public upload exists (Cory: not deferrable by phasing) **[CA]**.
-- Zero-egress storage class is the cost lever (COST-REALITY); vendor deferred to stage 3.
+**Mechanisms [F].** None of these is an invariant. They can be layered, and the probe shows which are worth their cost:
 
-## 8. Provider boundaries
+| Mechanism | What it gives | Cost |
+|---|---|---|
+| Insert-only tables with no application edit path | Removes the ordinary route to alteration | Discipline only; a bug can still issue an UPDATE |
+| Runtime role without UPDATE or DELETE on evidence | Holds against application bugs and a compromised runtime credential | A second role and privilege statements in migrations |
+| Triggers rejecting UPDATE and DELETE | A second layer if privileges are ever misconfigured | More SQL to maintain; overlaps the previous row |
+| Hash over the stored bytes | Detects alteration after the fact | Requires storing exact bytes, not a re-serializable form |
+| Restrictive foreign keys and a migration check against cascades toward evidence | Removal of operational data cannot remove evidence | A small lint script |
+| Protected storage for rendered artifacts | Extends the guarantee to the PDF | Depends on where artifacts are stored |
 
-Each external capability is an interface in `apps/server/src/adapters/<name>/` with a real implementation and a fake. No vendor SDK is imported outside its adapter directory; an import-boundary lint rule enforces this.
+**Where artifact bytes live.** The previous version put an object store with a write-once class into the first stage. The first slice's artifacts are small documents, few in number. The first candidate to evaluate in the probe is the database itself, which is already present and already carries the privilege separation; an object store with object lock is the alternative and arrives naturally with media in a later stage. Dustin decides from the probe.
 
-| Interface | Slice 1 real | Fake | Notes |
-|---|---|---|---|
-| `Mailer` | one transactional provider, paid tier | in-memory + local catcher | Delivery state surfaced to Communications. Never free-tier for the core loop (100/day cap). |
-| `BlobStore` | S3-compatible | local disk | Vendor chosen at stage 3. |
-| `PdfRenderer` | one HTML template rendered by headless Chromium in a child process with a memory cap and a timeout | snapshot fake | One template for screen and PDF so the record looks like what was reviewed. Cost: Chromium in the image (a few hundred MB) and a render process that can be killed without taking the API down. If that cost bites, a Node PDF renderer behind the same interface with a shared component tree is the fallback; decided in the walking skeleton. |
-| `Clock` | system | controllable | Required for deterministic tests of expiry. |
-| `TokenGenerator` | CSPRNG | seeded | For bearer grants and login codes. |
-| `Config` | env parsed once at boot into a typed object | test config | Missing config fails at boot, never at first use. |
-| `Logger` | structured JSON (pino) with request id | capture | |
-| `AgeVerifier` | null | null | Stage 5 or later. |
-| `ImageScanner` | null | null | Before any public upload. |
-| `Billing` | absent | absent | Not built until post-beta; when built, safety domains cannot import it. |
+**Hash topology** (one hash, per-clause hashes, per-party hashes, a hash over the accepted set) is a mechanism and is not fixed until the evidence chain in Deliverable E, section 4 has a schema, which waits for D2 and D10.
 
-## 9. Jobs and background work
+**Integrity checking.** A command that recomputes hashes from stored bytes is cheap and worth having in Stage 1 because it tests the mechanism. A scheduled scan over all evidence is an operations decision for the beta stage.
 
-Justified: yes, minimally. Sending mail with retries, freezing records (render then store), and scheduled purge of expired grants and transit media all need to run outside the request.
+## 5. Abstractions removed or postponed
 
-- A `outbox` table with `SKIP LOCKED` polling by an in-process worker; idempotent handlers keyed by job id; exponential backoff; dead-letter after N attempts with an alert.
-- Scheduled maintenance is a CLI command (`server jobs run purge --dry-run`) invoked by the host's scheduler, never a timer at boot, never keyed on naming heuristics, never touching evidence.
-- Test data is marked by a column on the row and cleaned only by test tooling.
+| Previous proposal | Disposition | Revisit when |
+|---|---|---|
+| Monorepo with `apps/web`, `apps/server`, `packages/kernel` | Postponed. Stage 0 is one package. | A web client or shared types exist |
+| Shared domain kernel (Actor, Audience, Role, Compensation, Usage, Boundary terms) | Removed. These are product types and depend on D1, D4, D12. | Their decisions are answered |
+| Command registry with policy, rate limit and handler | Reduced to an enumerable operation list with a mandatory policy (section 2) | Rate limits when mail exists |
+| One bearer-grant mechanism for invitations, share links and access grants | Postponed. Stage 1 builds an invitation credential only. A party's continued access to their evidence is kept out of any sharing-grant mechanism (Deliverable E, section 6); what limits that access is D9. | A second kind of grant has a real use (stage 3) |
+| General blob store with owner, audience, storage class, size class, scan status | Removed from the first stages | Media (stage 3) |
+| Headless Chromium renderer in a child process | Postponed. How artifacts are rendered is chosen with the artifact piece. | D10 and D4 are answered |
+| `AgeVerifier`, `ImageScanner`, `Billing` interfaces with null implementations | Removed. An interface with only a null implementation is a placeholder, not a seam. | A real implementation is being added |
+| Nightly integrity scan over all records | Postponed | Beta operations |
+| Audience (adult / youth) as a kernel value and a column | Removed | The partition is designed with Cory and counsel |
+| Outbox table and in-process worker | Postponed to the first operation that sends mail | Stage 1 |
+| Object store with write-once class from Stage 0 | Replaced by the probe (section 4) | Probe result |
+| Request metadata (IP, user agent) on signatures; typed legal name | Moved to Deliverable H as product questions | D4 |
 
-## 10. Testing architecture
+Kept, because the engineering evidence from the prototype supports them and no Cory decision touches them: one deployable; PostgreSQL as the single system of record; reviewed migrations; runtime and migration roles; restrictive foreign keys toward evidence; one composition root with real PostgreSQL in tests; deny-by-default authorization with a generated negative test; no stored row returned directly; CI gates in a fixed order.
 
-- `createApp(deps)` is the only way the server is constructed. Production passes real adapters; tests pass fakes plus a real, disposable Postgres (testcontainers or the compose database).
-- Test layers:
-  1. Domain unit tests for the agreement state machine and term validation (pure functions, fast).
-  2. Command tests through the registry against real Postgres: happy path, the generated authorization matrix, and invariant probes (attempt UPDATE/DELETE on evidence through the API and through raw SQL as the `app` role).
-  3. Renderer golden tests: canonical JSON in, rendered text out, byte-stable.
-  4. Adapter contract tests run against both fake and real implementation.
-  5. Three or four Playwright journeys at a phone viewport for the flows in the current slice.
-- No critical suite may be skipped for missing environment; the database is provided in CI.
+## 6. Failure semantics
 
-## 11. CI
+Once Cory has settled the state transitions (D2), the Stage 1 PRDs specify behaviour for concurrent edits, an acceptance racing an edit, a withdrawal during finalization, duplicate finalization, retries, artifact rendering failure, artifact storage failure, partial finalization, idempotency, and recovery from an interrupted operation (Deliverable F, section 7).
 
-GitHub Actions on every pull request, in this order, each a hard gate: clean install from lockfile (no private registries) → lint (including import boundaries, file size budget of roughly 300 lines per page component, no `any` in server code) → strict typecheck with zero errors → migrations from empty database → tests → build → bundle-size budget → container build → boot and `/healthz` smoke → dependency audit and secret scan. Branch protection on `main`; human merge only (Dustin).
+The approach is the smallest transactional design that is correct for the approved transitions: database transactions, uniqueness constraints that make duplicate finalization impossible rather than unlikely, and idempotency keys on retried operations. Event sourcing is not implied and is not recommended.
 
-## 12. Deployment philosophy
+## 7. Testing
 
-- One container image, immutable per commit; configuration by environment; migrations applied as a release step before the new image receives traffic.
-- One managed PostgreSQL with daily backups and a quarterly restore drill; one blob bucket; one mail provider; DNS and TLS at the edge.
-- Vendor selection is deferred until slice 1 runs end to end locally (the charge's "select vendors after requirements"). Evaluation checklist (adapted from the previous target doc): traffic, storage, data location and privacy, uptime need, backup and restore, operating skill and time, monthly cost, exit path. Given COST-REALITY's finding that founder time is the scarce resource, the default lean is small managed services over a self-run host, with the adapters keeping the swap cheap.
-- Observability from the first commit: structured logs with request ids, `/healthz` and `/readyz`, uptime check, error tracking added at beta.
+- The app is constructed one way; tests pass fakes for external boundaries and a real, disposable PostgreSQL.
+- Stage 0 layers: operation tests through the real composition (the positive case and the generated negative authorization cases); the rollback test; privilege tests run as the runtime role in raw SQL; the evidence probe.
+- Later layers arrive with what they test: pure tests for state transitions once D2 exists; rendering tests once an artifact exists; a few phone-viewport journeys once screens exist.
+- No critical suite is skippable for missing environment.
 
-## 13. Decide now vs defer
+## 8. Deployment philosophy
 
-| Decide now (slice 1 depends on it) | Defer (a stage names when) |
-|---|---|
-| Node 24 LTS, TypeScript strict, monorepo layout | Hosting vendor (stage 5) |
-| Fastify + typed command array; deny-by-default policy; rate limits on mail-sending commands | Blob vendor (stage 3; the evidence storage class exists from stage 0 on whatever S3-compatible store is used locally and in the first deployment) |
-| PostgreSQL, Drizzle with reviewed SQL migrations, two roles, evidence triggers, canonical bytes as text | Mail vendor final choice (any transactional provider behind the adapter; pick at stage 1 end) |
-| Internal account id; passwordless code-first login; server sessions; adult attestation; matching-email claim rule | OAuth providers (stage 3) |
-| Version, ReviewEvent, Affirmation, Record and RecordView model and hashing; organizer signs what they present | Age verification vendor (before stage 3 uploads) |
-| Outbox in Postgres, in-process worker | Image scanning vendor (before stage 3 uploads) |
-| `createApp(deps)`, adapter fakes, CI order | Public link page rendering: one server-rendered HTML template from the same Fastify app (stage 4, if Cory decides the page exists) |
-| HTML-template renderer behind `PdfRenderer`, Chromium in a child process | Error tracking vendor (beta) |
-| React + Vite + TanStack Query + React Router; Tailwind v4; design tokens package created at stage 3, not reserved now | Component library depth (stage 3 with the design system) |
-| | Import-boundary lint for Entitlements (stage 6, when the module exists) and the Billing provider (stage 6) |
+One immutable image per commit; configuration by environment; migrations applied as a release step. One managed PostgreSQL with backups and a restore drill before real data exists. Vendor selection follows requirements, stage by stage. Founder time is the scarce resource, so the lean is toward small managed services, chosen when needed.
 
-## 14. Dependency discipline
+## 9. Dependency discipline
 
-Start from a short list and add one-in-one-out. Specifically avoided from the prototype: two PDF stacks, eight upload packages, six email-template packages, test tools in production dependencies, dead auth packages, a serverless DB driver on a conventional database, generated insert schemas as API validators, a maps SDK. Runtime dependencies for slice 1 should fit on one screen.
+Start from a short list; add one when something needs it. Specifically not repeated from the prototype: two PDF stacks, eight upload packages, test tools in production dependencies, dead authentication packages, a serverless database driver on a conventional database, generated insert schemas used as API validators. Stage 0's runtime dependencies should fit on one screen.

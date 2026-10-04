@@ -1,199 +1,298 @@
 # Deliverable H. Cory decision packet
 
-Eleven decisions, revised after independent review. Seven bear on the first slice; four do not block building but should be answered before stage 2, stage 3 or the beta. Every other question in the repository's CORY-QUESTIONS file either does not affect the first stages or is already answered in a document Cory has seen; recon A lists them all.
+Status: REVIEW. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). Not implementation authority.
 
-"Blocks start" means engineering should not begin until it is answered. "Blocks acceptance" means engineering can begin with a configurable default and the slice cannot be accepted until Cory has answered.
+Twelve decisions. They are Cory's. Nothing in the first collaboration slice is built on an unanswered one: the previous version of this packet said engineering could "start with the preferred answers; rewrite if Cory differs", and that instruction is withdrawn. Where Fable has a lean it is marked **[F] lean**, it is a recommendation to Cory, and nothing is built from it.
 
-For each: what is being decided, why it matters, the viable options, consequences, Fable's preferred framing, and whether it blocks.
+Each decision says what is being decided, what Cory has already settled (with the provenance tag), the questions, and what the answer unblocks. Tags and citations are explained in `README.md`.
 
----
+If a question is easier to answer by seeing it, say so. Fable can illustrate the options side by side. An illustration is not a build and decides nothing.
 
-## D1. Which collaboration story leads, and one real shoot walked through
+## How to answer this packet
 
-**Blocks acceptance of slice 1, not start.**
+**Start with D1.** One real collaboration walked through in Cory's words answers a large share of D2, D4 and D10 on its own, because most of their questions can be asked of that one shoot: who saw what, what changed, who had to agree again.
 
-**Decision.** Which scenario the first preset and its copy are tuned for, and a walkthrough of one real shoot from first contact to delivered images.
+| # | Decision | What it unblocks | Needed for |
+|---|---|---|---|
+| D1 | First scenario, walked through | Stage 1 scope and the obligations model | Any Stage 1 work |
+| D12 | Who may act, and for whom | Participant identity and signature attribution | Any Stage 1 work |
+| D2 | Agreement topology and lifecycle | State transitions, what "agreed" means, evidence selection | Response and finalization work |
+| D10 | What each party sees | Every presentation, notification and record view | Presentation and artifact work |
+| D4 | Terms and affirmation | Terms content, validation, signing, record contents | Terms and signing work |
+| D3 | Participation credential | Invitation, sign-in and retrieval journeys | Invitation and participation work |
+| D11 | Adult assurance | Adult participation and what the product may claim | Participation work; real use |
+| D5 | Vocabulary | Final screens, emails and artifacts | Anything a person outside the team sees |
+| D7 | Initiation and the paywall | Access rules, commercial claims, the free-document path | Before any screen calls creating free or paid; before document design |
+| D6 | Real use and launch shape | Whether real collaborations may run before the public launch | Real use |
+| D8 | Documents | Which releases a scenario needs; templates | Real use where a release is triggered; document design |
+| D9 | Preservation and evidence access | Retention, closure, suspension, recovery | In-product record access after account changes; real use. Counsel-dependent |
 
-**Why it matters.** The engine is one (Cory confirmed consolidation to one engine plus presets), so the data model does not change with this answer. What changes is which preset gets polished first, which example copy fills the terms editor, and which real shoots Cory runs in stage 1 to prove it. The walkthrough was asked for in July and never answered; it is the single most valuable missing input, because the only real brief on file is an event organizer emailing a photographer.
-
-**Options.**
-1. Trade collaboration (TFP or TFV) between a photographer and a model, with or without crew.
-2. Paid shoot: a client or photographer paying talent (or a model hiring a photographer), compensation recorded, money moving off-platform.
-3. Event brief: an organizer engaging a photographer or crew (the Surrey Fashion Week shape, in-kind compensation).
-4. Another scenario Cory considers more representative of his network.
-
-**Consequences.** Trade is the highest-frequency independent scenario and the lowest legal exposure (no money). Paid is where Cory's own losses happened and where "explicit compensation before the day" matters most. Event briefs bring a third party type (organizer) and many participants at once. Both trade and paid presets ship in stage 1 either way; this decides which one the copy, the demo and the first real shoots are built around.
-
-**Preferred framing.** Ship both presets with identical structure; lead with whichever Cory's next three real shoots actually are. Ask Cory to describe one of them end to end, in his words, before copy is written.
-
----
-
-## D2. The agreement state machine
-
-**Blocks the state machine as drafted (start with the preferred answers; rewrite if Cory differs).**
-
-**Decision.** Four rules: (a) after every party has accepted a version, does the organizer confirm (a second signature) to freeze, or does the last acceptance freeze? (b) After a new version, who must accept again? (c) May a participant withdraw an acceptance before the freeze? (d) Is a participant's response limited to accept, decline or a concern on a named block, or does the product carry Cory's July model **[CA]** of per-term counter-proposals iterated until both sides match, with the exchange kept as consent evidence?
-
-**Why it matters.** These rules are the state machine. They determine what "agreed" means in the record and what a participant is told when terms change. Cory's ratified line is that material changes "return to the people whose understanding or response may be affected"; the exact rule was left open. Cory's July messaging decision described notes bound to terms and counters that converge as a compliance percentage; the package's slice-1 loop (concern, organizer edits, new version for everyone) is simpler and needs Cory to accept it as a first step rather than a replacement.
-
-**Options.**
-- (a) Organizer confirms / last acceptance freezes / organizer chooses per shoot.
-- (b) Everyone re-accepts every new version / only participants whose blocks changed / participants see what changed and may let a prior acceptance stand.
-- (c) Withdraw allowed before freeze / not allowed (decline only on a new version).
-- (d) Concerns only in slice 1, per-term counters in stage 4 / per-term counters in slice 1.
-
-**Consequences.** Organizer confirmation adds one tap and keeps the organizer as the one who issues the record; without it a record can be issued while the organizer is asleep. "Everyone re-accepts" is strict and simple, needs no definition of "material", and guarantees no acceptance silently carries across a change the person did not read; "only affected" needs a per-participant diff and a definition, and a date change affects everyone anyway. Withdrawal before freeze protects a participant who changes their mind but adds a state. Per-term counters in slice 1 roughly double the participant flow's scope.
-
-**Preferred framing.** (a) Organizer confirms. (b) Everyone re-accepts, with the changed blocks listed. (c) Withdraw allowed until the freeze. (d) Concerns only in slice 1; per-term counters designed in stage 4 once real usage shows how often terms change after presentation.
+The stage 0 engineering foundation needs none of these (Deliverable G).
 
 ---
 
-## D3. How a participant accepts: account, or one-time code
+## D1. The first scenario, walked through
 
-**Blocks the participant screens as drafted.**
+**Decide.** Which one collaboration the first slice is built for, described from first contact to delivered images.
 
-**Decision.** Whether accepting and affirming requires an account (created in one email round trip, no password), or whether a one-time code sent to the invited address at the moment of signing is enough, with an account offered afterwards.
+**Already settled.** Nothing. Which journey leads has been an open question since July (CORY-QUESTIONS:54; VISION:156). The only real brief on file is an event organizer's email to a photographer.
 
-**Why it matters.** Both prove the same thing about the moment of agreement: control of the invited inbox. The real difference is what happens after: an account gives the participant a durable home for the record and binds them across shoots; a code-only path is one screen shorter on the acquisition path the product depends on. Either way, a claim by an account whose verified email does not match the invitation is refused.
+**The walkthrough.** For one collaboration Cory has run or is about to run:
 
-**Options.** Account required to accept, link enough to read (as drafted) / one-time code to accept, account offered after / account required even to read.
+- Who organizes it?
+- Who takes part, including crew and anyone who is not on set (a client, a brand)?
+- Who pays? Who receives payment?
+- Who delivers what? Who receives the deliverables?
+- Who grants usage rights? Who receives them?
+- Which documents are actually needed (a model release, a photo release, anything else)?
+- What changed between the first conversation and the day, and who needed to know?
+- Is there anything one person agreed with another that the rest should not see?
 
-**Consequences.** Account-required: every party has a place to retrieve records forever; one extra screen before the first acceptance. Code-then-offer: lower friction; the record must be reachable by a later claim if the person never creates an account, and the "durable home" promise is weaker for them.
+**Unblocks.** The scope of Stage 1 and the obligations it has to express, not only its copy. The previous version said this answer "does not change the data model"; that was wrong. A scenario with a client who pays and receives usage rights has different parties and obligations from a two-person trade.
 
-**Preferred framing.** Account required to accept, because a record a party cannot retrieve later is not "in every party's hands"; the account creation screen is the first screen a participant sees, so its quality is a stage 1 acceptance criterion.
+**Removed from the previous version.** The statement that trade work is the lowest legal exposure. A trade or portfolio collaboration still creates usage rights and can still trigger a release (DOCTRINE:50); it is not exempt from D8 or D11. Also removed: the assumption that both a paid and a trade preset ship.
 
----
-
-## D4. Minimum presented terms, affirmation form, compensation kinds
-
-**Blocks acceptance of slice 1, not start (validation lists are configurable).**
-
-**Decision.** (a) Which of the eight term blocks must be complete before a version can be presented. (b) What an acceptance looks like: affirm each block individually with one typed legal name (as drafted), or one affirmation for the whole version. (c) Whether compensation kinds are exactly two (paid, trade) with gifted and hybrid expressed inside them, and whether a min-to-max range counts as "explicit". (d) Whether recording IP address and browser with each affirmation is acceptable (Dustin's default is yes; Cory may veto).
-
-**Why it matters.** Invariant I5 covers compensation; someone has to say which other blocks are mandatory. Doctrine says signatures bind to specific clauses; per-block affirmation is how the record shows that. The eight blocks (purpose and concept; when and where; who; compensation; expenses; deliverables and delivery; usage; boundaries and safety) are Fable's proposal derived from the vision statement's list; Cory named the driver for keeping presentation short (forcing the full form every time loses users).
-
-**Options.** (a) All eight required / compensation, when and where, who, deliverables, usage, boundaries and safety required and the rest optional / a smaller set. (b) Per-block / whole-version / drawn signature. (c) Two kinds / more kinds; ranges allowed as two numbers with a stated basis / single amount only.
-
-**Consequences.** Too small a required set and "we never agreed to that" returns; too large and presentation takes long enough to lose people. Per-block affirmation is eight taps and produces per-clause binding; one affirmation is one tap and does not meet doctrine.
-
-**Preferred framing.** (a) Seven of eight required (expenses optional). (b) Per-block affirmation plus one typed legal name. (c) Two kinds; ranges allowed only as two numbers with a basis (per hour, per day), never text. (d) Record IP and browser.
+**[F] lean.** Choose the scenario Cory will really run soonest. If it has two people, several questions in D2 and D10 do not block the first slice and return when a third person is added. The model treats the parties as a set either way.
 
 ---
 
-## D5. User-facing vocabulary
+## D2. Agreement topology and lifecycle
 
-**Blocks acceptance of slice 1 copy, not start.**
+**Decide.** What the agreement is when more than two people are involved, when it becomes final, and what happens when something changes.
 
-**Decision.** The words users see for: the container (shoot / collaboration / project), the terms document (brief), the act of sending terms (present / send / share), the participant's act (accept / agree / sign), the organizer's act (confirm / finalize), and the frozen artifact (record / agreement / package).
+**Already settled.** Everyone on set has agreed to the terms or they are not on set **[R]** (VISION:374). Each participant reviews the terms relevant to them **[R]** (VISION:150). Participants review the same relevant information rather than disconnected versions **[R]** (VISION:137). Material changes return to the people whose understanding or response may be affected **[R]** (VISION:152). The confirmation model and exact workflow are explicitly open in the ratified documents (VISION:156; DOCTRINE:104). Cory's July model of notes bound to terms and per-term counters that converge, with the exchange kept as consent evidence, is **[CA]** (CORY-QUESTIONS:157).
 
-**Why it matters.** Cory owns the product's language and has strong opinions on names (Modeling Standard, guardian manager not momager, tier names that market the company). The prototype used "brief" everywhere; the record is a new object with no name yet.
+**Questions.**
 
-**Options.** Keep "brief" for the document and introduce "record" for the frozen artifact (as drafted) / "agreement" for both / another scheme Cory prefers.
+(a) **Structure.** With several parties, is it:
+- one collective agreement that every party joins;
+- common terms everyone accepts, plus separate agreements between the parties each obligation concerns;
+- several agreements under one collaboration, each agreed by its own parties;
+- something else?
 
-**Consequences.** Names chosen now appear in every email, screen and PDF from stage 1; changing them later is cheap in code and expensive in user memory.
+The ratified text does not choose. The doctrine speaks of "the final immutable PDF, delivered to all parties" (DOCTRINE:53) and of compensation "signed by both parties" (DOCTRINE:48); the vision speaks of terms "relevant to them" and the doctrine of "participant-specific terms" (DOCTRINE:55). The singular "PDF" is ambiguous wording written before anyone considered more than two parties; it is not taken as a decision for one shared document (see D10). The practical difference: under one collective agreement a makeup artist who has not yet responded holds up the photographer and model; under related agreements each is final on its own, and what "everyone on set has agreed" means has to be said separately.
 
-**Preferred framing.** Shoot (container), brief (the terms), present (organizer sends), agree (participant, with "sign" used on the affirmation itself), confirm (organizer), record (the frozen artifact). Cory should replace any of these.
+(b) **When it is final.** When the last required person agrees, or only after a confirming step by the person who organized it? Organizer confirmation was in the prototype and appears in a doctrine journey that is marked provisional (DOCTRINE:96-104). It is not ratified, and the question was already parked (CORY-QUESTIONS:55).
 
----
+(c) **Responses.** Accept, decline, or raise a concern on a named term; or the July model of per-term counter-proposals **[CA]**. If the simpler form comes first, is that acceptable as a first step?
 
-## D6. "Launch whole" versus building one slice at a time
+(d) **Withdrawal.** May someone withdraw their agreement before it is final?
 
-**Does not block building. Blocks planning the beta.**
+(e) **Cancellation.** Can a finalized collaboration be cancelled, by whom, and what does the record say afterwards?
 
-**Decision.** Confirm that "the launch must arrive substantially whole" applies to the public adult launch, and that real shoots on the agreement spine (stage 1 onward, Cory's own network, treated as internal use) and an invite-gated private beta after stage 5 are acceptable before then.
+(f) **Roster changes.** Someone is added or removed after others have agreed. Who must agree again? Is the removed person still shown on the earlier agreement?
 
-**Why it matters.** Deliverable G assumes this reading. If Cory means that even private use must wait for the garden, the sequence still holds but the first real users see the product later, and stage 1's proof by real shoots moves later too.
+(g) **Amendments and re-acceptance.** After a change, who must review again: everyone, or only the people the change affects? If only those affected, who decides which those are?
 
-**Options.** Real shoots from stage 1 and private beta after stage 5 (as drafted) / private beta only after stage 5, no earlier real use / no beta, public launch after stage 6.
+(h) **The earlier agreement while a change is pending.** Does it stay in force until the replacement is agreed, or is nothing in force in between?
 
-**Consequences.** Earlier real use finds record and flow problems while they are cheap to fix and gives Cory's network a reason to stay engaged; later use protects the "whole" first impression for everyone outside the founders' circle.
+**Unblocks.** State transitions and what the evidence selects as "the agreement". With a two-person first scenario, (a) and (f) can wait for the slice that adds a third person; (b), (c) and (d) cannot. (e) blocks cancellation work only, and (g) and (h) block amendment work only; neither is offered until answered.
 
-**Preferred framing.** Real shoots on the spine from stage 1 as internal use; invite-gated beta at stage 5; public launch after stage 6.
-
----
-
-## D7. The paywall boundary, and the youth build posture
-
-**(b) blocks the plan design at stage 6 and shapes copy from stage 1; (a) is an FYI to confirm.**
-
-**Decision.** (b) The charge says core consent, boundary-setting and documentation should never be premium. Cory's July ruling **[CA]** says the free tier is documents-only and the paid line is *initiating* presence: profile, cards, boards and briefs. Under that ruling, creating and presenting a shoot is paid; only invitee review, signing, record retrieval and documents are free. Which holds? (a) FYI: the first implementation is adult-only with the partition seams present and disabled, per the charge's default; the docs contradict each other on youth-at-launch and the build follows the deferred reading.
-
-**Why it matters.** Invariant I4 is drawn at the invitee side so that either answer to (b) fits; but the answer decides whether an unpaid account can start a shoot, which is visible in every screen from the desk onward and in how the product is pitched.
-
-**Options.** Initiating a shoot is free at every tier; plans charge for presence, capacity and convenience (the charge's reading) / initiating is paid; responding, signing, records and documents are free (Cory's July ruling) / a free allowance of shoots per period, then paid.
-
-**Consequences.** Free initiation makes every account a potential organizer and grows the loop fastest; paid initiation matches "to be your own professional, you need a professional dashboard" and keeps the free tier at zero cost per user, at the price of a smaller organizer pool early.
-
-**Preferred framing.** Do not decide the price now (doctrine defers pricing). Decide the boundary: Fable's lean is a free allowance of shoots per period so that every invitee can become an organizer once, with paid presence above that. Confirm (a) with a word.
+**No lean on (a).** It is a product and possibly a legal question, and the evidence points both ways.
 
 ---
 
-## D8. Essential document set for stage 2, and records without releases in the meantime
+## D3. Participation credential
 
-**Does not block slice 1 start. Blocks stage 2; and (b) blocks accepting real shoots on slice 1.**
+**Decide.** What a person needs in order to read, to sign, and to come back later.
 
-**Decision.** (a) Which standard documents are assembled from an agreed version in stage 2, and the wording of the "this is a record, not legal advice" line. (b) Whether Cory accepts running real shoots on slice-1 records that carry usage terms but no release documents yet, or whether a single model-release template should ship inside slice 1.
+**Already settled.** Login is not verified identity **[R]** (VISION:317). The record captures the identity or credential used to agree **[R]** (DOCTRINE:52). Login-method selection is not doctrine (DOCTRINE:113). Cory's signup feel, "I'd almost not know I signed up", is **[CA]** (FEATURE-REVIEW:74); it was said about signing up from a request on a link page, not about responding to a brief.
 
-**Why it matters.** Cory's priority one is safety documents, and doctrine ties usage terms to the releases they trigger. The independent review noted that a paid shoot with commercial usage is hard to run in practice without a release; a founding team might ship one template in slice 1.
+**Questions.**
+- Is an account required to read the terms? To sign them? At all?
+- Is a link or one-time code sent to the invited address enough to take part?
+- An invitation is forwarded, or opened by someone other than the person named. What should happen?
+- The invitation went to the wrong address, or the person wants to use a different one. How is that corrected, and does it need the organizer?
+- Someone loses access to their email or account. How do they recover?
+- If a person took part with a link or code only, how do they get back to their record after that link has expired?
 
-**Options.** (a) Model release and photo release, triggered by usage terms / plus a boundaries-and-safety document / plus the sensitive-content riders kept as distinct named documents. (b) Stage 2 as planned / one model-release template inside slice 1.
+**Unblocks.** Invitation, sign-in and durable retrieval journeys. The last question connects to D9.
 
-**Consequences.** One template in slice 1 costs the template mechanism early (a few days) and makes slice 1 usable for commercial shoots; leaving it to stage 2 keeps slice 1 minimal and means early real shoots are trade or portfolio work.
-
-**Preferred framing.** (a) Model release, photo release, boundaries-and-safety document as the stage 2 set; riders in stage 3; all free; template text reviewed by counsel when a lawyer is engaged, with Cory's approved disclaimer used until then. (b) Stage 2 as planned, with early real shoots limited to trade and portfolio work.
-
----
-
-## D9. Retention and purge of evidence after account closure
-
-**Does not block. Needs counsel; must be set before the public launch (stage 6 gate).**
-
-**Decision.** Whether a record is ever purged, after what period, at whose request, and what the closed party is told.
-
-**Why it matters.** Doctrine says records outlive account deletion; the draft terms of service said a licence ends on deletion. The build keeps everything and has no purge command until this is answered. Privacy law in British Columbia and elsewhere may set a ceiling.
-
-**Options.** Keep indefinitely as jointly held evidence / keep for a fixed period after the last party closes / purge on request of all parties.
-
-**Consequences.** Indefinite keeps the evidence promise absolute and may collide with data-minimization expectations; fixed periods need a clock and a notice; purge-on-request needs every party's consent or the promise breaks for the others.
-
-**Preferred framing.** Keep indefinitely; purge only by a defined, audited command once counsel sets the policy. No decision needed from Cory now beyond confirming that the build ships with no purge path.
+**[F] note.** Requiring an account and sending a one-time code prove the same thing at the moment of signing: control of the invited inbox. Neither proves who the person is. The difference is afterwards: an account gives a durable place to return to. Whatever is chosen, the party's delivered copy of the artifact (I13) does not depend on it.
 
 ---
 
-## D10. What each party sees in a multi-party shoot
+## D4. Terms and affirmation
 
-**Blocks the participant screens and the record shape as drafted.**
+**Decide.** What must be in the terms for the first scenario, in what words, and what signing looks like.
 
-**Decision.** In a shoot with several parties, which terms and which contact details does each participant see, before agreement and in their copy of the record.
+**Already settled.** The record captures boundary values (nudity level, physical contact, every boundary toggle), compensation (amount, down payment, timing), deliverables and delivery timing, and usage rights **[R]** (DOCTRINE:47-50). Clause text is frozen as presented **[R]** (DOCTRINE:46). Each signature is bound to the specific clauses it affirms, co-located with them, not a blanket signature divorced from the terms **[R]** (DOCTRINE:51). Compensation is explicit; "negotiable" is not acceptable **[R]** (DOCTRINE:65). What further evidence to keep (document hash, IP or device data, witnesses, revocation history) was parked in July (CORY-QUESTIONS:61).
 
-**Why it matters.** The vision says each participant reviews "the terms relevant to them" **[R]**, and Cory's July model exchanges contact details only on mutual acceptance **[CA]**. With per-participant compensation, "everyone sees everything" means a makeup artist sees the model's fee and the photographer's contact details before anyone has agreed. The record is therefore one common hash with one view per party; this decision fixes what a view contains.
+**Questions.**
+- Which terms must be complete before terms can be presented, for the scenario in D1?
+- Is there clause language Cory wants used verbatim (for example the boundary clause the doctrine quotes)?
+- How is compensation represented: what kinds exist, how is trade written, is a range "explicit"?
+- Who pays whom, and who delivers to whom, when the payer is not the person who set the collaboration up?
+- What is the act of signing: one confirmation per clause or section, a typed name, a drawn signature, something else?
+- When does each party sign: the person presenting terms at the moment they present, or everyone at the same step?
+- What may be recorded with a signature beyond time and credential (IP address, device)?
 
-**Options.** Everything shared with everyone / common terms plus the viewer's own terms, contact details only after agreement (as drafted) / the organizer chooses per block what is shared.
+**Unblocks.** Terms content, validation, signing and record contents.
 
-**Consequences.** Everything-shared is simplest and most transparent but leaks pay and contacts to people who may never agree; common-plus-own protects each party's deal and matches the vision line; organizer-chooses adds a control and a way to hide things that should be common.
-
-**Preferred framing.** Common terms plus own terms; other parties' names and roles visible; contact details released to all parties at the freeze.
-
----
-
-## D11. Adult assurance before verification exists
-
-**Blocks slice 1 (one field), and stage 3 (real verification).**
-
-**Decision.** Whether, until age verification is live, a recorded adult self-attestation at first participation is acceptable for private use, and confirmation that real verification must be live before the first public upload (stage 3).
-
-**Why it matters.** "Adults only" is a claim; invariant I7 says the product claims only what it enforces. Cory said verification happens at the first act of participation and that adult-only must be enforced before any public upload **[CA]**. Slice 1 runs real shoots with no vendor chosen.
-
-**Options.** Attestation now, verification at stage 3 (as drafted) / verification vendor chosen and live in slice 1 / nothing until stage 5.
-
-**Consequences.** Attestation is honest and cheap and makes the affirmation say what it proves; verification in slice 1 forces a vendor choice before requirements are known; nothing until stage 5 makes the adults-only claim untrue for a year.
-
-**Preferred framing.** Attestation recorded on the account and copied into every affirmation; a real `AgeVerifier` behind the adapter is a prerequisite of stage 3 alongside image scanning.
+**Not doctrine.** Eight term blocks, eight controls, a typed legal name and the organizer signing at the moment of presenting were Fable's proposals. Ratified doctrine requires clause-bound signatures; it does not prescribe those.
 
 ---
 
-## Not in this packet, on purpose
+## D5. Vocabulary
 
-Technology and vendor choices (Dustin's), pricing numbers and tier contents (DEFERRED doctrine, stage 6), referral mechanics (parked), moderation staffing (stage 5), discovery replacement mechanics (stage 4, designed under invariant I6), the youth image-hosting choice (gated on counsel), the landing page copy (July artifact, separate track).
+**Decide.** The words people see for: the collaboration container; the terms as presented; a participant's response; the finalized agreement; the artifact each party holds; and the statuses for archived and completed.
 
-Decisions that will be needed later and are not asked now: whether a public link page (`modelingstandard.com/handle`) exists at all (VISION:445 leaves it open; the July "My Standard" decision is [CA]), required before stage 4; the role-module contents for professional identity (examples in Deliverable I are Fable's), required before stage 3.
+**Already settled.** The product name and "guardian manager" **[R]**. The ratified documents use "brief" for the terms document throughout.
+
+**Constraint.** A name must not promise more than the state delivers (I7). "Agreed", "final", "signed" and "verified" each claim something.
+
+**Unblocks.** Final screens, emails and artifacts. Internal code names are not product vocabulary and do not wait for this.
+
+---
+
+## D6. Real use and launch shape
+
+**Decide.** Whether real collaborations may run on the product before the public launch, and on what conditions.
+
+**Already settled.** "A rollout that is too slow kills the trust... The launch must arrive substantially whole" **[R]** (VISION:409-411).
+
+**Questions.**
+- Does "arrive substantially whole" apply to the public launch only, so that private use by Cory's own network before then is acceptable?
+- If private real use is acceptable: for which scenario, with which people, and what must be true first? The candidate prerequisites are in Deliverable F (releases where triggered, adult assurance, truthful identity claims, record access and recovery, retention, legal review where flagged).
+
+**Unblocks.** Gate 2. Nothing in this packet treats a working demonstration as permission for real use.
+
+---
+
+## D7. Initiation and the paywall
+
+**Decide.** What is free, what is paid, and where exactly the line falls. Not prices.
+
+**Already settled.** All consent documentation, model releases and their PDFs are free, with no exceptions, including when working with people who are not on the app **[R]** (VISION:469). Monetization is in volume and professional convenience, never in safety **[R]** (VISION:484). Cory's cost-discipline addendum says "the professional dashboard is definitively not free tier" (VISION:493); it sits in a monetization answer the vision marks "PARTIALLY ANSWERED" (VISION:484), and the vision keeps tiers and entitlements open (VISION:20, VISION:530), so it is direction for D7, not a ratified tier rule. Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100). The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100). The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84). Pricing and tiers are marked DEFERRED in doctrine (DOCTRINE:68).
+
+These do not add up to "everything safety-related is free, therefore creating a collaboration is free". Cory's July direction points the other way on initiation. The boundary is open.
+
+**Questions.**
+- What does "initiate" mean? Creating a draft; inviting another person; presenting terms; finalizing an agreement; or another act?
+- Is that act paid?
+- Can a person with no plan produce a free consent document or release for a shoot with someone who is not on the app, without initiating a collaboration? If documents exist only inside a collaboration and starting one is paid, the free documents are paywalled indirectly.
+- Is invited participation free without a limit on how many invitations a person may respond to? A free-tier sketch inside the ratified vision lists "responding to a limited number of moodboards and briefs" (VISION:479), under a heading that marks it "PROPOSED... not final" (VISION:475). It is a proposal, not a ratified rule. The later July ruling says invitee participation is free **[CA]**.
+
+**Unblocks.** Product access rules, any commercial claim, and whether documents can exist outside a collaboration. Billing is not built in the first stages either way, and the absence of billing is not evidence that initiation is free.
+
+---
+
+## D8. Documents
+
+**Decide.** Which documents the first scenario needs, and which templates must exist before real use.
+
+**Already settled.** Usage rights trigger release documents: "commercial use pulls the model release / photo release / usage license into the final package"; these are existing standard documents the product assembles and captures, it does not invent them **[R]** (DOCTRINE:50). Safety documents are priority one **[R]** (VISION:413-414). Legal language, enforceability and counsel adoption are marked DEFERRED in doctrine (DOCTRINE:60). Which templates are essential was parked in July (CORY-QUESTIONS:99).
+
+**Questions.**
+- For the D1 scenario, which usage terms trigger which documents?
+- Which templates are essential before any real use?
+- Which of them need professional legal review first?
+- Can a document be produced on its own, for a shoot with someone not on the app (see D7)?
+
+**Unblocks.** Real use wherever the scenario triggers a release; the design of documents. If the chosen scenario triggers a release, that release is part of the real-use gate, not a later stage.
+
+---
+
+## D9. Preservation and evidence access
+
+**Decide.** How long evidence is kept, and who can reach it when circumstances change. Counsel-dependent.
+
+**Already settled.** Consent-bearing records are append-only; removal means archive, not destruction; records of agreement outlive account deletion **[R]** (DOCTRINE:56). The durable evidence package should be retrievable "subject to approved privacy and retention rules" **[R-prov]** (DOCTRINE:57). Retention periods and permanent deletion rules are not decided (VISION:319). Suspension blocks protected actions immediately **[R-prov]** (DOCTRINE:80).
+
+**Questions.**
+- How long is a record kept? Is it ever purged, and at whose request?
+- A party closes their account. What is kept, what is deleted, and can they still reach their record?
+- A party loses their credentials. How do they get their record back?
+- A party is suspended. Can they still retrieve evidence they are entitled to hold?
+- A participant was removed from a collaboration after an earlier agreement. Do they keep access to that earlier record?
+- A person deletes their profile or other operational data but keeps their account. Is anything in their records affected?
+- Who keeps historical access, and what is each told?
+
+**Unblocks.** Real-data lifecycle and any retrieval promise. Until answered, the build has no purge path **[F]** and makes no promise about how long in-product access lasts. Each party's delivered copy of the artifact is theirs regardless.
+
+---
+
+## D10. What each party sees
+
+**Decide.** For each kind of information, who sees it and when.
+
+**Already settled.** Each participant reviews the terms relevant to them **[R]** (VISION:150). Contact details are exchanged only on mutual acceptance **[CA]** (CORY-QUESTIONS:157). Exact address is revealed after acceptance **[CA]** (CORY-QUESTIONS:161).
+
+**The grid.** For each row, who sees it at each point: everyone, only the parties it concerns, only the organizer, or nobody.
+
+| Information | Before agreeing | During review | After it is final | In the artifact |
+|---|---|---|---|---|
+| Who else is taking part (roster) | | | | |
+| Who this person is agreeing with (counterparties) | | | | |
+| Each person's compensation | | | | |
+| Contact details | | | | |
+| Exact location | | | | |
+| Private notes | | | | |
+| Concerns raised | | | | |
+| Who has signed | | | | |
+| Usage terms | | | | |
+| What changed between versions | | | | |
+| The final record | | | | |
+
+Two more:
+
+- What does the person who organized the collaboration see that others do not?
+- **The final artifact.** Doctrine requires a portable artifact delivered to every party (DOCTRINE:53). With several parties, should there be one canonical agreement record with a view for each party showing what that party is entitled to see; a separate artifact per party; or one document every party sees in full? The doctrine's singular "the final immutable PDF" does not settle this. The answer depends on D2a as well as this grid.
+
+**Unblocks.** Every presentation, notification, export and record view, and the evidence of what each party was shown (I11). With two parties most rows collapse, but contact details and location before agreement still need an answer.
+
+---
+
+## D11. Adult assurance
+
+**Decide.** How the product is assured a participant is an adult in the first slice, before a verification provider exists, and what it may say about that.
+
+**Already settled.** Every account holder is an adult **[R]** (VISION:226). Age is verified "never at signup; on the first act of participation", which includes joining or creating a brief **[CA]** (CORY-QUESTIONS:184). Adult-only "is a claim that must be enforced via age-gating" before any public upload **[CA]** (CORY-QUESTIONS:195). The product claims only what it does **[R]** (DOCTRINE:93).
+
+**Questions.**
+- Is a recorded self-attestation acceptable for a synthetic demonstration? For real private use?
+- If attestation is used, it departs from the July direction to verify at first participation. Does Cory approve that departure, and until when?
+- What may product copy say? Under attestation it can say only that the person stated they are an adult.
+
+**Unblocks.** Adult participation and truthful assurance claims.
+
+**For information.** The first stages are adult-only and contain no youth path, no guardian path, and no placeholder for either. The partition is designed when Cory and counsel open it (I9).
+
+---
+
+## D12. Who may act, and for whom
+
+**Decide.** Whether everyone in the first slice acts only for themselves.
+
+**Already settled.** Nothing for the adult side. Guardian-managed profiles for minors are ratified **[R]** (DOCTRINE:86), and youth launch is deferred pending professional legal review **[R]** (VISION:463; DOCTRINE:89); that settles the deferral, not the youth design. Agents and agencies appear in July tier thinking **[CA]** (CORY-QUESTIONS:163).
+
+**Questions.**
+- In the D1 scenario, does every person sign only for themselves?
+- If a client, brand, agency or company is involved, who signs for it, and what establishes that they may?
+- May anyone commit another person?
+
+**Unblocks.** Participant identity and what a signature is attributed to. Authority is never inferred from controlling an account or an inbox.
+
+**[F] lean.** For the first slice, adults acting for themselves only, with organizations and representatives added when designed. This is a proposed constraint that needs Cory's approval; if the D1 scenario includes someone who signs for another party, it does not apply.
+
+---
+
+## Not in this packet
+
+Technology and vendor choices (Dustin's). Prices and tier contents (deferred doctrine). Referral mechanics (parked). Moderation staffing. Discovery mechanics. Youth image hosting (counsel). Landing page copy.
+
+Decisions needed later and not asked now: whether a public link page exists at all (VISION:445 leaves it open; the July "My Standard" decision is **[CA]**); role-specific profile contents; the on-set check-in idea from the July feature review.
+
+## What changed from the previous version
+
+- "Start with the preferred answers" removed. No decision has a build default.
+- D1 now drives Stage 1 scope and obligations, not only copy. The claim that trade work is lowest-risk is removed.
+- D2 adds agreement topology, cancellation, roster changes and the status of an earlier agreement while a change is pending.
+- D3 adds forwarded and mis-addressed invitations, recovery, and retrieval after a link expires.
+- D4 adds payer and payee, deliverer and recipient, and signing timing; eight blocks and typed names are labelled as proposals.
+- D7 asks what "initiate" means and whether free documents can be reached without it.
+- D9 adds suspension, lost credentials and removed participants.
+- D10 is a grid over information kinds and moments.
+- D11 states that attestation departs from July direction.
+- D12 is new: who may act, and for whom.
+- "Preferred framing" sections are reduced to a few labelled leans.

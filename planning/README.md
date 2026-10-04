@@ -2,7 +2,7 @@
 
 **Status: REVIEW. Not implementation authority.**
 
-Prepared 2026-09-29 by Fable 5.1, from a read-only reconnaissance of `seeravenproductions/ShootBriefGenerator` at commit `bfbf5f1` (docs dated 2026-07-15 to 2026-07-23), then checked by an independent Opus 5.5 review whose findings are included.
+Prepared 2026-09-29 by Fable 5.1 from a read-only reconnaissance of `seeravenproductions/ShootBriefGenerator` at commit `bfbf5f1` (docs dated 2026-07-15 to 2026-07-23), checked by an independent Opus 5.5 review, then reconciled on 2026-10-02 after Astra's adversarial review. The reconciled package is awaiting human review. The pre-reconciliation baseline is commit `856b037` of this repository.
 
 ## Purpose
 
@@ -10,57 +10,70 @@ This package answers one question:
 
 > If Cory had explained Modeling Standard this clearly before any application existed, what product should we build now?
 
-It is a set of recommendations for Cory to read, challenge, amend and approve. Nothing in it is a product decision unless Cory has made it, and every claim carries a provenance tag.
+It is a set of recommendations for Cory to read, challenge, amend and approve. Cory's vision is the sole product authority. Nothing here is a product decision unless Cory has made it, and every claim carries a provenance tag.
 
 ## Provenance tags
 
-- **[R]** ratified: in VISION.md or PRODUCT-DOCTRINE.md of the old repository, both approved by Cory.
+- **[R]** ratified: stated as approved in VISION.md or PRODUCT-DOCTRINE.md of the old repository.
+- **[R-prov]** in one of those documents but marked PROVISIONAL there. It keeps that status.
 - **[CA]** Cory-attributed but recorded only in an unratified July document. Treat as Cory's leaning until he confirms.
-- **[F]** Fable's interpretation or recommendation.
-- **[OPEN]** no document answers it.
-- **[R-prov]** in an approved document but tagged PROVISIONAL there.
+- **[F]** Fable's interpretation, recommendation or proposed mechanism.
+- **[OPEN]** unresolved product decision.
+
+No tag is upgraded because a recommendation is elegant, because an answer seems likely, or because later documents depend on it.
 
 ## Recommended reading path for Cory
 
-1. `H-cory-decision-packet.md`: the eleven decisions that are his. Seven bear on the first slice.
+1. `H-cory-decision-packet.md`: the twelve decisions that are his. Start with D1, the walkthrough of one real collaboration.
 2. `A-product-interpretation.md`: the product in Fable's words, with owner-approved direction, interpretation and open questions kept apart.
-3. `B-product-invariants.md`: nine constraints, each with the test that proves it.
-4. `F-first-slice.md`: the recommended first piece of the product, with acceptance criteria.
+3. `B-product-invariants.md`: the outcomes the product must hold, each separated from the mechanisms proposed for it.
+4. `F-first-slice.md`: the envelope for the first collaboration slice and what still blocks it.
 5. `I-creative-direction.md`: how it should feel and look.
 
 The rest is there for deeper inspection and does not need to be read to make the decisions in H.
+
+For Dustin: `RECONCILIATION-REPORT.md`, then G (Stage 0), D, E and B.
 
 ## Everything in this package
 
 | File | What it is |
 |---|---|
-| `H-cory-decision-packet.md` | Eleven decisions for Cory: D1 to D5 (first slice), D6 to D9 (before stage 2, stage 3 or beta), D10 and D11 (added by the review: multi-party visibility, adult attestation). Includes the paywall boundary question (D7). |
+| `RECONCILIATION-REPORT.md` | What Astra's review found, what was accepted, partly accepted or not adopted, and what changed |
+| `H-cory-decision-packet.md` | Twelve decisions for Cory, with what is already settled and what each unblocks |
 | `A-product-interpretation.md` | Product interpretation |
-| `B-product-invariants.md` | Product invariants |
-| `C-product-architecture.md` | Product and domain architecture |
-| `D-technical-architecture.md` | Technical architecture; decide-now versus defer |
-| `E-domain-sketch.md` | Conceptual data model for the first slices; flagged modeling decisions |
-| `F-first-slice.md` | First vertical slice recommendation and acceptance criteria |
-| `G-development-sequence.md` | Seven stages from empty repository to adult beta, plus two gated stages |
-| `I-creative-direction.md` | Experience and visual direction |
-| `REVIEW-FINDINGS.md` | The independent review of the first draft; its findings were accepted with few exceptions and are reflected in the documents above |
-| `REVIEW-CHARGE.md` | The assignment this package answers |
+| `B-product-invariants.md` | Product outcomes, proposed mechanisms, and open exceptions, kept apart |
+| `C-product-architecture.md` | Responsibility areas for the first slice; later areas as direction only |
+| `D-technical-architecture.md` | Technical recommendations; what Stage 0 needs decided and what waits |
+| `E-domain-sketch.md` | Concepts, not a schema: who is acting, obligations, agreement topology, the evidence chain |
+| `F-first-slice.md` | Stage 1 as a conditional envelope: outcomes, proposed shape, blocking decisions, real-use gate |
+| `G-development-sequence.md` | Stage 0 (product-neutral engineering foundation), Stage 1, and an outline of later stages |
+| `I-creative-direction.md` | Experience and visual direction (advisory) |
+| `ASTRA-REVIEW.md` | Astra's adversarial review of the package at `856b037`, as received |
+| `RECONCILIATION-CHARGE.md` | The charge the reconciliation answered |
+| `REVIEW-FINDINGS.md` | The first independent review (of the first draft), with a note on which of its fixes the reconciliation reclassified |
+| `REVIEW-CHARGE.md` | The original assignment |
 | `../research/CORY-EVIDENCE-RECON.md` | Every Cory-attributed decision in the old repository, its ratification status, open questions, conflicts |
 | `../research/PRODUCT-ARCHAEOLOGY.md` | What the old app had and why; vocabulary evidence, not requirements |
 | `../research/ENGINEERING-LESSONS.md` | The old app's failure patterns and the design constraints they imply |
 
-## Five findings that shaped the package
+## What shaped the package
 
-1. The ratified layer is thin: only VISION.md and PRODUCT-DOCTRINE.md are approved. Several rulings the team treats as settled (documents-only free tier, comp cards paid, tier names, the "My Standard" page, structured-only messaging) live in unratified July documents and are tagged **[CA]**.
-2. Cory's ratified doctrine is stricter than the review charge in two places: signatures are load-bearing with an eight-element evidence set, and every person on set must have agreed to the terms. The first slice is built to the doctrine (n parties including the organizer, per-block affirmation), and covers seven of the eight evidence elements; the eighth (release documents triggered by usage) arrives in stage 2.
-3. The prototype's defects are almost all instances of three structural absences: no authorization choke point, no separation of working state from evidence, no application-owned boundary around anything external. The technical architecture removes those absences by structure.
-4. The prototype was two products bolted together (an agreement spine and a presence layer that never met). The domain architecture makes the agreement record the centre and every other feature a view on it.
-5. The single most valuable missing input is a walkthrough of one real shoot in Cory's words (decision D1).
+1. **The ratified layer is thin.** Only VISION.md and PRODUCT-DOCTRINE.md are approved, and both mark parts of themselves provisional or open. Several rulings the team treats as settled (documents-only free tier, comp cards paid, tier names, the "My Standard" page, structured-only messaging) live in unratified July documents and are tagged **[CA]**.
+2. **Ratified doctrine is specific about evidence.** Signatures are load-bearing and bound to the clauses they affirm; an eight-element evidence set is approved; everyone on set must have agreed to the terms. The doctrine does not say how many parties share one agreement, how signing works, or what each party sees. Those are open.
+3. **The prototype's defects were structural absences**: no authorization choke point, no separation of working state from evidence, no application-owned boundary around anything external. Stage 0 exists to put those in place before any product behaviour depends on them.
+4. **Two reviews found the same kind of error twice.** The first draft, and then its corrected version, each turned likely answers into structure: first in acceptance criteria, then in schemas, invariants and a product-bearing Stage 0. The reconciliation separates outcomes from mechanisms and keeps open questions open.
+5. **The single most valuable missing input** is a walkthrough of one real collaboration in Cory's words (D1).
 
 ## What the package does not do
 
-It does not choose vendors, price anything, design youth operation, write PRDs, or produce mockups. Each of those has a named stage or a named decision.
+It does not choose vendors, price anything, design youth operation, write PRDs, produce mockups, or authorize implementation.
 
 ## What happens next
 
-Cory answers the decisions in H that bear on the first slice. Fable then writes the Stage 0 and Stage 1 PRDs against those answers. Opus implements only from an approved PRD, on a branch, through a human-reviewed pull request. No implementation exists in this repository today.
+Human review of this reconciled package. After that, three separate gates (root `README.md`):
+
+- **Gate 0.** Dustin may approve a Stage 0 PRD for the product-neutral engineering foundation. It needs no Cory decision.
+- **Gate 1.** Each piece of the first collaboration slice starts when Cory has answered the decisions it depends on and its PRD is approved.
+- **Gate 2.** Real use by real people is authorized separately by Cory.
+
+Opus implements only from an approved PRD, on a branch, through a human-reviewed pull request. No implementation exists in this repository today.
