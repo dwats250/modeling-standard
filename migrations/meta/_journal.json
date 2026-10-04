@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791151545670,
+      "tag": "0000_synthetic_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791151549873,
+      "tag": "0001_runtime_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791153736300,
+      "tag": "0002_database_privileges",
+      "breakpoints": true
+    }
+  ]
+}

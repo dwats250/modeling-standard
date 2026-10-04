@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          # Ephemeral container reachable only from this runner: no superuser
+          # password to keep in the repository.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      # Same local-only credentials as .env.example / db/provision.sql. Not secrets.
+      DATABASE_URL: postgres://ms_runtime:ms_runtime_local_only@127.0.0.1:5432/modeling_standard
+      MIGRATION_DATABASE_URL: postgres://ms_migrator:ms_migrator_local_only@127.0.0.1:5432/modeling_standard
+      PORT: "3000"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Clean dependency install
+        run: npm ci
+
+      - name: Static checks (typecheck, lint, migration drift)
+        run: npm run check
+
+      - name: Provision database roles
+        run: psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f db/provision.sql
+
+      - name: Tests (unit, database, HTTP, boot)
+        run: npm test
+
+      - name: Migrate the empty database
+        run: |
+          test "$(psql -tA -h 127.0.0.1 -U postgres -d modeling_standard \
+            -c "select count(*) from information_schema.tables where table_schema = 'public'")" = "0"
+          npm run db:migrate
+
+      - name: Build
+        run: npm run build
+
+      - name: Boot the built artifact and check health
+        run: |
+          node dist/main.js > boot.log 2>&1 &
+          echo $! > app.pid
+          curl --silent --show-error --fail --retry 30 --retry-delay 1 --retry-all-errors \
+            http://127.0.0.1:3000/health | tee health.json
+          test "$(cat health.json)" = '{"status":"ok"}'
+          kill "$(cat app.pid)"
+
+      - name: Boot log
+        if: always()
+        run: cat boot.log || true

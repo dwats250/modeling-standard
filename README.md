@@ -6,7 +6,7 @@ This repository intentionally begins with product planning rather than applicati
 
 ## Current state
 
-**Planning / owner review. No implementation has begun.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The reconciled package is itself awaiting human review.
+**Planning / owner review. No product behaviour has been built.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation (product-neutral, synthetic data only) is described in `docs/engineering/STAGE-0.md`.
 
 ## Product authority
 
@@ -57,3 +57,26 @@ Three separate gates. Passing one does not open the next.
 **Neutrality test for Stage 0.** If Cory could answer an open product question differently and force a piece of Stage 0 work to change, that piece belongs in Stage 1 or later. Ordinary technical choices (language, database, test tooling) are not product questions and are Dustin's.
 
 No implementation begins because a planning document proposes it. All work after this baseline happens on branches through human-reviewed pull requests.
+
+## Development
+
+The Stage 0 foundation is a single TypeScript application on PostgreSQL. What it contains and why: `docs/engineering/STAGE-0.md`.
+
+**Requirements.** Node 24 (`.nvmrc`) with its bundled npm, and Docker for the local database. No external accounts.
+
+**Setup.**
+
+```
+npm ci
+cp .env.example .env
+```
+
+**Database.** `npm run db:up` starts PostgreSQL 17 on `127.0.0.1:5432` and, on first start, runs `db/provision.sql` to create the migration role, the runtime role and the database. `npm run db:down` stops it. (Any PostgreSQL 16+ works if you run `db/provision.sql` against it as a superuser.)
+
+**Migrations.** `npm run db:migrate` applies the reviewed SQL in `migrations/` using `MIGRATION_DATABASE_URL`. To change a table, edit `src/stage0/tables.ts`, run `npm run db:generate`, and review the generated SQL. Privileges go in hand-written migrations (`npx drizzle-kit generate --custom --name=<name>`). Never `drizzle-kit push`.
+
+**Check.** `npm run check` runs the typechecker, the linter and a drift check that fails if the table definitions and migrations disagree.
+
+**Test.** `npm test` creates a fresh test database, migrates it, and runs every suite against it. It needs the database up; it fails rather than skips without it.
+
+**Build and run.** `npm run build` compiles to `dist/`; `npm start` runs it with `DATABASE_URL` (runtime credential only). `npm run dev` runs from source with `.env`. Health: `GET /health`.
