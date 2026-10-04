@@ -14,15 +14,15 @@ Cory's vision is the sole product authority. Nothing in this repository is a pro
 
 ## Operating rule
 
-- **Cory** owns product direction.
-- **Dustin** owns technical orchestration, repository control and merge authority.
-- **Fable** supports planning, creative and product architecture, and PRD work.
-- **Opus** supports bounded implementation from an approved PRD.
-- **Astra** may perform adversarial review.
+- **Cory** owns product semantics and product direction.
+- **Dustin** owns technical orchestration, implementation authorization, repository control and merge authority.
+- Agents and tools may support planning, implementation, coordination or review only within the task they are explicitly given.
 - Agents do not resolve Cory-owned product seams. An open product question stays open until Cory answers it; "configurable later" does not authorize a default now.
+- Claude follows the narrower repository contract in `CLAUDE.md`: build, test, commit, push, hand off and stop. It does not own pull requests or merges.
+- **Dustin and ChatGPT** own the pull-request review and merge-preparation layer; Dustin remains the human merge authority.
 - Human review occurs at material product boundaries and at every merge.
 
-This is the whole operating model. The prototype repository's `GOVERNANCE.md`, `PROJECT-ROLES.md` and `CLAUDE.md` describe a migration-era arrangement (one agent interface, an acting migration lead) and do not govern this repository; they stay where they are as history.
+This is the whole operating model. Tool-specific instructions may narrow an agent's behavior but may not expand its authority. The prototype repository's `GOVERNANCE.md`, `PROJECT-ROLES.md` and `CLAUDE.md` describe a migration-era arrangement and do not govern this repository; they remain historical evidence only.
 
 ## Start here
 
