@@ -37,7 +37,7 @@ The ratified wording points both ways. The doctrine speaks of "the final immutab
 - Each participant reviews the terms relevant to them **[R]** (VISION:150).
 - Participants review the same relevant information rather than disconnected versions **[R]** (VISION:137).
 - Material changes return to the people whose understanding or response may be affected **[R]** (VISION:152).
-- Cory's July model: notes bound to terms and per-term counters that converge, with the exchange kept as consent evidence **[CA]** (CORY-QUESTIONS:157).
+- Cory's July model included per-term counters **[CA]** (CORY-QUESTIONS:157). Cory directly rejected counters on 2026-10-05; the historical line is retained only as superseded provenance.
 
 Still open in the sources: the confirmation model and exact workflow (VISION:156; DOCTRINE:104).
 
