@@ -21,6 +21,18 @@ For information: the first stages are adult-only and contain no youth path, no g
 
 ## Cory's answer
 
+Partial direct ruling — 2026-10-05.
+
+Real verification is required; self-attestation is not an acceptable substitute for real participation.
+
+Verification also serves an anti-bot and anti-ban-evasion purpose: it is an identity-uniqueness control as well as adult assurance.
+
+The July rule to retain only the verification result and never the identity document was not re-confirmed in this session and remains candidate evidence, not a newly ratified detail.
+
+Still open: whether a synthetic demonstration with invented people requires verification; whether verification must move earlier than first participation because of the anti-bot or ban-evasion role; and later vendor or mechanism choices.
+
+Source: `2026-10-05-cory-reconciliation.md`.
+
 ## What this unlocks
 
 - Adult participation.
