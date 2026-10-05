@@ -1,6 +1,6 @@
 # D07 — Initiation and the paywall
 
-Status: OPEN
+Status: DECIDED
 
 ## Why this needs Cory
 
@@ -19,7 +19,7 @@ The settled points below do not add up to "everything safety-related is free, so
 - Monetization is in volume and professional convenience, never in safety **[R]** (VISION:484).
 - Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100).
 - The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100).
-- The free tier is documents-only, with documents usable "outside the app's system entirely" **[CA]** (COST-REALITY:84).
+- The earlier documents-only free-tier direction **[CA]** (COST-REALITY:84) is historical candidate evidence and was explicitly superseded by Cory's later ruling confirmed directly on 2026-10-05.
 
 Direction only, not settled:
 
@@ -28,6 +28,20 @@ Direction only, not settled:
 - Pricing and tiers are marked DEFERRED in doctrine (DOCTRINE:68).
 
 ## Cory's answer
+
+Direct ruling — 2026-10-05.
+
+**The free tier completes the full loop: project/brief, agreement and record.**
+
+The monetization axis is **capacity, never completion**.
+
+Cory's current capacity example is approximately two active collaborations at a time, but the exact number is tunable and is not doctrine.
+
+A user who is permitted to start a collaboration must not hit a paywall that prevents completing its safety, consent, agreement or record loop.
+
+The exact shape of any standalone document tool remains a document-product question under D08; it is no longer a paywall blocker.
+
+Source: `2026-10-05-cory-reconciliation.md`.
 
 ## What this unlocks
 
@@ -38,3 +52,5 @@ Direction only, not settled:
 Billing is not built in the first stages either way. Its absence is not evidence that initiation is free.
 
 ## Amendments
+
+2026-10-05 — Replaces the earlier July documents-only candidate direction with the directly confirmed capacity-not-completion rule.
