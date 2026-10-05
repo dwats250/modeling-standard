@@ -12,7 +12,7 @@ Whether everyone in the first slice acts only for themselves.
 
 Authority is never inferred from controlling an account or an inbox.
 
-**[F] lean — a recommendation, not a default.** For the first slice, adults acting for themselves only, with organizations and representatives added when designed. This is a proposed constraint that needs Cory's approval. If the D01 scenario includes someone who signs for another party, it does not apply.
+The earlier **[F] lean** of "adults acting for themselves only for the first slice" is superseded by Cory's standing no-proxy ruling below.
 
 ## Already settled
 
