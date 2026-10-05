@@ -35,6 +35,18 @@ Two more:
 
 ## Cory's answer
 
+Partial direct ruling — 2026-10-05.
+
+- One model does not see another model's private commercial or craft agreement.
+- A client may see commercial numbers where that client is entitled to them.
+- Safety and consent terms for people on site are visible to, and affirmed by, everyone on site.
+- Commercial and craft terms stay private to the parties they concern.
+- Personal and professional visibility remains one-directional: people posting work do not browse talent; talent may deliberately and temporarily share their own portfolio or comp-card material.
+
+The remaining visibility grid, including roster, counterparties, contact details, exact location, private notes, concerns, signature status, change history and final-artifact contents or topology, remains open.
+
+Source: `2026-10-05-cory-reconciliation.md`.
+
 ## What this unlocks
 
 - Every presentation, notification, export and record view.
