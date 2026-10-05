@@ -6,20 +6,13 @@ Status: DECIDED
 
 What is free, what is paid, and exactly where the line falls. Not prices.
 
-The settled points below do not add up to "everything safety-related is free, so creating a collaboration is free". Cory's July direction points the other way on initiation. The boundary is open.
-
-- What does "initiate" mean? Creating a draft; inviting another person; presenting terms; finalizing an agreement; or another act?
-- Is that act paid?
-- Can a person with no plan produce a free consent document or release for a shoot with someone who is not on the app, without initiating a collaboration? If documents exist only inside a collaboration and starting one is paid, the free documents are paywalled indirectly.
-- Is invited participation free without a limit on how many invitations a person may respond to?
+This decision was open in the planning source window and is now directly decided by Cory's 2026-10-05 ruling below.
 
 ## Already settled
 
 - All consent documentation, model releases and their PDFs are free, with no exceptions, including when working with people who are not on the app **[R]** (VISION:469).
 - Monetization is in volume and professional convenience, never in safety **[R]** (VISION:484).
-- Reviewing and signing a brief you were invited to is free **[CA]** (COST-REALITY:100).
-- The paid line is initiating presence: "your own profile, cards, boards, briefs" **[CA]** (COST-REALITY:100).
-- The earlier documents-only free-tier direction **[CA]** (COST-REALITY:84) is historical candidate evidence and was explicitly superseded by Cory's later ruling confirmed directly on 2026-10-05.
+- Earlier July candidate directions placed the paid line at initiation and described a documents-only free tier **[CA]** (COST-REALITY:84,100). Those positions are historical evidence and are superseded by Cory's directly confirmed 2026-10-05 ruling.
 
 Direction only, not settled:
 
