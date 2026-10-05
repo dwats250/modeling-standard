@@ -20,6 +20,14 @@ Still open in the sources: legal language, enforceability and counsel adoption a
 
 ## Cory's answer
 
+Partial direct ruling — 2026-10-05.
+
+A **photo release** is an essential template for the first scenario because the model's contemplated album-cover use is commercial.
+
+Still open: the complete essential document set, which templates require professional legal review, and the exact standalone-document experience.
+
+Source: `2026-10-05-cory-reconciliation.md`.
+
 ## What this unlocks
 
 - Real use wherever the scenario triggers a release. If the D01 scenario triggers a release, that release is part of the real-use gate, not a later stage.
