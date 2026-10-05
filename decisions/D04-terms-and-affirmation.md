@@ -27,6 +27,20 @@ Still open in the sources: what further evidence to keep (document hash, IP or d
 
 ## Cory's answer
 
+Partial direct ruling — 2026-10-05.
+
+**Every term is individually affirmable and is the unit of the record.**
+
+For speed, ordinary terms may offer a convenience control that checks a tightly labelled group, but the underlying terms remain individually represented.
+
+**Body and money terms are never covered by that convenience control.** Anything about a person's body or money requires its own deliberate individual affirmation.
+
+This modifies the July statement that every field must always be clicked separately: individual term evidence remains, while ordinary terms may be batch-checked as an interaction convenience.
+
+Still open: the exact required term set; verbatim clause language; representation of trade/value; the visible signing interaction beyond term affirmation; signing timing; and metadata beyond time and credential.
+
+Source: `2026-10-05-cory-reconciliation.md`.
+
 ## What this unlocks
 
 - Terms content and validation.

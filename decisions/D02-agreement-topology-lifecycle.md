@@ -37,11 +37,29 @@ The ratified wording points both ways. The doctrine speaks of "the final immutab
 - Each participant reviews the terms relevant to them **[R]** (VISION:150).
 - Participants review the same relevant information rather than disconnected versions **[R]** (VISION:137).
 - Material changes return to the people whose understanding or response may be affected **[R]** (VISION:152).
-- Cory's July model: notes bound to terms and per-term counters that converge, with the exchange kept as consent evidence **[CA]** (CORY-QUESTIONS:157).
+- Cory's July model included per-term counters **[CA]** (CORY-QUESTIONS:157). Cory directly rejected counters on 2026-10-05; the historical line is retained only as superseded provenance.
 
 Still open in the sources: the confirmation model and exact workflow (VISION:156; DOCTRINE:104).
 
 ## Cory's answer
+
+Partial direct ruling — 2026-10-05.
+
+**Structure.** Commercial and craft agreements are private and pairwise under the project. One model does not see another model's contract. An unrelated unresponsive participant does not hold up another pair's agreement.
+
+**Universal safety layer.** Safety and consent terms are shared by everyone who will be on site and are affirmed by everyone on site.
+
+**Meaning of all parties.** For a specific agreement, "all parties" means the parties named in that agreement.
+
+**Finality.** That agreement is not final until every named party has affirmed every required term.
+
+**Responses.** There are no counters. If a term is not accepted, the proposer may drop it and resend or withdraw the proposal. One number, one answer: yes or no.
+
+Still open: (d) withdrawal before finality; (e) cancellation; (f) roster changes; (g) amendments and re-acceptance; (h) the earlier agreement while a replacement is pending.
+
+The newly described term-attached recorded dialogue belongs to the pre-presentation composition flow and must not be mistaken for counter-offering.
+
+Source: `2026-10-05-cory-reconciliation.md`.
 
 ## What this unlocks
 

@@ -24,6 +24,16 @@ Still open in the sources: retention periods and permanent deletion rules (VISIO
 
 ## Cory's answer
 
+Partial direct ruling — 2026-10-05.
+
+For ordinary in-product removal of a shared record, removal requires both a reason and approval by all parties to that record. It is not a unilateral product action.
+
+This does not override statutory privacy or erasure rights. Legal requests follow the legal path; the interaction between preservation, restriction, legal-claims bases and erasure remains counsel-dependent.
+
+Still open: retention period and purge policy; lost-credential recovery; access after closure or suspension; removed-participant historical access; statutory-erasure implementation.
+
+Source: `2026-10-05-cory-reconciliation.md`.
+
 ## What this unlocks
 
 - The real-data lifecycle and any retrieval promise.
