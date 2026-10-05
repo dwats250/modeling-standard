@@ -17,9 +17,7 @@ Direct Cory rulings from the 2026-10-05 reconciliation session are recorded in `
 
 Provenance tags (**[R]**, **[R-prov]**, **[CA]**, **[F]**) and citations such as `VISION:374` are explained in the root `README.md`.
 
-## Where to start
-
-Start with D1. Walking through one real collaboration answers much of D2, D4 and D10 on its own.
+## Current status
 
 | # | Decision | Needed for | Status |
 |---|---|---|---|
@@ -36,4 +34,8 @@ Start with D1. Walking through one real collaboration answers much of D2, D4 and
 | [D08](D08-documents.md) | Documents | Real use where a release is triggered; document design | OPEN — photo release confirmed |
 | [D09](D09-preservation-and-evidence-access.md) | Preservation and evidence access | Record access after account changes; real use. Counsel-dependent | OPEN — removal rule decided |
 
-Rows follow the packet's suggested answering order. If this table and a file disagree, the file's own `Status:` line is correct.
+Rows retain the packet's dependency-oriented order. If this table and a file disagree, the file's own `Status:` line is correct.
+
+## Next Cory conversation
+
+D10 is the strongest next product conversation: several visibility rules are already settled, but the grid remains incomplete and blocks presentation and artifact work.
