@@ -1,6 +1,6 @@
 # D01 — The first scenario, walked through
 
-Status: OPEN
+Status: DECIDED
 
 ## Why this needs Cory
 
@@ -26,6 +26,17 @@ A trade or portfolio collaboration still creates usage rights and can still trig
 Nothing. Which journey leads has been open since July (CORY-QUESTIONS:54; VISION:156). The only real brief on file is an event organizer's email to a photographer.
 
 ## Cory's answer
+
+Direct ruling — 2026-10-05.
+
+The first scenario is two adults who already know each other. The model created the project from her own concept and sent it directly to a photographer she knew. The shoot was at her home. No money changed hands. Coverage was agreed in advance at implied nude; when planned fabric was unavailable, a sheer dress substituted without changing the agreed coverage level. Touch and wardrobe adjustments were discussed. The photographer shot, edited and delivered his files. A possible future album-cover use by the model was discussed; the photographer's own usage was not.
+
+Two structural rulings accompany the scenario:
+
+- **Posting versus direct send is distribution, not a different product.** The same project may be posted for applicants or sent directly to someone already known.
+- **Creator is role-neutral.** Creator does not imply photographer, payer, concept author, obligation holder or any other commercial role. Whoever creates the project is simply the creator.
+
+Source: `2026-10-05-cory-reconciliation.md`.
 
 ## What this unlocks
 
