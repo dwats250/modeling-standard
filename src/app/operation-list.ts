@@ -1,5 +1,6 @@
 import { healthOperation } from '../http/health.ts';
 import type { AnyOperation } from '../http/operations.ts';
+import { createProjectOperation, readProjectOperation } from '../projects/project.ts';
 import {
   createSyntheticResourceOperation,
   readSyntheticResourceOperation,
@@ -14,4 +15,6 @@ export const operations: readonly AnyOperation[] = [
   healthOperation,
   createSyntheticResourceOperation,
   readSyntheticResourceOperation,
+  createProjectOperation,
+  readProjectOperation,
 ];
