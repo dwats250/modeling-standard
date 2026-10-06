@@ -22,6 +22,20 @@
       "when": 1791153736300,
       "tag": "0002_database_privileges",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791256152128,
+      "tag": "0003_project_party_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791256152929,
+      "tag": "0004_project_runtime_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -109,6 +109,8 @@ describe('the production operation list', () => {
       health: 'public',
       'stage0.syntheticResource.create': 'protected',
       'stage0.syntheticResource.read': 'protected',
+      'project.create': 'protected',
+      'project.read': 'protected',
     });
   });
 });
