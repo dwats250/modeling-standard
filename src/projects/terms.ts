@@ -21,6 +21,12 @@ import { agreementTerm, universalTerm } from './tables.ts';
  * undecided across the two layers. Additions to the same container are
  * serialized with a transaction-scoped advisory lock on the container id, so
  * concurrent additions get distinct positions instead of one failing.
+ *
+ * Call these with the database handle or inside a READ COMMITTED
+ * transaction. Inside an outer REPEATABLE READ or SERIALIZABLE transaction
+ * the lock is held to the outer commit and the position is computed from the
+ * outer snapshot, so a concurrent addition fails with a unique violation
+ * instead of queueing.
  */
 
 export interface UniversalTermRecord {

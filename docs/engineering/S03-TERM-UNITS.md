@@ -18,7 +18,7 @@ Decisions relied on:
 
 ## Constraints
 
-- **Text:** `content ~ '[^[:space:]]'`, so it is not empty and not only whitespace (tabs and newlines included).
+- **Text:** `content ~ '[^[:space:]]'`, so it is not empty and not only whitespace (tabs and newlines included). Characters PostgreSQL does not class as space, such as U+200B (zero-width space) or U+00A0 (no-break space), still pass, so invisible-only text is possible. Deciding what counts as written content is left to whoever validates term content (D04).
 - **Position:** `position >= 1`, unique per container.
 - **Container:** a foreign key to the project or the pairwise agreement.
 
@@ -31,7 +31,7 @@ Decisions relied on:
   Finality (D02) cannot be computed until requiredness is decided, so no later slice in this stack computes it.
 - **Append-only.** D02's drop-and-resend concerns a term already sent. It is done by presenting a new version without the term (S04), so no draft row is ever deleted and no `DELETE` is granted.
 - **Position is storage order.** Ruling 4's presentation order spans both layers and is undecided.
-- **Concurrency.** An addition runs in a transaction that first takes `pg_advisory_xact_lock` on a key derived from the container id, then inserts at `max(position) + 1`. Concurrent additions to one container queue rather than collide. The runtime role holds the default `EXECUTE` on the advisory-lock functions. Row locks are not used because they would need `UPDATE` on the parent table.
+- **Concurrency.** An addition runs in a transaction that first takes `pg_advisory_xact_lock` on a key derived from the container id, then inserts at `max(position) + 1`. Concurrent additions to one container queue rather than collide, provided the caller uses the database handle or a READ COMMITTED transaction. Inside an outer REPEATABLE READ or SERIALIZABLE transaction the position comes from the outer snapshot, so a concurrent addition fails with a unique violation instead. The runtime role holds the default `EXECUTE` on the advisory-lock functions. Row locks are not used because they would need `UPDATE` on the parent table.
 - **Integer ceiling.** A raw insert at position 2147483647 would stop further additions to that container ("integer out of range"). Only raw SQL with the runtime credential can do that. No cap is imposed, because a maximum term count is not a decision this slice may make.
 
 ## Tests
