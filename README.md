@@ -73,6 +73,8 @@ cp .env.example .env
 
 **Database.** `npm run db:up` starts PostgreSQL 17 on `127.0.0.1:5432` and, on first start, runs `db/provision.sql` to create the migration role, the runtime role and the database. `npm run db:down` stops it. (Any PostgreSQL 16+ works if you run `db/provision.sql` against it as a superuser.)
 
+**Disposable sandboxes without Docker.** In a throwaway Linux workspace (such as an agent's cloud sandbox) that has a PostgreSQL 16+ server install but no Docker and no Node 24, run `eval "$(scripts/sandbox-bootstrap.sh)"` as root from the repository root. It downloads Node 24 and npm 11, starts a loopback-only throwaway PostgreSQL cluster, runs `db/provision.sql`, and creates `.env`; `MS_SANDBOX_INSTALL_DEPS=1` also runs `npm ci`. It is idempotent. Not for developer machines.
+
 **Migrations.** `npm run db:migrate` applies the reviewed SQL in `migrations/` using `MIGRATION_DATABASE_URL`. To change a table, edit `src/stage0/tables.ts` or `src/projects/tables.ts`, run `npm run db:generate`, and review the generated SQL. Privileges go in hand-written migrations (`npx drizzle-kit generate --custom --name=<name>`). Never `drizzle-kit push`.
 
 **Check.** `npm run check` runs the typechecker, the linter and a drift check that fails if the table definitions and migrations disagree.
