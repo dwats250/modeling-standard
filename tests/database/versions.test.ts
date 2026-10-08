@@ -444,16 +444,18 @@ describe('presented versions', () => {
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public' and p.prorettype = 'trigger'::regtype order by 1`,
       );
-      // Every trigger function in the schema, including later slices', is held
-      // to the same rule.
-      expect(functions.rows.map((r) => r.name)).toEqual(expect.arrayContaining([
+      // Every trigger function in the schema, including later slices', is
+      // pinned by name and held to the same rule.
+      expect(functions.rows.map((r) => r.name)).toEqual([
+        'agreement_affirmation_stamp',
         'agreement_version_check_sealed',
         'agreement_version_stamp',
         'agreement_version_term_check_copy',
+        'universal_affirmation_stamp',
         'universal_version_check_sealed',
         'universal_version_stamp',
         'universal_version_term_check_copy',
-      ]));
+      ]);
       for (const f of functions.rows) {
         expect({ name: f.name, config: f.config, callable: f.callable }).toEqual({
           name: f.name,

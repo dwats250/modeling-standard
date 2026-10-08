@@ -14,19 +14,26 @@ import {
  * Records that one party affirmed one presented term: one row per party per
  * term (D04: every term is individually affirmable and is the unit of the
  * record), bound to the frozen wording of a presented version (DOCTRINE:51),
- * stamped with the database clock, and permanent.
+ * stamped with the database clock, and append-only for the runtime role.
  *
- * Pairwise terms can be affirmed only by the agreement's two parties;
- * universal terms by a party of the project. The database enforces both,
- * and accepts affirmations only against a container's first presented
- * version until ruling 6's escalation rules exist (`migrations/0012`).
+ * Pairwise rows can name only the agreement's two parties; universal rows
+ * any party of the project (which says nothing about who is on site). The
+ * database enforces both, and accepts affirmations only while a container
+ * has a single presented version and never in the transaction that
+ * presented it (`migrations/0012`): supersession (D02 d, g, h), escalation
+ * (ruling 6) and signing timing (D04) are open. It does not detect
+ * escalation in general.
  *
- * Data functions only, with no HTTP route. A party is not yet bound to a
- * person (D03), so nothing here authenticates or authorizes anyone; any
- * future caller must establish that the person acting is the party (D12: no
- * proxies). Nothing here computes finality or completeness, decides who
- * must affirm, records a decline or withdrawal, or groups affirmations:
- * those are open (D02, D04).
+ * These rows are not complete signature evidence: DOCTRINE:52 also requires
+ * the credential used to agree, which awaits D03. The absence of a row means
+ * nothing: not "no", not "not yet", not "not shown".
+ *
+ * Data functions only, with no HTTP route, and no runtime path may call them
+ * until D03 binds parties to people: nothing here authenticates anyone, and
+ * D12 (no proxies) must be established by the caller. Nothing here computes
+ * finality or completeness, decides who must affirm, records a decline or
+ * withdrawal, or groups affirmations: those are open (D02, D04). Call with
+ * the database handle or inside a READ COMMITTED transaction.
  */
 
 export class PresentedTermNotFoundError extends Error {

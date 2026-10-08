@@ -10,8 +10,9 @@ import { check, foreignKey, integer, pgTable, text, timestamp, unique, uuid } fr
  * What these tables deliberately do not hold (S01 to S05 invariants; D01, D02, D04, D12):
  * no professional or commercial role, no payer or payee, no structured
  * compensation, obligations or usage rights (term text is opaque), no
- * author or proposer, no acceptance, affirmation, signature
- * or witness, no youth, guardian or proxy, no posted/direct-send subtype, and
+ * author or proposer, no acceptance status, finality, decline, withdrawal,
+ * signature credential or witness (S05 records only per-term affirmation
+ * evidence), no youth, guardian or proxy, no posted/direct-send subtype, and
  * no binding from a party to an account, principal, person or identity.
  *
  * Privileges are granted by hand-written SQL in `migrations/`, never here.
@@ -298,13 +299,17 @@ export const universalVersionTerm = pgTable(
  *
  * The agreement's two parties are stored alongside so the database itself
  * can require, by foreign key and check, that the affirming party is one of
- * them (D02: the parties named in that agreement; D12: no one affirms for
- * another). A trigger (`migrations/0012`) accepts affirmations only against
- * the agreement's first presented version (ruling 6 escalation is not yet
- * specified) and stamps `affirmed_at` from the database clock.
+ * them (D02: the parties named in that agreement). Who is acting is not
+ * recorded: D12 (no proxies) is a precondition on any caller, which must
+ * establish that the person acting is the party once D03 binds parties to
+ * people. A trigger (`migrations/0012`) accepts affirmations only while the
+ * agreement has a single presented version, never in the transaction that
+ * presented it, and stamps `affirmed_at` from the database clock.
  *
- * Deliberately absent: finality or status, declines, withdrawal, group
- * affirmation, principal, credential, IP or device.
+ * Not complete signature evidence: DOCTRINE:52 requires the credential used,
+ * which awaits D03. The absence of a row means nothing (not "no", not "not
+ * yet"). Deliberately absent: finality or status, declines, withdrawal,
+ * group affirmation, principal, credential, IP or device.
  */
 export const agreementAffirmation = pgTable(
   'agreement_affirmation',
@@ -344,10 +349,10 @@ export const agreementAffirmation = pgTable(
 
 /**
  * One party's affirmation of one presented universal term (S05). Runtime
- * role: SELECT, INSERT. The party must be a party of the project. Recording
- * an affirmation decides nothing about who must affirm: who is on site is
- * open (D02 f). First-version rule and database time as for
- * `agreement_affirmation`, with the same deliberate absences.
+ * role: SELECT, INSERT. The database accepts a row naming any party of the
+ * project; that does not mean the party is on site or that the term applies
+ * to them ("on site" is not yet defined). Single-version, timing and clock
+ * rules as for `agreement_affirmation`, with the same caveats and absences.
  */
 export const universalAffirmation = pgTable(
   'universal_affirmation',
