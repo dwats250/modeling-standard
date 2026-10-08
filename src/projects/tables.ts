@@ -3,10 +3,11 @@ import { check, foreignKey, integer, pgTable, text, timestamp, unique, uuid } fr
 
 /**
  * Product tables for slices S01 (project and party core), S02 (pairwise
- * agreement topology), S03 (term units) and S04 (presented versions). Separate from the Stage 0
+ * agreement topology), S03 (term units), S04 (presented versions) and S05
+ * (per-term affirmation evidence). Separate from the Stage 0
  * synthetic fixtures in `src/stage0/tables.ts`.
  *
- * What these tables deliberately do not hold (S01 to S04 invariants; D01, D02, D04, D12):
+ * What these tables deliberately do not hold (S01 to S05 invariants; D01, D02, D04, D12):
  * no professional or commercial role, no payer or payee, no structured
  * compensation, obligations or usage rights (term text is opaque), no
  * author or proposer, no acceptance, affirmation, signature
@@ -90,6 +91,9 @@ export const pairwiseAgreement = pgTable(
       columns: [table.projectId, table.partyTwoId],
       foreignColumns: [projectParty.projectId, projectParty.id],
     }),
+    // Lets an affirmation (S05) require that its party is one of this
+    // agreement's two parties, declaratively. `id` alone is already unique.
+    unique('pairwise_agreement_id_parties_unique').on(table.id, table.partyOneId, table.partyTwoId),
     check('pairwise_agreement_distinct_parties', sql`${table.partyOneId} <> ${table.partyTwoId}`),
     check('pairwise_agreement_canonical_order', sql`${table.partyOneId} < ${table.partyTwoId}`),
   ],
@@ -224,6 +228,8 @@ export const agreementVersionTerm = pgTable(
     }),
     unique('agreement_version_term_version_position_unique').on(table.agreementVersionId, table.position),
     unique('agreement_version_term_version_source_unique').on(table.agreementVersionId, table.agreementTermId),
+    // Target for an affirmation's same-version check (S05).
+    unique('agreement_version_term_version_id_unique').on(table.agreementVersionId, table.id),
     check('agreement_version_term_position_positive', sql`${table.position} >= 1`),
   ],
 );
@@ -279,6 +285,96 @@ export const universalVersionTerm = pgTable(
     }),
     unique('universal_version_term_version_position_unique').on(table.universalVersionId, table.position),
     unique('universal_version_term_version_source_unique').on(table.universalVersionId, table.universalTermId),
+    unique('universal_version_term_version_id_unique').on(table.universalVersionId, table.id),
     check('universal_version_term_position_positive', sql`${table.position} >= 1`),
+  ],
+);
+
+/**
+ * One party's affirmation of one presented pairwise term (S05; D04: every
+ * term is individually affirmable and is the unit of the record;
+ * DOCTRINE:51: a signature is bound to the clauses it affirms). Runtime
+ * role: SELECT, INSERT.
+ *
+ * The agreement's two parties are stored alongside so the database itself
+ * can require, by foreign key and check, that the affirming party is one of
+ * them (D02: the parties named in that agreement; D12: no one affirms for
+ * another). A trigger (`migrations/0012`) accepts affirmations only against
+ * the agreement's first presented version (ruling 6 escalation is not yet
+ * specified) and stamps `affirmed_at` from the database clock.
+ *
+ * Deliberately absent: finality or status, declines, withdrawal, group
+ * affirmation, principal, credential, IP or device.
+ */
+export const agreementAffirmation = pgTable(
+  'agreement_affirmation',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    pairwiseAgreementId: uuid('pairwise_agreement_id').notNull(),
+    partyOneId: uuid('party_one_id').notNull(),
+    partyTwoId: uuid('party_two_id').notNull(),
+    agreementVersionId: uuid('agreement_version_id').notNull(),
+    agreementVersionTermId: uuid('agreement_version_term_id').notNull(),
+    partyId: uuid('party_id').notNull(),
+    affirmedAt: timestamp('affirmed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'agreement_affirmation_pair_fk',
+      columns: [table.pairwiseAgreementId, table.partyOneId, table.partyTwoId],
+      foreignColumns: [pairwiseAgreement.id, pairwiseAgreement.partyOneId, pairwiseAgreement.partyTwoId],
+    }),
+    foreignKey({
+      name: 'agreement_affirmation_version_in_agreement_fk',
+      columns: [table.pairwiseAgreementId, table.agreementVersionId],
+      foreignColumns: [agreementVersion.pairwiseAgreementId, agreementVersion.id],
+    }),
+    foreignKey({
+      name: 'agreement_affirmation_term_in_version_fk',
+      columns: [table.agreementVersionId, table.agreementVersionTermId],
+      foreignColumns: [agreementVersionTerm.agreementVersionId, agreementVersionTerm.id],
+    }),
+    check(
+      'agreement_affirmation_party_in_pair',
+      sql`${table.partyId} = ${table.partyOneId} or ${table.partyId} = ${table.partyTwoId}`,
+    ),
+    unique('agreement_affirmation_term_party_unique').on(table.agreementVersionTermId, table.partyId),
+  ],
+);
+
+/**
+ * One party's affirmation of one presented universal term (S05). Runtime
+ * role: SELECT, INSERT. The party must be a party of the project. Recording
+ * an affirmation decides nothing about who must affirm: who is on site is
+ * open (D02 f). First-version rule and database time as for
+ * `agreement_affirmation`, with the same deliberate absences.
+ */
+export const universalAffirmation = pgTable(
+  'universal_affirmation',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id').notNull(),
+    universalVersionId: uuid('universal_version_id').notNull(),
+    universalVersionTermId: uuid('universal_version_term_id').notNull(),
+    partyId: uuid('party_id').notNull(),
+    affirmedAt: timestamp('affirmed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'universal_affirmation_party_in_project_fk',
+      columns: [table.projectId, table.partyId],
+      foreignColumns: [projectParty.projectId, projectParty.id],
+    }),
+    foreignKey({
+      name: 'universal_affirmation_version_in_project_fk',
+      columns: [table.projectId, table.universalVersionId],
+      foreignColumns: [universalVersion.projectId, universalVersion.id],
+    }),
+    foreignKey({
+      name: 'universal_affirmation_term_in_version_fk',
+      columns: [table.universalVersionId, table.universalVersionTermId],
+      foreignColumns: [universalVersionTerm.universalVersionId, universalVersionTerm.id],
+    }),
+    unique('universal_affirmation_term_party_unique').on(table.universalVersionTermId, table.partyId),
   ],
 );

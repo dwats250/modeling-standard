@@ -78,6 +78,20 @@
       "when": 1791476551681,
       "tag": "0010_presented_versions_sealing_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791476843909,
+      "tag": "0011_term_affirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791476852087,
+      "tag": "0012_term_affirmation_rules_and_grants",
+      "breakpoints": true
     }
   ]
 }

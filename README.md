@@ -6,7 +6,7 @@ This repository intentionally begins with product planning rather than applicati
 
 ## Current state
 
-**Stage 1 in progress, slice by slice.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation (product-neutral, synthetic data only) is described in `docs/engineering/STAGE-0.md`. Approved Stage 1 slices are in `docs/slices/`; S01 (project and party core) and S02 (pairwise agreement topology) are described as built in `docs/engineering/S01-PROJECT-PARTY-CORE.md` and `docs/engineering/S02-PAIRWISE-AGREEMENT-CORE.md`. S03 (term units) and S04 (presented versions, stacked on S03) are proposed and built on their own branches, held at the merge seam until their PRDs are approved; see `docs/engineering/S03-TERM-UNITS.md` and `docs/engineering/S04-PRESENTED-VERSIONS.md`.
+**Stage 1 in progress, slice by slice.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation (product-neutral, synthetic data only) is described in `docs/engineering/STAGE-0.md`. Approved Stage 1 slices are in `docs/slices/`; S01 (project and party core) and S02 (pairwise agreement topology) are described as built in `docs/engineering/S01-PROJECT-PARTY-CORE.md` and `docs/engineering/S02-PAIRWISE-AGREEMENT-CORE.md`. S03 (term units), S04 (presented versions) and S05 (per-term affirmation evidence) are proposed and built as a stack of branches, each held at the merge seam until its PRD is approved; see `docs/engineering/S03-TERM-UNITS.md`, `docs/engineering/S04-PRESENTED-VERSIONS.md` and `docs/engineering/S05-TERM-AFFIRMATION.md`.
 
 ## Product authority
 
