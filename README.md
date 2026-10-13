@@ -80,3 +80,5 @@ cp .env.example .env
 **Test.** `npm test` creates a fresh test database, migrates it, and runs every suite against it. It needs the database up; it fails rather than skips without it.
 
 **Build and run.** `npm run build` compiles to `dist/`; `npm start` runs it with `DATABASE_URL` (runtime credential only). `npm run dev` runs from source with `.env`. Health: `GET /health`.
+
+**Synthetic demo.** `npm run demo:reset` then `npm run demo` serves a local record inspector on `127.0.0.1:3100` against `modeling_standard_demo` only. See `docs/engineering/DEMO.md`.

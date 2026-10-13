@@ -1,0 +1,60 @@
+import { resolve } from 'node:path';
+import { sql } from 'drizzle-orm';
+import { createApp } from '../app/create-app.ts';
+import { createLogger } from '../app/logger.ts';
+import { ConfigError, loadAppConfig } from '../config/config.ts';
+import { DemoGuardError, assertDemoTarget, demoDatabaseUrl, demoOperatorPrincipal } from '../demo/demo.ts';
+import { demoOperations } from '../demo/operations.ts';
+import { createDemoServer } from '../demo/server.ts';
+import { openDatabase } from '../infrastructure/database/client.ts';
+
+/**
+ * `npm run demo`. Serves the synthetic demo on loopback against the demo
+ * database only. Not a production entry point: `src/main.ts` is, and it has
+ * no principal and no demo operations.
+ */
+
+let config;
+let runtimeUrl: string;
+let port: number;
+try {
+  config = loadAppConfig(process.env);
+  runtimeUrl = demoDatabaseUrl(config.databaseUrl);
+  assertDemoTarget({ host: config.host, databaseUrl: runtimeUrl });
+  port = Number(process.env.DEMO_PORT ?? '3100');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError(['DEMO_PORT: must be an integer between 1 and 65535']);
+} catch (error) {
+  const message = error instanceof ConfigError || error instanceof DemoGuardError ? error.message : 'Invalid configuration';
+  process.stderr.write(`${message}\n`);
+  process.exit(1);
+}
+
+const logger = createLogger(config.logLevel);
+const database = openDatabase(runtimeUrl, logger);
+try {
+  await database.db.execute(sql`select 1 from project limit 1`);
+} catch {
+  process.stderr.write('The demo database is missing or not migrated. Run `npm run demo:reset` first.\n');
+  await database.close();
+  process.exit(1);
+}
+
+const app = createApp({
+  db: database.db,
+  logger,
+  resolvePrincipal: demoOperatorPrincipal,
+  additionalOperations: demoOperations,
+});
+await app.ready();
+
+const server = createDemoServer({ app, fixturePath: resolve(process.cwd(), '.demo', 'fixture.json') });
+server.listen(port, config.host, () => {
+  process.stdout.write(`Synthetic demo (not for real people) at http://${config.host}:${port}/\n`);
+});
+
+const shutdown = (): void => {
+  server.close();
+  void app.close().then(() => database.close());
+};
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);

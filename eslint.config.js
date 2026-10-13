@@ -15,7 +15,7 @@ const fastifyCompositionMethods =
   'CallExpression[callee.property.name=/^(addHook|setNotFoundHandler|setErrorHandler|register|decorate|decorateRequest|decorateReply)$/]';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'node_modules/', 'migrations/'] },
+  { ignores: ['dist/', 'node_modules/', 'migrations/', 'src/demo/ui/'] },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
