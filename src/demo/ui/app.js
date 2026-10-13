@@ -16,6 +16,8 @@ const state = {
 const UNAVAILABLE = [
   ['Add a party', 'How a person becomes a party of a project is undecided (D03).'],
   ['Create a pairwise agreement', 'Who may create an agreement is undecided (D02, D12).'],
+  ['Add or present terms', 'Who may author and present terms is undecided (D02, D04).'],
+  ['Record an affirmation', 'Only the party itself may affirm (D12); how a person acts as a party is undecided (D03).'],
   ['Send or invite', 'Participation credential and invitation are undecided (D03).'],
   ['View as a party', 'What each party sees is mostly undecided (D10).'],
 ];
@@ -133,6 +135,11 @@ function partyLabel(annotation, id) {
   return annotation?.parties?.[id] ?? 'Party (no fixture label)';
 }
 
+/** Display order only: by fixture label, then id. Stored order carries no meaning. */
+function byLabel(annotation) {
+  return (a, b) => partyLabel(annotation, a).localeCompare(partyLabel(annotation, b)) || a.localeCompare(b);
+}
+
 function renderDetail() {
   const root = document.getElementById('detail');
   root.replaceChildren();
@@ -190,7 +197,7 @@ function renderDetail() {
     partiesBody = el('div', { className: 'state empty' }, [el('p', { text: 'No parties in this project.' })]);
   } else {
     partiesBody = el('ul', { className: 'rows' });
-    for (const party of record.parties) {
+    for (const party of [...record.parties].sort((x, y) => byLabel(annotation)(x.id, y.id))) {
       partiesBody.append(el('li', {}, [el('span', { text: partyLabel(annotation, party.id) }), idCode(party.id)]));
     }
   }
@@ -200,16 +207,19 @@ function renderDetail() {
   if (record.agreements.length === 0) {
     agreementsBody = el('div', { className: 'state empty' }, [el('p', { text: 'No pairwise agreements.' })]);
   } else {
-    agreementsBody = el('ul', { className: 'rows' });
+    agreementsBody = el('div', { className: 'agreements' });
     for (const agreement of record.agreements) {
-      const [one, two] = agreement.partyIds;
+      const [one, two] = [...agreement.partyIds].sort(byLabel(annotation));
       agreementsBody.append(
-        el('li', { className: 'agreement' }, [
-          el('div', {}, [
-            el('strong', { text: annotation?.agreements?.[agreement.id] ?? 'Pairwise agreement' }),
-            el('p', { className: 'pair', text: `${partyLabel(annotation, one)}  ↔  ${partyLabel(annotation, two)}` }),
+        el('article', { className: 'agreement-block' }, [
+          el('header', { className: 'agreement-head' }, [
+            el('div', {}, [
+              el('strong', { text: annotation?.agreements?.[agreement.id] ?? 'Pairwise agreement' }),
+              el('p', { className: 'pair', text: `${partyLabel(annotation, one)}  ↔  ${partyLabel(annotation, two)}` }),
+            ]),
+            idCode(agreement.id),
           ]),
-          idCode(agreement.id),
+          renderLayer(agreement.terms, agreement.versions, [one, two], annotation),
         ]),
       );
     }
@@ -227,16 +237,129 @@ function renderDetail() {
 
   root.append(
     head,
-    el('div', { className: 'grid' }, [
-      section('Parties', 'Project-local parties (S01). No role, identity or account binding.', partiesBody),
-      section(
-        'Pairwise agreements',
-        'Private agreements, each relating exactly two parties (S02). No terms, status or finality here.',
-        agreementsBody,
-      ),
-    ]),
+    section('Parties', 'Project-local parties (S01). No role, identity or account binding.', partiesBody),
+    section(
+      'Shared terms — universal layer',
+      'Safety and consent terms held on the project, for everyone on site (D02). Who counts as on site is undecided.',
+      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation),
+    ),
+    section(
+      'Pairwise agreements',
+      'Private commercial and craft terms, each agreement relating exactly two parties (S02, D02).',
+      agreementsBody,
+    ),
+    legend(),
     section('Not available yet', 'Left out on purpose until Cory decides.', unavailable),
   );
+}
+
+
+// ---- Terms, presented versions and affirmation rows (S03–S05) ----
+
+function formatTime(iso) {
+  const date = new Date(iso);
+  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
+}
+
+function legend() {
+  return el('aside', { className: 'legend' }, [
+    el('p', {}, [
+      el('strong', { text: 'Reading the grids. ' }),
+      el('span', {
+        text:
+          'A ✓ cell is a stored affirmation row: that party, that exact frozen wording, a database time. ' +
+          'An empty cell means no row is stored — nothing more. It is not "pending" or "declined", and no ' +
+          'agreement is shown as final: which terms are required is undecided (D04), so finality is not computed.',
+      }),
+    ]),
+  ]);
+}
+
+function renderLayer(terms, versions, partyIds, annotation) {
+  const wrap = el('div', { className: 'layer' });
+  if (terms.length === 0 && versions.length === 0) {
+    wrap.append(el('div', { className: 'state empty' }, [el('p', { text: 'No terms stored.' })]));
+    return wrap;
+  }
+
+  const presentedSources = new Set(versions.flatMap((v) => v.terms.map((t) => t.sourceTermId)));
+  const neverPresented = terms.filter((t) => !presentedSources.has(t.id));
+
+  if (versions.length === 0) {
+    wrap.append(el('p', { className: 'hint', text: 'Terms are stored but no version has been presented.' }));
+  }
+
+  versions.forEach((version, index) => {
+    const previous = index > 0 ? versions[index - 1] : null;
+    wrap.append(renderVersion(version, previous, versions.length, partyIds, annotation));
+  });
+
+  if (neverPresented.length > 0) {
+    const list = el('ol', { className: 'draft-terms' });
+    for (const term of neverPresented) list.append(el('li', { text: term.content }));
+    wrap.append(
+      el('div', { className: 'drafts' }, [
+        el('p', { className: 'hint', text: 'Stored, never presented (S03). Not part of any version.' }),
+        list,
+      ]),
+    );
+  }
+  return wrap;
+}
+
+function renderVersion(version, previous, versionCount, partyIds, annotation) {
+  const rows = new Map(version.affirmations.map((a) => [`${a.presentedTermId}|${a.partyId}`, a]));
+
+  const head = el('header', { className: 'version-head' }, [
+    el('span', { className: 'badge', text: `Version ${version.sequence}` }),
+    el('span', { className: 'sealed', text: 'sealed' }),
+    el('span', { className: 'meta', text: `presented ${formatTime(version.presentedAt)}` }),
+  ]);
+
+  const notes = [];
+  if (previous) {
+    const kept = new Set(version.terms.map((t) => t.sourceTermId));
+    const dropped = previous.terms.filter((t) => !kept.has(t.sourceTermId));
+    for (const term of dropped) {
+      notes.push(el('p', { className: 'dropped', text: `Dropped since version ${previous.sequence}: “${term.content}”` }));
+    }
+  }
+  if (versionCount > 1) {
+    notes.push(
+      el('p', {
+        className: 'hint',
+        text:
+          version.sequence === 1
+            ? 'Unchanged by the later version. Once a later version exists, no new rows can be recorded here (S05).'
+            : 'No rows can be recorded against a later version yet: whether and how a resend is affirmed is undecided (D02).',
+      }),
+    );
+  }
+
+  const table = el('table', { className: 'grid-table' });
+  const headRow = el('tr', {}, [el('th', { text: '#', attrs: { scope: 'col' } }), el('th', { text: 'Frozen wording', attrs: { scope: 'col' } })]);
+  for (const partyId of partyIds) headRow.append(el('th', { text: partyLabel(annotation, partyId), attrs: { scope: 'col' } }));
+  table.append(el('thead', {}, [headRow]));
+
+  const body = el('tbody');
+  for (const term of version.terms) {
+    const tr = el('tr', {}, [el('td', { className: 'pos', text: String(term.position) }), el('td', { text: term.content })]);
+    for (const partyId of partyIds) {
+      const row = rows.get(`${term.id}|${partyId}`);
+      tr.append(
+        row
+          ? el('td', { className: 'cell yes', attrs: { title: `Row stored ${formatTime(row.affirmedAt)}` } }, [
+              el('span', { text: '✓ ' }),
+              el('span', { className: 'meta', text: new Date(row.affirmedAt).toLocaleTimeString() }),
+            ])
+          : el('td', { className: 'cell none', text: '', attrs: { 'aria-label': 'no row stored' } }),
+      );
+    }
+    body.append(tr);
+  }
+  table.append(body);
+
+  return el('section', { className: 'version' }, [head, ...notes, el('div', { className: 'table-scroll' }, [table])]);
 }
 
 // ---- Data loading ----
