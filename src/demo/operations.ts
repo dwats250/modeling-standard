@@ -13,6 +13,7 @@ import {
 } from '../projects/versions.ts';
 import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, listProjectsCreatedBy } from '../projects/project.ts';
+import { simulatorOperations } from './simulator.ts';
 
 /**
  * Read-only operations for the local synthetic demo's record inspector.
@@ -151,4 +152,8 @@ export const readDemoProjectRecordOperation = defineOperation({
   },
 });
 
-export const demoOperations: readonly AnyOperation[] = [listDemoProjectsOperation, readDemoProjectRecordOperation];
+export const demoOperations: readonly AnyOperation[] = [
+  listDemoProjectsOperation,
+  readDemoProjectRecordOperation,
+  ...simulatorOperations,
+];

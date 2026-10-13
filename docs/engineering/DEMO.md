@@ -27,6 +27,16 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 - **Terms, versions, affirmation rows (S03–S05).** The record shows stored terms per layer, each sealed presented version with its frozen wording, what a resend dropped, and a term × party grid of stored affirmation rows. It computes no finality, requiredness, "pending" or "declined": an empty cell means only that no row is stored. Fixture term text is marked `[synthetic]`.
 - **Not a party view.** The inspector shows the whole stored record. What each party sees is D10.
 
+## Scenario simulator (live demo only)
+
+"Start a simulation" creates a fresh project with two parties and one pairwise agreement (the D01 shape). Each layer has a **Simulate — demo only** panel to add a term and present a version from chosen terms (leaving one out is drop-and-resend), and empty cells of a sole version 1 offer **simulate** to record a row naming that party.
+
+- Seven demo-only operations under `/demo/sim/` (`src/demo/simulator.ts`), protected, creator-only on the project (directly or through the agreement), strict input; never in the production list.
+- **Assumptions, shown in the UI:** the operator adds and presents terms (who may is D02/D04) and records rows naming a party (only the party may, D12; how is D03). A version needs at least one term and no repeats — a simulator input rule, not a product rule.
+- Everything else is the database's own S03–S05 rules; violations come back as 409s (`version_not_affirmable`, `already_affirmed`, `party_not_in_agreement`, `presented_term_not_found`, `term_not_in_container`).
+- **Reset:** start another simulation for a clean project; `npm run demo:reset` restores the whole demo database. Records are append-only, so nothing is edited or deleted in place.
+- Hidden in the portable snapshot.
+
 ## Deliberately unavailable
 
 Shown disabled with the blocking decision: add a party (D03), create an agreement (D02/D12), add or present terms (D02/D04), record an affirmation (D12/D03), send or invite (D03), view as a party (D10).
