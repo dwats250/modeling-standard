@@ -67,6 +67,20 @@ async function failureConstraint(fn: () => Promise<unknown>): Promise<string | n
   }
 }
 
+async function failureConstraintOf(
+  c: pg.Client,
+  text: string,
+  params: unknown[],
+): Promise<{ code: string; constraint: string | undefined } | null> {
+  try {
+    await c.query(text, params);
+    return null;
+  } catch (error) {
+    const e = error as { code?: string; constraint?: string };
+    return { code: e.code ?? 'unknown', constraint: e.constraint };
+  }
+}
+
 async function inTransaction(c: pg.Client, statements: [string, unknown[]][]): Promise<{ code: string; constraint?: string | undefined } | null> {
   try {
     await c.query('begin');
@@ -373,6 +387,39 @@ describe.each(layers)('$name affirmations', (layer) => {
           expect(await attempt).toBe(CHECK_VIOLATION);
         });
       });
+    });
+
+    it('so a snapshot-isolated transaction cannot affirm version 1 after version 2 is committed', async () => {
+      const w = await world();
+      const first = layer.first(w);
+      await withClient(inject('runtimeUrl'), async (affirmer) => {
+        // The affirmer's snapshot is taken before version 2 exists.
+        await affirmer.query('begin isolation level repeatable read');
+        await affirmer.query('select 1 from project limit 1');
+        await layer.later(w);
+        const [text, params] = layer.rawInsert(w, first.versionId, first.termIds[0]!, first.affirmers[0]!);
+        const failure = await failureConstraintOf(affirmer, text, params);
+        await affirmer.query('rollback');
+        expect(failure).toEqual({ code: CHECK_VIOLATION, constraint: `${layer.table}_read_committed_only` });
+      });
+      expect(await layer.list(first.versionId)).toEqual([]);
+    });
+
+    it('so no affirmation is accepted under REPEATABLE READ or SERIALIZABLE, even when nothing changed', async () => {
+      const w = await world();
+      const first = layer.first(w);
+      for (const level of ['repeatable read', 'serializable']) {
+        await withClient(inject('runtimeUrl'), async (c) => {
+          await c.query(`begin isolation level ${level}`);
+          const [text, params] = layer.rawInsert(w, first.versionId, first.termIds[0]!, first.affirmers[0]!);
+          const failure = await failureConstraintOf(c, text, params);
+          await c.query('rollback');
+          expect({ level, failure }).toEqual({ level, failure: { code: CHECK_VIOLATION, constraint: `${layer.table}_read_committed_only` } });
+        });
+      }
+      // The same insert succeeds under the default READ COMMITTED.
+      await layer.affirm(first.termIds[0]!, first.affirmers[0]!);
+      expect(await layer.list(first.versionId)).toHaveLength(1);
     });
 
     it('so the runtime role cannot update, delete or truncate an affirmation', async () => {
