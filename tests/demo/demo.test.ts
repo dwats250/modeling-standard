@@ -136,11 +136,11 @@ describe('demo inspector operations', () => {
 
     const res = await app.inject({ method: 'GET', url: `/demo/projects/${projectId}/record`, headers: as(me) });
     expect(res.statusCode).toBe(200);
-    const body = res.json<{ project: unknown; parties: { id: string }[]; agreements: unknown }>();
-    expect(Object.keys(body).sort()).toEqual(['agreements', 'parties', 'project']);
+    const body = res.json<{ project: unknown; parties: { id: string }[]; agreements: unknown; universal: unknown }>();
+    expect(Object.keys(body).sort()).toEqual(['agreements', 'parties', 'project', 'universal']);
     expect(body.project).toEqual({ id: projectId });
     expect(body.parties.map((p) => p.id).sort()).toEqual([a.id, b.id, c.id].sort());
-    expect(body.agreements).toEqual([{ id: ac.id, partyIds: [...ac.partyIds] }]);
+    expect(body.agreements).toEqual([{ id: ac.id, partyIds: [...ac.partyIds], terms: [], versions: [] }]);
     expect(res.body).not.toMatch(/created|principal|role|payer|signed/i);
   });
 
@@ -193,6 +193,42 @@ describe('demo fixtures and server', () => {
     }
   });
 
+  it('show terms, sealed versions, drop-and-resend and affirmation rows exactly as stored', async () => {
+    type Version = { sequence: number; terms: { id: string; sourceTermId: string; content: string }[]; affirmations: { presentedTermId: string; partyId: string }[] };
+    type Record = {
+      parties: { id: string }[];
+      universal: { terms: { id: string }[]; versions: Version[] };
+      agreements: { id: string; partyIds: [string, string]; terms: { id: string }[]; versions: Version[] }[];
+    };
+    const entries = Object.entries(annotations.projects);
+    const [d01Id] = entries.find(([, a]) => a.title.startsWith('Fixture 1'))!;
+    const [topoId] = entries.find(([, a]) => a.title.startsWith('Fixture 2'))!;
+
+    const d01 = (await demoApp.inject({ method: 'GET', url: `/demo/projects/${d01Id}/record` })).json<Record>();
+    expect(d01.universal.versions).toHaveLength(1);
+    const uv = d01.universal.versions[0]!;
+    expect(uv.terms).toHaveLength(2);
+    expect(uv.affirmations).toHaveLength(2 * d01.parties.length);
+    const av = d01.agreements[0]!.versions[0]!;
+    expect(av.affirmations.every((a) => d01.agreements[0]!.partyIds.includes(a.partyId))).toBe(true);
+    expect(av.affirmations).toHaveLength(av.terms.length * 2);
+
+    const topo = (await demoApp.inject({ method: 'GET', url: `/demo/projects/${topoId}/record` })).json<Record>();
+    expect(topo.universal.terms).toHaveLength(2);
+    expect(topo.universal.versions[0]!.terms).toHaveLength(1);
+    expect(topo.universal.versions[0]!.affirmations).toHaveLength(2);
+    const resent = topo.agreements.find((a) => a.versions.length === 2)!;
+    const [v1, v2] = resent.versions;
+    expect(v1!.terms.map((t) => t.content)).toHaveLength(3);
+    expect(v2!.terms.map((t) => t.sourceTermId)).toEqual(v1!.terms.slice(0, 2).map((t) => t.sourceTermId));
+    expect(v1!.affirmations).toHaveLength(1);
+    expect(v2!.affirmations).toHaveLength(0);
+
+    // No decided-looking state leaks out: no finality, requiredness or status fields.
+    const raw = JSON.stringify([d01, topo]);
+    expect(raw).not.toMatch(/"(final|finalized|required|status|pending|declined|signed|outstanding)"/i);
+  });
+
   it('serve the inspector with restrictive headers', async () => {
     const page = await fetch(`${base}/`);
     expect(page.status).toBe(200);
@@ -208,7 +244,7 @@ describe('demo fixtures and server', () => {
     const { id } = (await created.json()) as { id: string };
     const record = await fetch(`${base}/demo/projects/${id}/record`);
     expect(record.status).toBe(200);
-    expect(await record.json()).toEqual({ project: { id }, parties: [], agreements: [] });
+    expect(await record.json()).toEqual({ project: { id }, parties: [], universal: { terms: [], versions: [] }, agreements: [] });
   });
 
   it('refuse a Host header that is not this loopback server (DNS rebinding)', async () => {

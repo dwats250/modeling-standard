@@ -2,6 +2,15 @@ import { z } from 'zod';
 import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
 import { listPairwiseAgreements } from '../projects/agreement.ts';
+import { listAgreementAffirmations, listUniversalAffirmations, type AffirmationRecord } from '../projects/affirmations.ts';
+import { listAgreementTerms, listUniversalTerms } from '../projects/terms.ts';
+import {
+  findAgreementVersion,
+  findUniversalVersion,
+  listAgreementVersions,
+  listUniversalVersions,
+  type PresentedTerm,
+} from '../projects/versions.ts';
 import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, listProjectsCreatedBy } from '../projects/project.ts';
 
@@ -50,6 +59,38 @@ export const listDemoProjectsOperation = defineOperation({
   },
 });
 
+// Stored terms (S03), sealed presented versions (S04) and per-term
+// affirmation rows (S05), exactly as stored. Deliberately no finality,
+// requiredness, "pending" or "declined": none of those is decided, and the
+// absence of an affirmation row means nothing (S05).
+const storedTerm = z.strictObject({ id: z.uuid(), position: z.number().int(), content: z.string() });
+const presentedVersion = z.strictObject({
+  id: z.uuid(),
+  sequence: z.number().int(),
+  presentedAt: z.iso.datetime({ offset: true }),
+  terms: z.array(z.strictObject({ id: z.uuid(), sourceTermId: z.uuid(), position: z.number().int(), content: z.string() })),
+  affirmations: z.array(
+    z.strictObject({ presentedTermId: z.uuid(), partyId: z.uuid(), affirmedAt: z.iso.datetime({ offset: true }) }),
+  ),
+});
+
+function versionDto(
+  version: { id: string; sequence: number; presentedAt: Date; terms: readonly PresentedTerm[] },
+  affirmations: readonly AffirmationRecord[],
+): z.output<typeof presentedVersion> {
+  return {
+    id: version.id,
+    sequence: version.sequence,
+    presentedAt: version.presentedAt.toISOString(),
+    terms: version.terms.map((t) => ({ id: t.id, sourceTermId: t.sourceTermId, position: t.position, content: t.content })),
+    affirmations: affirmations.map((a) => ({
+      presentedTermId: a.presentedTermId,
+      partyId: a.partyId,
+      affirmedAt: a.affirmedAt.toISOString(),
+    })),
+  };
+}
+
 export const readDemoProjectRecordOperation = defineOperation({
   name: 'demo.project.record',
   method: 'GET',
@@ -58,7 +99,15 @@ export const readDemoProjectRecordOperation = defineOperation({
   output: z.strictObject({
     project: z.strictObject({ id: z.uuid() }),
     parties: z.array(z.strictObject({ id: z.uuid() })),
-    agreements: z.array(z.strictObject({ id: z.uuid(), partyIds: z.tuple([z.uuid(), z.uuid()]) })),
+    universal: z.strictObject({ terms: z.array(storedTerm), versions: z.array(presentedVersion) }),
+    agreements: z.array(
+      z.strictObject({
+        id: z.uuid(),
+        partyIds: z.tuple([z.uuid(), z.uuid()]),
+        terms: z.array(storedTerm),
+        versions: z.array(presentedVersion),
+      }),
+    ),
   }),
   access: {
     kind: 'protected',
@@ -68,10 +117,36 @@ export const readDemoProjectRecordOperation = defineOperation({
   run: async (_input, { db, target }) => {
     const parties = await listProjectParties(db, target.id);
     const agreements = await listPairwiseAgreements(db, target.id);
+
+    const universalVersions = [];
+    for (const { id } of await listUniversalVersions(db, target.id)) {
+      const version = await findUniversalVersion(db, id);
+      if (version) universalVersions.push(versionDto(version, await listUniversalAffirmations(db, id)));
+    }
+
+    const agreementDtos = [];
+    for (const agreement of agreements) {
+      const versions = [];
+      for (const { id } of await listAgreementVersions(db, agreement.id)) {
+        const version = await findAgreementVersion(db, id);
+        if (version) versions.push(versionDto(version, await listAgreementAffirmations(db, id)));
+      }
+      agreementDtos.push({
+        id: agreement.id,
+        partyIds: [agreement.partyIds[0], agreement.partyIds[1]] as [string, string],
+        terms: (await listAgreementTerms(db, agreement.id)).map((t) => ({ id: t.id, position: t.position, content: t.content })),
+        versions,
+      });
+    }
+
     return {
       project: { id: target.id },
       parties: parties.map((p) => ({ id: p.id })),
-      agreements: agreements.map((a) => ({ id: a.id, partyIds: [a.partyIds[0], a.partyIds[1]] as [string, string] })),
+      universal: {
+        terms: (await listUniversalTerms(db, target.id)).map((t) => ({ id: t.id, position: t.position, content: t.content })),
+        versions: universalVersions,
+      },
+      agreements: agreementDtos,
     };
   },
 });

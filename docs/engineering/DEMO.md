@@ -19,8 +19,9 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 - **Same boundary.** The two inspector reads (`GET /demo/projects`, `GET /demo/projects/:id/record`) are ordinary protected operations with strict input/output and the S01 creator-only policy, registered through `createApp({ additionalOperations })`.
 - **Front door.** `src/demo/server.ts` serves the static UI and forwards everything else to the app with `app.inject`, passing only `content-type`. Fastify's "every route is an operation" rule is untouched.
 - **Fixtures.** Parties and agreements are written with the S01/S02 data functions (fixture construction; no product path exists — D03, D02/D12). Labels such as "the model" are demo annotations in `.demo/fixture.json`, never stored in the product database.
+- **Terms, versions, affirmation rows (S03–S05).** The record shows stored terms per layer, each sealed presented version with its frozen wording, what a resend dropped, and a term × party grid of stored affirmation rows. It computes no finality, requiredness, "pending" or "declined": an empty cell means only that no row is stored. Fixture term text is marked `[synthetic]`.
 - **Not a party view.** The inspector shows the whole stored record. What each party sees is D10.
 
 ## Deliberately unavailable
 
-Shown disabled with the blocking decision: add a party (D03), create an agreement (D02/D12), send or invite (D03), view as a party (D10).
+Shown disabled with the blocking decision: add a party (D03), create an agreement (D02/D12), add or present terms (D02/D04), record an affirmation (D12/D03), send or invite (D03), view as a party (D10).
