@@ -9,7 +9,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
-import { demoDatabaseUrl, demoOperatorPrincipal } from '../../src/demo/demo.ts';
+import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../../src/demo/export.ts';
 import type { FixtureAnnotations } from '../../src/demo/fixtures.ts';
 import { demoOperations } from '../../src/demo/operations.ts';
@@ -83,7 +83,7 @@ afterAll(async () => {
 /** The demo server as `npm run demo` runs it, on the port it had before if any. */
 async function startServer(port = 0): Promise<void> {
   const logger = createLogger('warn');
-  database = openDatabase(demoDatabaseUrl(requireEnv('DATABASE_URL')), logger);
+  database = openDatabase(demoDatabaseTarget(requireEnv('DATABASE_URL')), logger);
   app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
   await app.ready();
   server = createDemoServer({ app, fixturePath: join(fixtureDir, 'fixture.json') });

@@ -1,4 +1,6 @@
+import { createRequire } from 'node:module';
 import type { ResolvePrincipal, SyntheticPrincipal } from '../authorization/access.ts';
+import type { ExplicitDatabaseTarget } from '../infrastructure/database/client.ts';
 
 /**
  * The local synthetic demo: shared constants and guards.
@@ -28,40 +30,81 @@ export class DemoGuardError extends Error {
   }
 }
 
-/** The same credentials, pointed at the demo database. */
-export function demoDatabaseUrl(url: string): string {
-  const parsed = new URL(url);
-  parsed.pathname = `/${DEMO_DATABASE}`;
-  return parsed.toString();
-}
-
 /** True for a loopback host name, with or without IPv6 brackets. */
 export function isLoopbackHost(host: string): boolean {
   return LOOPBACK_HOSTS.has(host.replace(/^\[(.*)\]$/, '$1'));
 }
 
-/**
- * Refuses to run anywhere but loopback, against a database server anywhere
- * but loopback, or against any database but the demo database. Reset drops
- * that database, so all three must hold.
- */
-export function assertDemoTarget(options: { host: string; databaseUrl: string }): void {
-  if (!isLoopbackHost(options.host)) {
+/** Refuses to serve the demo anywhere but loopback. */
+export function assertLoopbackListenHost(host: string): void {
+  if (!isLoopbackHost(host)) {
     throw new DemoGuardError('The synthetic demo listens on loopback only (127.0.0.1, ::1 or localhost).');
   }
-  let database: string;
-  let databaseHost: string;
+}
+
+// The pinned driver's own resolution of a connection string: the same code
+// path pg.Client and pg.Pool use, including query parameters that override
+// the URL authority (`?host=`, `?port=`), a host taken from PGHOST when the
+// URL has none, and Unix-socket hosts. `pg` exports `./lib/*`.
+interface ResolvedParameters {
+  readonly host: string | undefined;
+  readonly port: number;
+  readonly database: string | undefined;
+  readonly user: string | undefined;
+  readonly password: string | undefined;
+  readonly isDomainSocket: boolean;
+}
+const ConnectionParameters = createRequire(import.meta.url)('pg/lib/connection-parameters.js') as new (config: {
+  connectionString: string;
+}) => ResolvedParameters;
+
+/**
+ * Resolves a configured PostgreSQL URL exactly as the pinned `pg` driver
+ * would, and refuses anything but a TCP server on loopback. The result is an
+ * explicit target (no connection string left to reinterpret) and is what the
+ * demo passes to the driver, so the target checked is the target used. Unix
+ * sockets are refused (fail closed); the demo uses TCP loopback.
+ *
+ * Throws before any client exists or any SQL is sent.
+ */
+function resolveLoopbackTarget(configuredUrl: string, databaseOverride?: string): ExplicitDatabaseTarget {
+  let resolved: ResolvedParameters;
   try {
-    const url = new URL(options.databaseUrl);
-    database = decodeURIComponent(url.pathname.slice(1));
-    databaseHost = url.hostname;
+    resolved = new ConnectionParameters({ connectionString: configuredUrl });
   } catch {
-    throw new DemoGuardError('The demo database URL is not a valid URL.');
+    throw new DemoGuardError('The demo database URL could not be read.');
   }
-  if (!isLoopbackHost(databaseHost)) {
-    throw new DemoGuardError('The synthetic demo only uses a PostgreSQL server on loopback.');
+  const host = resolved.host ?? '';
+  if (resolved.isDomainSocket || !isLoopbackHost(host)) {
+    throw new DemoGuardError('The synthetic demo only uses a PostgreSQL server on TCP loopback (127.0.0.1, ::1 or localhost).');
   }
-  if (database !== DEMO_DATABASE) {
-    throw new DemoGuardError(`The synthetic demo only runs against the ${DEMO_DATABASE} database.`);
+  if (!Number.isInteger(resolved.port) || resolved.port < 1 || resolved.port > 65535) {
+    throw new DemoGuardError('The demo database port is not valid.');
   }
+  const database = databaseOverride ?? resolved.database ?? '';
+  if (database === '') throw new DemoGuardError('The database URL names no database.');
+  return {
+    host,
+    port: resolved.port,
+    database,
+    ...(resolved.user === undefined ? {} : { user: resolved.user }),
+    ...(resolved.password === undefined ? {} : { password: resolved.password }),
+  };
+}
+
+/** The demo database, with the configured credentials, on a verified loopback server. */
+export function demoDatabaseTarget(configuredUrl: string): ExplicitDatabaseTarget {
+  return resolveLoopbackTarget(configuredUrl, DEMO_DATABASE);
+}
+
+/**
+ * The configured migration role's own database, on a verified loopback
+ * server: where reset runs DROP and CREATE DATABASE for the demo database.
+ */
+export function demoAdminTarget(configuredUrl: string): ExplicitDatabaseTarget {
+  const target = resolveLoopbackTarget(configuredUrl);
+  if (target.database === DEMO_DATABASE) {
+    throw new DemoGuardError('Reset needs the migration role\'s own database, not the demo database.');
+  }
+  return target;
 }

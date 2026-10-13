@@ -10,7 +10,7 @@ import { inject } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import { operations } from '../../src/app/operation-list.ts';
-import { DEMO_OPERATOR, DemoGuardError, assertDemoTarget, demoDatabaseUrl, demoOperatorPrincipal } from '../../src/demo/demo.ts';
+import { DEMO_OPERATOR, DemoGuardError, assertLoopbackListenHost, demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { loadDemoFixtures } from '../../src/demo/fixtures.ts';
 import { demoOperations } from '../../src/demo/operations.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
@@ -73,30 +73,16 @@ describe('separation from production', () => {
 });
 
 describe('demo guards', () => {
-  const demoUrl = demoDatabaseUrl('postgres://ms_runtime:pw@127.0.0.1:5432/modeling_standard');
-
-  it('points the configured credentials at the demo database', () => {
-    expect(new URL(demoUrl).pathname).toBe('/modeling_standard_demo');
-    expect(new URL(demoUrl).username).toBe('ms_runtime');
+  it('serves on loopback only', () => {
+    for (const host of ['127.0.0.1', '::1', 'localhost']) expect(() => assertLoopbackListenHost(host)).not.toThrow();
+    for (const host of ['0.0.0.0', '192.168.1.10', 'example.com', '']) expect(() => assertLoopbackListenHost(host)).toThrow(DemoGuardError);
   });
 
-  it('accepts loopback and the demo database only', () => {
-    for (const host of ['127.0.0.1', '::1', 'localhost']) expect(() => assertDemoTarget({ host, databaseUrl: demoUrl })).not.toThrow();
-    for (const host of ['0.0.0.0', '192.168.1.10', 'example.com', '']) {
-      expect(() => assertDemoTarget({ host, databaseUrl: demoUrl })).toThrow(DemoGuardError);
+  it('points the configured credentials at the demo database, whatever database the URL names', () => {
+    for (const db of ['modeling_standard', 'postgres', 'modeling_standard_demo']) {
+      const target = demoDatabaseTarget(`postgres://ms_runtime:pw@127.0.0.1:5432/${db}?database=other`);
+      expect(target).toEqual({ host: '127.0.0.1', port: 5432, database: 'modeling_standard_demo', user: 'ms_runtime', password: 'pw' });
     }
-    for (const db of ['modeling_standard', 'modeling_standard_test', 'modeling_standard_demo2', 'postgres']) {
-      const url = `postgres://ms_runtime:pw@127.0.0.1:5432/${db}`;
-      expect(() => assertDemoTarget({ host: '127.0.0.1', databaseUrl: url })).toThrow(DemoGuardError);
-    }
-  });
-
-  it('refuses a database server that is not on loopback', () => {
-    for (const host of ['db.example.com', '10.0.0.5', '0.0.0.0']) {
-      const url = `postgres://ms_runtime:pw@${host}:5432/modeling_standard_demo`;
-      expect(() => assertDemoTarget({ host: '127.0.0.1', databaseUrl: url })).toThrow(DemoGuardError);
-    }
-    expect(() => assertDemoTarget({ host: '127.0.0.1', databaseUrl: 'postgres://u:p@[::1]:5432/modeling_standard_demo' })).not.toThrow();
   });
 
   it('uses one fixed operator for every request', () => {
@@ -262,8 +248,13 @@ describe('demo fixtures and server', () => {
     expect(await statusFor('evil.example.com')).toBe(421);
     expect(await statusFor(`evil.example.com:${port}`)).toBe(421);
     expect(await statusFor(`127.0.0.1:${port + 1}`)).toBe(421);
+    // Malformed authorities that a URL parser would have read as loopback (Astra B01).
+    for (const host of [`evil@127.0.0.1:${port}`, `127.0.0.1:${port}/evil`, `127.0.0.1:${port}?x=1`, `127.0.0.1:${port}#x`, `127.0.0.1:0${port}`]) {
+      expect({ host, status: await statusFor(host) }).toEqual({ host, status: 421 });
+    }
     expect(await statusFor(`localhost:${port}`)).toBe(200);
     expect(await statusFor(`127.0.0.1:${port}`)).toBe(200);
+    expect(await statusFor(`[::1]:${port}`)).toBe(200);
   });
 
   it('keep the boundary: strict input, no other methods, an empty fixture when none is written', async () => {

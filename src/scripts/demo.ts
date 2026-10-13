@@ -3,10 +3,10 @@ import { sql } from 'drizzle-orm';
 import { createApp } from '../app/create-app.ts';
 import { createLogger } from '../app/logger.ts';
 import { ConfigError, loadAppConfig } from '../config/config.ts';
-import { DemoGuardError, assertDemoTarget, demoDatabaseUrl, demoOperatorPrincipal } from '../demo/demo.ts';
+import { DemoGuardError, assertLoopbackListenHost, demoDatabaseTarget, demoOperatorPrincipal } from '../demo/demo.ts';
 import { demoOperations } from '../demo/operations.ts';
 import { createDemoServer } from '../demo/server.ts';
-import { openDatabase } from '../infrastructure/database/client.ts';
+import { openDatabase, type DatabaseTarget } from '../infrastructure/database/client.ts';
 
 /**
  * `npm run demo`. Serves the synthetic demo on loopback against the demo
@@ -15,12 +15,12 @@ import { openDatabase } from '../infrastructure/database/client.ts';
  */
 
 let config;
-let runtimeUrl: string;
+let runtime: DatabaseTarget;
 let port: number;
 try {
   config = loadAppConfig(process.env);
-  runtimeUrl = demoDatabaseUrl(config.databaseUrl);
-  assertDemoTarget({ host: config.host, databaseUrl: runtimeUrl });
+  assertLoopbackListenHost(config.host);
+  runtime = demoDatabaseTarget(config.databaseUrl);
   port = Number(process.env.DEMO_PORT ?? '3100');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError(['DEMO_PORT: must be an integer between 1 and 65535']);
 } catch (error) {
@@ -30,7 +30,7 @@ try {
 }
 
 const logger = createLogger(config.logLevel);
-const database = openDatabase(runtimeUrl, logger);
+const database = openDatabase(runtime, logger);
 try {
   await database.db.execute(sql`select 1 from project limit 1`);
 } catch {

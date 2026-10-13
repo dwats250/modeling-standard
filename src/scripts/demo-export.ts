@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { createApp } from '../app/create-app.ts';
 import { createLogger } from '../app/logger.ts';
 import { loadAppConfig } from '../config/config.ts';
-import { assertDemoTarget, demoDatabaseUrl, demoOperatorPrincipal } from '../demo/demo.ts';
+import { assertLoopbackListenHost, demoDatabaseTarget, demoOperatorPrincipal } from '../demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../demo/export.ts';
 import { demoOperations } from '../demo/operations.ts';
 import { openDatabase } from '../infrastructure/database/client.ts';
@@ -16,8 +16,8 @@ import { openDatabase } from '../infrastructure/database/client.ts';
 
 try {
   const config = loadAppConfig(process.env);
-  const runtimeUrl = demoDatabaseUrl(config.databaseUrl);
-  assertDemoTarget({ host: config.host, databaseUrl: runtimeUrl });
+  assertLoopbackListenHost(config.host);
+  const runtime = demoDatabaseTarget(config.databaseUrl);
 
   const dir = resolve(process.cwd(), '.demo');
   let fixture: unknown = { projects: {} };
@@ -28,7 +28,7 @@ try {
   }
 
   const logger = createLogger('warn');
-  const database = openDatabase(runtimeUrl, logger);
+  const database = openDatabase(runtime, logger);
   const app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
   try {
     await app.ready();
