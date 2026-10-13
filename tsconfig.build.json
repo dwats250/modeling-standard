@@ -6,5 +6,12 @@
     "rootDir": "src",
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/demo",
+    "src/scripts/demo.ts",
+    "src/scripts/demo-reset.ts"
+  ]
 }

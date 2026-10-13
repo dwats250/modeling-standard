@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import type { Executor } from '../infrastructure/database/client.ts';
 import { projectParty } from './tables.ts';
 
@@ -25,4 +26,13 @@ export async function addProjectParty(db: Executor, projectId: string): Promise<
     .returning({ id: projectParty.id, projectId: projectParty.projectId });
   if (!row) throw new Error('insert returned no row');
   return row;
+}
+
+/** A project's parties, in a stable (id) order that carries no meaning. */
+export async function listProjectParties(db: Executor, projectId: string): Promise<ProjectPartyRecord[]> {
+  return db
+    .select({ id: projectParty.id, projectId: projectParty.projectId })
+    .from(projectParty)
+    .where(eq(projectParty.projectId, projectId))
+    .orderBy(projectParty.id);
 }

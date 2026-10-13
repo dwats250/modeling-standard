@@ -58,3 +58,13 @@ export async function findPairwiseAgreement(db: Executor, id: string): Promise<P
   const [row] = await db.select().from(pairwiseAgreement).where(eq(pairwiseAgreement.id, id)).limit(1);
   return row ? toRecord(row) : undefined;
 }
+
+/** A project's pairwise agreements, in a stable (id) order that carries no meaning. */
+export async function listPairwiseAgreements(db: Executor, projectId: string): Promise<PairwiseAgreementRecord[]> {
+  const rows = await db
+    .select()
+    .from(pairwiseAgreement)
+    .where(eq(pairwiseAgreement.projectId, projectId))
+    .orderBy(pairwiseAgreement.id);
+  return rows.map(toRecord);
+}
