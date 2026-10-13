@@ -426,11 +426,13 @@ const DECISIONS = [
       'A party is a bare identifier inside one project (S01). It is bound to no account, person or address.',
       'Affirmation rows name a party (S05). They cannot yet record the credential used (DOCTRINE:52).',
       'Production has no way to know who is calling: every protected request is refused.',
+      'Settled in D11: real participation requires real verification; self-attestation is not enough.',
     ],
     open: [
       'Whether an account is needed to read terms, to affirm them, or at all.',
       'Whether a link or one-time code sent to the invited address is enough.',
       'Forwarded invitations, wrong addresses, lost access, and getting back to a record later.',
+      'How the credential, the binding of a person to a party, and the timing of D11 verification fit together (D11 timing is open too).',
     ],
     blocks: ['Inviting anyone', 'A party affirming a term (D12: only the party itself may)', 'Credential evidence on each affirmation', 'Real participation'],
     question:
@@ -556,6 +558,12 @@ function renderDecisions() {
           'What is built, what is still undecided, what waits on it, and the smallest question that would unblock it. ' +
           'Questions only: nothing here suggests an answer.',
       }),
+      el('p', {
+        className: 'meta scope-note',
+        text:
+          'A selected walkthrough of four decisions, not the full list. Other decisions are open too (among them D02 lifecycle, ' +
+          'D06 real use, D08 documents, D09 preservation and D11 verification timing); decisions/README.md lists every decision and its status.',
+      }),
     ]),
     section('What waits on what', 'Each row is something the product cannot do yet.', el('div', { className: 'table-scroll' }, [strip])),
     cards,
@@ -662,7 +670,7 @@ function simAssumptions() {
       text:
         'The demo operator adds and presents terms and records affirmation rows naming a party. None of that is a product act: ' +
         'who may author or present terms is undecided (D02, D04), and only a party may affirm for itself (D12), by means not yet decided (D03). ' +
-        'A version needing at least one term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
+        'A version needing at least one term is a current storage restriction: the database requires a positive term count (S04). That is how it is built today, not a product rule. Not repeating a term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
     }),
   ]);
 }

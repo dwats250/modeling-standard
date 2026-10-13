@@ -29,8 +29,10 @@ import { presentAgreementVersion, presentUniversalVersion, TermNotInContainerErr
  *   the product only the party itself may affirm (D12), and how a person acts
  *   as a party is undecided (D03). These rows are fixture evidence, not
  *   anyone's act.
- * - A presented version must hold at least one term and no term twice. That
- *   is an input rule of this simulator, not a product rule.
+ * - A presented version must hold at least one term: the database requires
+ *   a positive term count (S04), a current storage restriction rather than a
+ *   product rule, and the simulator checks it up front. Not presenting a term
+ *   twice is this simulator's own input rule.
  *
  * Everything else is enforced by the database exactly as in S03 to S05:
  * frozen versions, gapless numbering, affirmation only of a sole version 1,

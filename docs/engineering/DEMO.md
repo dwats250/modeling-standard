@@ -12,7 +12,7 @@ npm run demo:export  # .demo/modeling-standard-demo.html — portable, read-only
 
 The snapshot is one HTML file with the inspector's markup, styles, script and every record it shows inlined. It opens from disk on any device, makes no network request (its CSP is `default-src 'none'`), refuses every write, and says on every screen that it is a read-only synthetic snapshot. It contains only what the inspector shows: synthetic records and fixture labels; no credentials, database location or internal principal (tested).
 
-The inspector's **Open decisions for Cory** view maps D03, D10, D04 requiredness and D05: what is built, what is undecided, what waits on it, and the smallest question. It poses questions only.
+The inspector's **Open decisions for Cory** view is a selected walkthrough, not the full list of open decisions (`decisions/README.md` has every decision and its status). It maps D03, D10, D04 requiredness and D05: what is built, what is undecided, what waits on it, and the smallest question. It poses questions only.
 
 Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 
@@ -41,7 +41,7 @@ What a later version with fewer terms means differs by layer, and the inspector 
 Neither layer's wording claims withdrawal, replacement or finality.
 
 - Seven demo-only operations under `/demo/sim/` (`src/demo/simulator.ts`), protected, creator-only on the project (directly or through the agreement), strict input; never in the production list.
-- **Assumptions, shown in the UI:** the operator adds and presents terms (who may is D02/D04) and records rows naming a party (only the party may, D12; how is D03). A version needs at least one term and no repeats — a simulator input rule, not a product rule.
+- **Assumptions, shown in the UI:** the operator adds and presents terms (who may is D02/D04) and records rows naming a party (only the party may, D12; how is D03). A version needs at least one term: the database requires a positive term count (S04), a current storage restriction rather than a product rule. No repeated term is a simulator input rule.
 - Everything else is the database's own S03–S05 rules; violations come back as 409s (`version_not_affirmable`, `already_affirmed`, `party_not_in_agreement`, `presented_term_not_found`, `term_not_in_container`).
 - **Reset:** start another simulation for a clean project; `npm run demo:reset` restores the whole demo database. Records are append-only, so nothing is edited or deleted in place.
 - Hidden in the portable snapshot.
