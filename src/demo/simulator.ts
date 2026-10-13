@@ -15,7 +15,10 @@ import { presentAgreementVersion, presentUniversalVersion, TermNotInContainerErr
 /**
  * The demo's scenario simulator. Demo-only operations, registered only by the
  * demo server, that drive the S01 to S05 data functions so a viewer can watch
- * terms being presented, dropped and resent, and affirmation rows appear.
+ * terms being presented, a pairwise term dropped and resent (D02), and
+ * affirmation rows appear. A later universal version with a different set of
+ * terms can be stored too, but whether a shared safety or consent term may be
+ * left out is undecided (Cory); the inspector says so.
  *
  * Every one of these is a SIMULATION. The product has no path for any of
  * them, because who may do each is undecided:

@@ -241,7 +241,7 @@ function renderDetail() {
             ]),
             idCode(agreement.id),
           ]),
-          renderLayer(agreement.terms, agreement.versions, [one, two], annotation, { base: `/demo/sim/agreements/${agreement.id}` }),
+          renderLayer(agreement.terms, agreement.versions, [one, two], annotation, { layer: 'pairwise', base: `/demo/sim/agreements/${agreement.id}` }),
         ]),
       );
     }
@@ -263,7 +263,7 @@ function renderDetail() {
     section(
       'Shared terms — universal layer',
       'Safety and consent terms held on the project, for everyone on site (D02). Who counts as on site is undecided.',
-      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { base: `/demo/sim/projects/${record.project.id}` }),
+      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { layer: 'universal', base: `/demo/sim/projects/${record.project.id}` }),
     ),
     section(
       'Pairwise agreements',
@@ -297,6 +297,28 @@ function legend() {
     ]),
   ]);
 }
+
+// What a later version means differs by layer. Pairwise drop-and-resend is
+// decided (D02). For the shared universal layer the storage can freeze a later
+// version with a different set of terms, but whether a safety or consent term
+// may be left out is undecided and Cory's call. Neither layer's wording claims
+// withdrawal, replacement or finality.
+const LAYER_COPY = {
+  pairwise: {
+    presentHint:
+      'Choose the terms to present. Leaving a term out of the next version is how a term is dropped and resent (D02). Earlier versions stay exactly as they were.',
+    notInLater: (sequence, content) => `Dropped since version ${sequence}: “${content}”`,
+    notInLaterNote: null,
+    laterVersion: 'No rows can be recorded against a later version yet: how a resent version is affirmed is undecided (D02).',
+  },
+  universal: {
+    presentHint:
+      'Choose the terms to present. Storage can freeze a later version with a different set of terms, but whether a shared safety or consent term may be left out is undecided — that is for Cory. This shows the storage mechanics only.',
+    notInLater: (sequence, content) => `Not in this version, though in version ${sequence}: “${content}”`,
+    notInLaterNote: 'Whether a shared safety or consent term may be left out of a later version is undecided (Cory).',
+    laterVersion: 'No rows can be recorded against a later version yet. What a later shared version means is undecided.',
+  },
+};
 
 function renderLayer(terms, versions, partyIds, annotation, ctx) {
   const wrap = el('div', { className: 'layer' });
@@ -341,13 +363,15 @@ function renderVersion(version, previous, versionCount, partyIds, annotation, ct
     el('span', { className: 'meta', text: `presented ${formatTime(version.presentedAt)}` }),
   ]);
 
+  const copy = LAYER_COPY[ctx.layer];
   const notes = [];
   if (previous) {
     const kept = new Set(version.terms.map((t) => t.sourceTermId));
     const dropped = previous.terms.filter((t) => !kept.has(t.sourceTermId));
     for (const term of dropped) {
-      notes.push(el('p', { className: 'dropped', text: `Dropped since version ${previous.sequence}: “${term.content}”` }));
+      notes.push(el('p', { className: 'dropped', text: copy.notInLater(previous.sequence, term.content) }));
     }
+    if (dropped.length > 0 && copy.notInLaterNote) notes.push(el('p', { className: 'hint', text: copy.notInLaterNote }));
   }
   if (versionCount > 1) {
     notes.push(
@@ -356,7 +380,7 @@ function renderVersion(version, previous, versionCount, partyIds, annotation, ct
         text:
           version.sequence === 1
             ? 'Unchanged by the later version. Once a later version exists, no new rows can be recorded here (S05).'
-            : 'No rows can be recorded against a later version yet: whether and how a resend is affirmed is undecided (D02).',
+            : copy.laterVersion,
       }),
     );
   }
@@ -435,7 +459,7 @@ const DECISIONS = [
     file: 'decisions/D04-terms-and-affirmation.md',
     built: [
       'Every term is its own row and its own unit of evidence (S03).',
-      'Presented versions are frozen; dropping a term and resending leaves the earlier version intact (S04).',
+      'Presented versions are frozen, and a later version never changes an earlier one (S04). Pairwise drop-and-resend is a later version without the term (D02).',
       'Each party’s affirmation of each presented term is a separate, timestamped row (S05).',
       'Settled rule (D02): an agreement is final only when every named party has affirmed every required term.',
     ],
@@ -540,7 +564,7 @@ function renderDecisions() {
 // ---- Simulator (live demo only; never in the snapshot) ----
 
 const SIM_ERRORS = {
-  version_not_affirmable: 'Only a sole version 1 can take rows (S05). Whether and how a resend is affirmed is undecided (D02).',
+  version_not_affirmable: 'Only a sole version 1 can take rows (S05). How a later version is affirmed is undecided.',
   already_affirmed: 'That party already has a row for this term.',
   party_not_in_agreement: 'That party is not one of this agreement’s two parties.',
   term_not_in_container: 'A chosen term is not stored in this container.',
@@ -618,7 +642,7 @@ function simPanel(terms, versions, ctx) {
     el('div', { className: 'sim-row' }, [input, add]),
     terms.length > 0
       ? el('div', {}, [
-          el('p', { className: 'hint', text: 'Choose the terms to present. Leaving one out is how a term is dropped and resent (D02); earlier versions stay as they are.' }),
+          el('p', { className: 'hint sim-present-hint', text: LAYER_COPY[ctx.layer].presentHint }),
           boxes,
           present,
         ])

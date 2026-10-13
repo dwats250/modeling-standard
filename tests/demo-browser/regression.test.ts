@@ -185,10 +185,35 @@ describe('demo regression', () => {
     }
     await present(1, 'Present version 2', [2]);
 
-    await expect.poll(() => page.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('three, to drop')]);
+    await expect.poll(() => block.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('three, to drop')]);
     // Version 1 keeps its two rows; nothing is offered on either version now.
     expect(await block.locator('.cell.yes').count()).toBe(2);
     expect(await block.locator('button.sim-affirm').count()).toBe(0);
+
+    // Universal layer: storage can freeze a later version without a term, but
+    // the inspector must not present that as decided (Astra B02).
+    await addTerm(0, '[synthetic] shared one');
+    await addTerm(0, '[synthetic] shared two');
+    await present(0, 'Present version 1');
+    await present(0, 'Present version 2', [1]);
+    const shared = page.locator('section.card', { hasText: 'Shared terms — universal layer' });
+    await expect.poll(() => shared.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('shared two')]);
+
+    const universalHint = (await shared.locator('.sim-present-hint').textContent()) ?? '';
+    const pairwiseHint = (await block.locator('.sim-present-hint').textContent()) ?? '';
+    const universalNotes = (await shared.locator('.version p').allTextContents()).join(' ');
+    const pairwiseNotes = (await block.locator('.version p').allTextContents()).join(' ');
+    expect(pairwiseHint).toContain('dropped and resent (D02)');
+    expect(pairwiseNotes).toContain('Dropped since version 1');
+    expect(universalHint).not.toBe(pairwiseHint);
+    expect(universalHint).toMatch(/undecided/);
+    expect(universalHint).toMatch(/Cory/);
+    expect(universalHint).not.toMatch(/D02|dropped and resent/);
+    expect(universalNotes).toMatch(/undecided \(Cory\)/);
+    expect(universalNotes).not.toMatch(/Dropped since|resen/i);
+    for (const text of [universalHint, pairwiseHint, universalNotes, pairwiseNotes]) {
+      expect(text).not.toMatch(/withdr|supersed|replac|final|in force|current/i);
+    }
     expect(await page.locator('.sim-assumptions').count()).toBe(1);
     await page.screenshot({ path: join(SHOTS, 'simulator-desktop.png'), fullPage: true });
 

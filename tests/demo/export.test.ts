@@ -63,6 +63,12 @@ describe('portable snapshot', () => {
     }
   });
 
+  it('carries the layer-aware wording, not the old universal drop-and-resend claim (Astra B02)', () => {
+    expect(html).not.toContain('Leaving one out is how a term is dropped and resent (D02)');
+    expect(html).toContain('whether a shared safety or consent term may be left out is undecided');
+    expect(html).toContain('Leaving a term out of the next version is how a term is dropped and resent (D02)');
+  });
+
   it('says it is a read-only synthetic snapshot', () => {
     expect(html).toContain('read-only synthetic snapshot');
     expect(html).toContain('Synthetic demo');
