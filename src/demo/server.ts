@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
+import { isLoopbackHost } from './demo.ts';
 
 /**
  * The demo's front door. It serves the inspector's static files and passes
@@ -50,7 +51,28 @@ function send(response: ServerResponse, status: number, type: string, body: stri
   response.end(body);
 }
 
+/**
+ * The Host header must name loopback and this server's own port. A page on
+ * another origin that rebinds its DNS name to 127.0.0.1 sends its own name,
+ * so it is refused before anything is read or written.
+ */
+function hostIsOwnLoopback(request: IncomingMessage): boolean {
+  const header = request.headers.host;
+  if (typeof header !== 'string') return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(`http://${header}`);
+  } catch {
+    return false;
+  }
+  return isLoopbackHost(parsed.hostname) && Number(parsed.port || '80') === request.socket.localPort;
+}
+
 async function handle(options: DemoServerOptions, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  if (!hostIsOwnLoopback(request)) {
+    send(response, 421, 'application/json; charset=utf-8', '{"error":{"code":"misdirected_request"}}');
+    return;
+  }
   const url = new URL(request.url ?? '/', 'http://demo.invalid');
   const method = request.method ?? 'GET';
 

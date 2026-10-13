@@ -91,6 +91,14 @@ describe('demo guards', () => {
     }
   });
 
+  it('refuses a database server that is not on loopback', () => {
+    for (const host of ['db.example.com', '10.0.0.5', '0.0.0.0']) {
+      const url = `postgres://ms_runtime:pw@${host}:5432/modeling_standard_demo`;
+      expect(() => assertDemoTarget({ host: '127.0.0.1', databaseUrl: url })).toThrow(DemoGuardError);
+    }
+    expect(() => assertDemoTarget({ host: '127.0.0.1', databaseUrl: 'postgres://u:p@[::1]:5432/modeling_standard_demo' })).not.toThrow();
+  });
+
   it('uses one fixed operator for every request', () => {
     expect(demoOperatorPrincipal({} as never)).toBe(DEMO_OPERATOR);
   });
@@ -237,6 +245,25 @@ describe('demo fixtures and server', () => {
     const record = await fetch(`${base}/demo/projects/${id}/record`);
     expect(record.status).toBe(200);
     expect(await record.json()).toEqual({ project: { id }, parties: [], universal: { terms: [], versions: [] }, agreements: [] });
+  });
+
+  it('refuse a Host header that is not this loopback server (DNS rebinding)', async () => {
+    const { request } = await import('node:http');
+    const port = (server.address() as AddressInfo).port;
+    const statusFor = (host: string): Promise<number> =>
+      new Promise((resolve, reject) => {
+        const req = request({ host: '127.0.0.1', port, path: '/demo/projects', headers: { host } }, (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        });
+        req.on('error', reject);
+        req.end();
+      });
+    expect(await statusFor('evil.example.com')).toBe(421);
+    expect(await statusFor(`evil.example.com:${port}`)).toBe(421);
+    expect(await statusFor(`127.0.0.1:${port + 1}`)).toBe(421);
+    expect(await statusFor(`localhost:${port}`)).toBe(200);
+    expect(await statusFor(`127.0.0.1:${port}`)).toBe(200);
   });
 
   it('keep the boundary: strict input, no other methods, an empty fixture when none is written', async () => {

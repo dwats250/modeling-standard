@@ -14,7 +14,7 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 ## Boundaries
 
 - **Never in production.** `src/main.ts` and `src/app/operation-list.ts` do not import `src/demo/`; `tsconfig.build.json` excludes it from `dist/`. Tests pin both.
-- **Guards.** Refuses to start unless `HOST` is loopback and the target database is exactly `modeling_standard_demo`.
+- **Guards.** Refuses to start unless `HOST` is loopback, the PostgreSQL server is on loopback, and the target database is exactly `modeling_standard_demo`. Requests whose `Host` header is not this loopback server and port get 421 (blocks DNS rebinding).
 - **One principal.** A fixed synthetic `demo-operator`. It stands for nobody, is never a party, and only creates projects (real `project.create`) and reads its own records.
 - **Same boundary.** The two inspector reads (`GET /demo/projects`, `GET /demo/projects/:id/record`) are ordinary protected operations with strict input/output and the S01 creator-only policy, registered through `createApp({ additionalOperations })`.
 - **Front door.** `src/demo/server.ts` serves the static UI and forwards everything else to the app with `app.inject`, passing only `content-type`. Fastify's "every route is an operation" rule is untouched.
