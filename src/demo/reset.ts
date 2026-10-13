@@ -3,9 +3,9 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { createApp } from '../app/create-app.ts';
 import { createLogger } from '../app/logger.ts';
-import { openDatabase } from '../infrastructure/database/client.ts';
+import { connectionConfig, openDatabase } from '../infrastructure/database/client.ts';
 import { runMigrations } from '../infrastructure/database/migrate.ts';
-import { DEMO_DATABASE, assertDemoTarget, demoDatabaseUrl, demoOperatorPrincipal } from './demo.ts';
+import { DEMO_DATABASE, assertLoopbackListenHost, demoAdminTarget, demoDatabaseTarget, demoOperatorPrincipal } from './demo.ts';
 import { loadDemoFixtures, type FixtureAnnotations } from './fixtures.ts';
 import { demoOperations } from './operations.ts';
 
@@ -17,17 +17,19 @@ import { demoOperations } from './operations.ts';
  */
 export async function resetDemoDatabase(options: {
   readonly host: string;
-  /** Runtime and migration URLs as configured; pointed at the demo database here. */
+  /** Runtime and migration URLs as configured. Each is resolved and verified before any connection. */
   readonly databaseUrl: string;
   readonly migrationDatabaseUrl: string;
   readonly fixtureDir: string;
 }): Promise<FixtureAnnotations> {
-  const runtimeUrl = demoDatabaseUrl(options.databaseUrl);
-  const migrationUrl = demoDatabaseUrl(options.migrationDatabaseUrl);
-  assertDemoTarget({ host: options.host, databaseUrl: runtimeUrl });
-  assertDemoTarget({ host: options.host, databaseUrl: migrationUrl });
+  // Every target is resolved and verified first, so a bad one fails before
+  // any client exists. The verified targets are what the clients receive.
+  assertLoopbackListenHost(options.host);
+  const runtime = demoDatabaseTarget(options.databaseUrl);
+  const migration = demoDatabaseTarget(options.migrationDatabaseUrl);
+  const adminTarget = demoAdminTarget(options.migrationDatabaseUrl);
 
-  const admin = new pg.Client({ connectionString: options.migrationDatabaseUrl });
+  const admin = new pg.Client(connectionConfig(adminTarget));
   await admin.connect();
   try {
     try {
@@ -44,10 +46,10 @@ export async function resetDemoDatabase(options: {
   } finally {
     await admin.end();
   }
-  await runMigrations(migrationUrl);
+  await runMigrations(migration);
 
   const logger = createLogger('warn');
-  const database = openDatabase(runtimeUrl, logger);
+  const database = openDatabase(runtime, logger);
   const app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
   try {
     await app.ready();

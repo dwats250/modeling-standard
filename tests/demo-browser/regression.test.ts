@@ -9,7 +9,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
-import { demoDatabaseUrl, demoOperatorPrincipal } from '../../src/demo/demo.ts';
+import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../../src/demo/export.ts';
 import type { FixtureAnnotations } from '../../src/demo/fixtures.ts';
 import { demoOperations } from '../../src/demo/operations.ts';
@@ -83,7 +83,7 @@ afterAll(async () => {
 /** The demo server as `npm run demo` runs it, on the port it had before if any. */
 async function startServer(port = 0): Promise<void> {
   const logger = createLogger('warn');
-  database = openDatabase(demoDatabaseUrl(requireEnv('DATABASE_URL')), logger);
+  database = openDatabase(demoDatabaseTarget(requireEnv('DATABASE_URL')), logger);
   app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
   await app.ready();
   server = createDemoServer({ app, fixturePath: join(fixtureDir, 'fixture.json') });
@@ -185,10 +185,35 @@ describe('demo regression', () => {
     }
     await present(1, 'Present version 2', [2]);
 
-    await expect.poll(() => page.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('three, to drop')]);
+    await expect.poll(() => block.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('three, to drop')]);
     // Version 1 keeps its two rows; nothing is offered on either version now.
     expect(await block.locator('.cell.yes').count()).toBe(2);
     expect(await block.locator('button.sim-affirm').count()).toBe(0);
+
+    // Universal layer: storage can freeze a later version without a term, but
+    // the inspector must not present that as decided (Astra B02).
+    await addTerm(0, '[synthetic] shared one');
+    await addTerm(0, '[synthetic] shared two');
+    await present(0, 'Present version 1');
+    await present(0, 'Present version 2', [1]);
+    const shared = page.locator('section.card', { hasText: 'Shared terms — universal layer' });
+    await expect.poll(() => shared.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('shared two')]);
+
+    const universalHint = (await shared.locator('.sim-present-hint').textContent()) ?? '';
+    const pairwiseHint = (await block.locator('.sim-present-hint').textContent()) ?? '';
+    const universalNotes = (await shared.locator('.version p').allTextContents()).join(' ');
+    const pairwiseNotes = (await block.locator('.version p').allTextContents()).join(' ');
+    expect(pairwiseHint).toContain('dropped and resent (D02)');
+    expect(pairwiseNotes).toContain('Dropped since version 1');
+    expect(universalHint).not.toBe(pairwiseHint);
+    expect(universalHint).toMatch(/undecided/);
+    expect(universalHint).toMatch(/Cory/);
+    expect(universalHint).not.toMatch(/D02|dropped and resent/);
+    expect(universalNotes).toMatch(/undecided \(Cory\)/);
+    expect(universalNotes).not.toMatch(/Dropped since|resen/i);
+    for (const text of [universalHint, pairwiseHint, universalNotes, pairwiseNotes]) {
+      expect(text).not.toMatch(/withdr|supersed|replac|final|in force|current/i);
+    }
     expect(await page.locator('.sim-assumptions').count()).toBe(1);
     await page.screenshot({ path: join(SHOTS, 'simulator-desktop.png'), fullPage: true });
 
@@ -219,6 +244,116 @@ describe('demo regression', () => {
     await page.screenshot({ path: join(SHOTS, 'snapshot-mobile.png'), fullPage: true });
     expect(requests.filter((url) => !url.startsWith('file:'))).toEqual([]);
     await page.close();
+  });
+
+  describe('stale project responses (Astra R02)', () => {
+    function idOf(prefix: string): string {
+      return Object.entries(annotations.projects).find(([, p]) => p.title.startsWith(prefix))![0];
+    }
+
+    /** Holds the record request for one project until released, then lets it succeed or fail. */
+    async function hold(page: Page, projectId: string): Promise<{ requested: Promise<void>; release(outcome: 'succeed' | 'fail'): void }> {
+      let markRequested!: () => void;
+      const requested = new Promise<void>((done) => (markRequested = done));
+      let release!: (outcome: 'succeed' | 'fail') => void;
+      const released = new Promise<'succeed' | 'fail'>((done) => (release = done));
+      await page.route(`**/demo/projects/${projectId}/record`, async (route) => {
+        markRequested();
+        const outcome = await released;
+        if (outcome === 'succeed') await route.continue();
+        else await route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"internal_error","requestId":"held"}}' });
+      });
+      return { requested, release };
+    }
+
+    async function go(page: Page, hash: string): Promise<void> {
+      await page.evaluate(`location.hash = ${JSON.stringify(hash)}`);
+    }
+
+    async function displayedProjectId(page: Page): Promise<string | null> {
+      return page.locator('.detail-head .meta code').textContent({ timeout: 2000 }).catch(() => null);
+    }
+
+    it('A then B, B resolves first, A last: B stays displayed and the simulator targets B', async () => {
+      const a = idOf('Fixture 1');
+      const b = idOf('Fixture 3');
+      const page = await openPage('desktop');
+      await page.locator('.project-list a').first().waitFor();
+      const held = await hold(page, a);
+      await go(page, `#/projects/${a}`);
+      await held.requested;
+      await go(page, `#/projects/${b}`);
+      await page.locator('h2', { hasText: 'Fixture 3' }).waitFor();
+      held.release('succeed');
+      await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      await page.waitForTimeout(300);
+      expect(await page.locator('h2', { hasText: 'Fixture 1' }).count()).toBe(0);
+      expect(await displayedProjectId(page)).toBe(b);
+
+      // The simulator acts on B, the displayed and selected project. The write is
+      // intercepted and answered here, so it never reaches the server and no
+      // data changes.
+      const writes: string[] = [];
+      await page.route('**/demo/sim/**', async (route) => {
+        writes.push(new URL(route.request().url()).pathname);
+        await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000' }) });
+      });
+      const panel = page.locator('details.sim-panel').first();
+      await panel.locator('summary').click();
+      await panel.locator('input[type=text]').fill('[synthetic] intercepted');
+      await panel.locator('button', { hasText: 'Add term' }).click();
+      await expect.poll(() => writes).toEqual([`/demo/sim/projects/${b}/terms`]);
+      await page.close();
+    });
+
+    it('A then Decisions: A completing late does not replace the Decisions view', async () => {
+      const a = idOf('Fixture 1');
+      const page = await openPage('desktop');
+      await page.locator('.project-list a').first().waitFor();
+      const held = await hold(page, a);
+      await go(page, `#/projects/${a}`);
+      await held.requested;
+      await go(page, '#/decisions');
+      await expect.poll(() => page.locator('.decision').count()).toBe(4);
+      held.release('succeed');
+      await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      await page.waitForTimeout(300);
+      expect(await page.locator('.decision').count()).toBe(4);
+      expect(await page.locator('h2', { hasText: 'Fixture 1' }).count()).toBe(0);
+      expect(await page.getByText('Select a project').count()).toBe(0);
+      await page.close();
+    });
+
+    it('A failing after B loaded does not replace B with an error', async () => {
+      const a = idOf('Fixture 1');
+      const b = idOf('Fixture 2');
+      const page = await openPage('desktop');
+      await page.locator('.project-list a').first().waitFor();
+      const held = await hold(page, a);
+      await go(page, `#/projects/${a}`);
+      await held.requested;
+      await go(page, `#/projects/${b}`);
+      await page.locator('h2', { hasText: 'Fixture 2' }).waitFor();
+      // The browser logs the held 500 as a console error; wait for exactly that one.
+      const errorsBefore = pageErrors.length;
+      const expectedConsoleError = page.waitForEvent('console', (m) => m.type() === 'error' && m.text().includes('500'));
+      held.release('fail');
+      await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      const controlled = `desktop: ${(await expectedConsoleError).text()}`;
+      await page.waitForTimeout(300);
+      expect(await page.locator('.state.error').count()).toBe(0);
+      expect(await displayedProjectId(page)).toBe(b);
+      expect(await page.locator('h2', { hasText: 'Fixture 2' }).count()).toBe(1);
+      // Discount only this test's own controlled 500, and only among errors
+      // logged since it was released. Anything else logged since then goes
+      // back, so the final no-browser-errors check still sees it.
+      const added = pageErrors.splice(errorsBefore);
+      const own = added.indexOf(controlled);
+      expect(own).toBeGreaterThanOrEqual(0);
+      added.splice(own, 1);
+      pageErrors.push(...added);
+      await page.close();
+    });
   });
 
   it('resets to the same fixtures, repeatably', async () => {

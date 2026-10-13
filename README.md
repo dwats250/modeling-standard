@@ -6,7 +6,11 @@ This repository intentionally begins with product planning rather than applicati
 
 ## Current state
 
-**Stage 1 in progress, slice by slice.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation (product-neutral, synthetic data only) is described in `docs/engineering/STAGE-0.md`. Approved Stage 1 slices are in `docs/slices/`; S01 (project and party core) and S02 (pairwise agreement topology) are described as built in `docs/engineering/S01-PROJECT-PARTY-CORE.md` and `docs/engineering/S02-PAIRWISE-AGREEMENT-CORE.md`. S03 (term units), S04 (presented versions) and S05 (per-term affirmation evidence) are proposed and built as a stack of branches, each held at the merge seam until its PRD is approved; see `docs/engineering/S03-TERM-UNITS.md`, `docs/engineering/S04-PRESENTED-VERSIONS.md` and `docs/engineering/S05-TERM-AFFIRMATION.md`.
+**Stage 1 in progress.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation is described in `docs/engineering/STAGE-0.md`.
+
+- **Merged:** S01 project and party core, S02 pairwise agreement topology, S03 term units, S04 presented versions and S05 per-term affirmation evidence. Slices are in `docs/slices/`; each is described as built in `docs/engineering/`.
+- **Integrated:** a local synthetic demo with a record inspector, scenario simulator, portable read-only snapshot and an end-to-end browser regression in CI (`docs/engineering/DEMO.md`). It runs only on loopback against the demo database, with invented records.
+- **Gated:** no real participant flow exists. Production has no principal, so every protected operation is refused. Who takes part and how (D03), what each party sees (D10), requiredness and finality (D04), public vocabulary (D05) and real use (D06) remain OPEN Cory decisions (`decisions/README.md`).
 
 ## Product authority
 

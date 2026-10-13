@@ -1,33 +1,21 @@
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import {
-  POSTGRES_IDENTIFIER_MAX_BYTES,
-  findLongIdentifiers,
-  isKnownLongIdentifier,
-} from '../infrastructure/database/identifier-length.ts';
+import { readdirSync } from 'node:fs';
+import { POSTGRES_IDENTIFIER_MAX_BYTES, checkMigrationIdentifiers } from '../infrastructure/database/identifier-length.ts';
 
 /**
  * `npm run db:identifiers` (part of `npm run check`). Fails if any reviewed
  * migration quotes a PostgreSQL identifier longer than 63 bytes, apart from
- * the shipped names listed in KNOWN_LONG_IDENTIFIERS.
+ * the shipped names listed in KNOWN_LONG_IDENTIFIERS; if a migration cannot
+ * be scanned; or if a listed exception no longer holds (its file, its
+ * identifier in that file, or the migration that fixes it is missing).
  */
 
 const dir = 'migrations';
-const files = (await readdir(dir)).filter((name) => name.endsWith('.sql')).sort();
-const problems = [];
-for (const file of files) {
-  for (const item of findLongIdentifiers(file, await readFile(join(dir, file), 'utf8'))) {
-    if (!isKnownLongIdentifier(item)) problems.push(item);
-  }
-}
+const problems = checkMigrationIdentifiers(dir);
 
 if (problems.length > 0) {
-  for (const p of problems) {
-    process.stderr.write(
-      `${dir}/${p.file}: "${p.identifier}" is ${p.bytes} bytes; PostgreSQL truncates identifiers to ${POSTGRES_IDENTIFIER_MAX_BYTES}. Give it a shorter explicit name.\n`,
-    );
-  }
+  for (const problem of problems) process.stderr.write(`${problem}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write(`Migration identifiers: ${files.length} files, none over ${POSTGRES_IDENTIFIER_MAX_BYTES} bytes.\n`);
+  const count = readdirSync(dir).filter((name) => name.endsWith('.sql')).length;
+  process.stdout.write(`Migration identifiers: ${count} files scanned, none over ${POSTGRES_IDENTIFIER_MAX_BYTES} bytes except listed shipped names.\n`);
 }

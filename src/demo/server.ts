@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
-import { isLoopbackHost } from './demo.ts';
 
 /**
  * The demo's front door. It serves the inspector's static files and passes
@@ -56,16 +55,18 @@ function send(response: ServerResponse, status: number, type: string, body: stri
  * another origin that rebinds its DNS name to 127.0.0.1 sends its own name,
  * so it is refused before anything is read or written.
  */
-function hostIsOwnLoopback(request: IncomingMessage): boolean {
-  const header = request.headers.host;
+export function isOwnLoopbackAuthority(header: string | undefined, localPort: number): boolean {
   if (typeof header !== 'string') return false;
-  let parsed: URL;
-  try {
-    parsed = new URL(`http://${header}`);
-  } catch {
-    return false;
-  }
-  return isLoopbackHost(parsed.hostname) && Number(parsed.port || '80') === request.socket.localPort;
+  // Exactly host[:port]: a loopback name, then the server's own port written
+  // as the server would write it. No userinfo, path, query, fragment,
+  // whitespace or leading zeros. The port may be omitted only on port 80.
+  const match = /^(127\.0\.0\.1|localhost|\[::1\])(?::([1-9][0-9]{0,4}))?$/i.exec(header);
+  if (!match) return false;
+  return match[2] === undefined ? localPort === 80 : Number(match[2]) === localPort;
+}
+
+function hostIsOwnLoopback(request: IncomingMessage): boolean {
+  return isOwnLoopbackAuthority(request.headers.host, request.socket.localPort ?? -1);
 }
 
 async function handle(options: DemoServerOptions, request: IncomingMessage, response: ServerResponse): Promise<void> {

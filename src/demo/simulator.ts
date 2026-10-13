@@ -15,7 +15,10 @@ import { presentAgreementVersion, presentUniversalVersion, TermNotInContainerErr
 /**
  * The demo's scenario simulator. Demo-only operations, registered only by the
  * demo server, that drive the S01 to S05 data functions so a viewer can watch
- * terms being presented, dropped and resent, and affirmation rows appear.
+ * terms being presented, a pairwise term dropped and resent (D02), and
+ * affirmation rows appear. A later universal version with a different set of
+ * terms can be stored too, but whether a shared safety or consent term may be
+ * left out is undecided (Cory); the inspector says so.
  *
  * Every one of these is a SIMULATION. The product has no path for any of
  * them, because who may do each is undecided:
@@ -26,8 +29,10 @@ import { presentAgreementVersion, presentUniversalVersion, TermNotInContainerErr
  *   the product only the party itself may affirm (D12), and how a person acts
  *   as a party is undecided (D03). These rows are fixture evidence, not
  *   anyone's act.
- * - A presented version must hold at least one term and no term twice. That
- *   is an input rule of this simulator, not a product rule.
+ * - A presented version must hold at least one term: the database requires
+ *   a positive term count (S04), a current storage restriction rather than a
+ *   product rule, and the simulator checks it up front. Not presenting a term
+ *   twice is this simulator's own input rule.
  *
  * Everything else is enforced by the database exactly as in S03 to S05:
  * frozen versions, gapless numbering, affirmation only of a sole version 1,

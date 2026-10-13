@@ -10,8 +10,11 @@ import { agreementVersion, agreementVersionTerm, universalVersion, universalVers
  * frozen as presented). A pairwise version is presented within one pairwise
  * agreement; a universal version presents a project's safety and consent
  * terms. The caller chooses which of the container's terms to present and
- * in what order; dropping a term and resending (D02) is a new version that
- * leaves it out. Earlier versions are untouched by later ones.
+ * in what order, and earlier versions are untouched by later ones. For a
+ * pairwise agreement, dropping a term and resending (D02) is a new version
+ * that leaves it out. For the universal layer the same mechanism can freeze a
+ * later version with a different set of terms, but whether a safety or
+ * consent term may be left out is undecided (Cory); nothing relies on it.
  *
  * Data functions only, with no HTTP route. No actor is recorded: who
  * presents, and to whom, are undecided (D03, D10, D12). Nothing here

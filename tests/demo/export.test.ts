@@ -63,6 +63,19 @@ describe('portable snapshot', () => {
     }
   });
 
+  it('carries the layer-aware wording, not the old universal drop-and-resend claim (Astra B02)', () => {
+    expect(html).not.toContain('Leaving one out is how a term is dropped and resent (D02)');
+    expect(html).toContain('whether a shared safety or consent term may be left out is undecided');
+    expect(html).toContain('Leaving a term out of the next version is how a term is dropped and resent (D02)');
+  });
+
+  it('describes the decisions view as a selection, with D11 acknowledged on D03, and the term-count rule accurately', () => {
+    expect(html).toContain('A selected walkthrough of four decisions, not the full list');
+    expect(html).toContain('Settled in D11: real participation requires real verification');
+    expect(html).toContain('the database requires a positive term count (S04)');
+    expect(html).not.toContain('A version needing at least one term is a simulator input rule');
+  });
+
   it('says it is a read-only synthetic snapshot', () => {
     expect(html).toContain('read-only synthetic snapshot');
     expect(html).toContain('Synthetic demo');

@@ -188,7 +188,9 @@ function renderDetail() {
     return;
   }
   const record = state.record;
-  if (!record) return;
+  // Only ever render the selected project's record, so the inspector and its
+  // simulator controls always act on what navigation shows.
+  if (!record || record.project.id !== state.selectedId) return;
   const annotation = annotationFor(record.project.id);
   // Projects without fixture labels get positional labels by id order.
   state.positional = Object.fromEntries(
@@ -241,7 +243,7 @@ function renderDetail() {
             ]),
             idCode(agreement.id),
           ]),
-          renderLayer(agreement.terms, agreement.versions, [one, two], annotation, { base: `/demo/sim/agreements/${agreement.id}` }),
+          renderLayer(agreement.terms, agreement.versions, [one, two], annotation, { layer: 'pairwise', base: `/demo/sim/agreements/${agreement.id}` }),
         ]),
       );
     }
@@ -263,7 +265,7 @@ function renderDetail() {
     section(
       'Shared terms — universal layer',
       'Safety and consent terms held on the project, for everyone on site (D02). Who counts as on site is undecided.',
-      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { base: `/demo/sim/projects/${record.project.id}` }),
+      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { layer: 'universal', base: `/demo/sim/projects/${record.project.id}` }),
     ),
     section(
       'Pairwise agreements',
@@ -297,6 +299,28 @@ function legend() {
     ]),
   ]);
 }
+
+// What a later version means differs by layer. Pairwise drop-and-resend is
+// decided (D02). For the shared universal layer the storage can freeze a later
+// version with a different set of terms, but whether a safety or consent term
+// may be left out is undecided and Cory's call. Neither layer's wording claims
+// withdrawal, replacement or finality.
+const LAYER_COPY = {
+  pairwise: {
+    presentHint:
+      'Choose the terms to present. Leaving a term out of the next version is how a term is dropped and resent (D02). Earlier versions stay exactly as they were.',
+    notInLater: (sequence, content) => `Dropped since version ${sequence}: “${content}”`,
+    notInLaterNote: null,
+    laterVersion: 'No rows can be recorded against a later version yet: how a resent version is affirmed is undecided (D02).',
+  },
+  universal: {
+    presentHint:
+      'Choose the terms to present. Storage can freeze a later version with a different set of terms, but whether a shared safety or consent term may be left out is undecided — that is for Cory. This shows the storage mechanics only.',
+    notInLater: (sequence, content) => `Not in this version, though in version ${sequence}: “${content}”`,
+    notInLaterNote: 'Whether a shared safety or consent term may be left out of a later version is undecided (Cory).',
+    laterVersion: 'No rows can be recorded against a later version yet. What a later shared version means is undecided.',
+  },
+};
 
 function renderLayer(terms, versions, partyIds, annotation, ctx) {
   const wrap = el('div', { className: 'layer' });
@@ -341,13 +365,15 @@ function renderVersion(version, previous, versionCount, partyIds, annotation, ct
     el('span', { className: 'meta', text: `presented ${formatTime(version.presentedAt)}` }),
   ]);
 
+  const copy = LAYER_COPY[ctx.layer];
   const notes = [];
   if (previous) {
     const kept = new Set(version.terms.map((t) => t.sourceTermId));
     const dropped = previous.terms.filter((t) => !kept.has(t.sourceTermId));
     for (const term of dropped) {
-      notes.push(el('p', { className: 'dropped', text: `Dropped since version ${previous.sequence}: “${term.content}”` }));
+      notes.push(el('p', { className: 'dropped', text: copy.notInLater(previous.sequence, term.content) }));
     }
+    if (dropped.length > 0 && copy.notInLaterNote) notes.push(el('p', { className: 'hint', text: copy.notInLaterNote }));
   }
   if (versionCount > 1) {
     notes.push(
@@ -356,7 +382,7 @@ function renderVersion(version, previous, versionCount, partyIds, annotation, ct
         text:
           version.sequence === 1
             ? 'Unchanged by the later version. Once a later version exists, no new rows can be recorded here (S05).'
-            : 'No rows can be recorded against a later version yet: whether and how a resend is affirmed is undecided (D02).',
+            : copy.laterVersion,
       }),
     );
   }
@@ -400,11 +426,13 @@ const DECISIONS = [
       'A party is a bare identifier inside one project (S01). It is bound to no account, person or address.',
       'Affirmation rows name a party (S05). They cannot yet record the credential used (DOCTRINE:52).',
       'Production has no way to know who is calling: every protected request is refused.',
+      'Settled in D11: real participation requires real verification; self-attestation is not enough.',
     ],
     open: [
       'Whether an account is needed to read terms, to affirm them, or at all.',
       'Whether a link or one-time code sent to the invited address is enough.',
       'Forwarded invitations, wrong addresses, lost access, and getting back to a record later.',
+      'How the credential, the binding of a person to a party, and the timing of D11 verification fit together (D11 timing is open too).',
     ],
     blocks: ['Inviting anyone', 'A party affirming a term (D12: only the party itself may)', 'Credential evidence on each affirmation', 'Real participation'],
     question:
@@ -435,7 +463,7 @@ const DECISIONS = [
     file: 'decisions/D04-terms-and-affirmation.md',
     built: [
       'Every term is its own row and its own unit of evidence (S03).',
-      'Presented versions are frozen; dropping a term and resending leaves the earlier version intact (S04).',
+      'Presented versions are frozen, and a later version never changes an earlier one (S04). Pairwise drop-and-resend is a later version without the term (D02).',
       'Each party’s affirmation of each presented term is a separate, timestamped row (S05).',
       'Settled rule (D02): an agreement is final only when every named party has affirmed every required term.',
     ],
@@ -530,6 +558,12 @@ function renderDecisions() {
           'What is built, what is still undecided, what waits on it, and the smallest question that would unblock it. ' +
           'Questions only: nothing here suggests an answer.',
       }),
+      el('p', {
+        className: 'meta scope-note',
+        text:
+          'A selected walkthrough of four decisions, not the full list. Other decisions are open too (among them D02 lifecycle, ' +
+          'D06 real use, D08 documents, D09 preservation and D11 verification timing); decisions/README.md lists every decision and its status.',
+      }),
     ]),
     section('What waits on what', 'Each row is something the product cannot do yet.', el('div', { className: 'table-scroll' }, [strip])),
     cards,
@@ -540,7 +574,7 @@ function renderDecisions() {
 // ---- Simulator (live demo only; never in the snapshot) ----
 
 const SIM_ERRORS = {
-  version_not_affirmable: 'Only a sole version 1 can take rows (S05). Whether and how a resend is affirmed is undecided (D02).',
+  version_not_affirmable: 'Only a sole version 1 can take rows (S05). How a later version is affirmed is undecided.',
   already_affirmed: 'That party already has a row for this term.',
   party_not_in_agreement: 'That party is not one of this agreement’s two parties.',
   term_not_in_container: 'A chosen term is not stored in this container.',
@@ -555,6 +589,9 @@ function simError(error) {
 }
 
 async function simulate(url, body, success) {
+  // The project this action was taken on. If navigation has moved on by the
+  // time it completes, the new view is left alone.
+  const projectId = state.record?.project.id ?? null;
   try {
     await api('POST', url, body);
     toast(success);
@@ -562,7 +599,7 @@ async function simulate(url, body, success) {
     toast(simError(error), 'error');
   }
   await loadProjects();
-  await loadRecord(state.selectedId);
+  if (projectId !== null && state.selectedId === projectId) await loadRecord(projectId);
 }
 
 function emptyCell(version, versionCount, term, partyId, annotation, ctx) {
@@ -618,7 +655,7 @@ function simPanel(terms, versions, ctx) {
     el('div', { className: 'sim-row' }, [input, add]),
     terms.length > 0
       ? el('div', {}, [
-          el('p', { className: 'hint', text: 'Choose the terms to present. Leaving one out is how a term is dropped and resent (D02); earlier versions stay as they are.' }),
+          el('p', { className: 'hint sim-present-hint', text: LAYER_COPY[ctx.layer].presentHint }),
           boxes,
           present,
         ])
@@ -633,7 +670,7 @@ function simAssumptions() {
       text:
         'The demo operator adds and presents terms and records affirmation rows naming a party. None of that is a product act: ' +
         'who may author or present terms is undecided (D02, D04), and only a party may affirm for itself (D12), by means not yet decided (D03). ' +
-        'A version needing at least one term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
+        'A version needing at least one term is a current storage restriction: the database requires a positive term count (S04). That is how it is built today, not a product rule. Not repeating a term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
     }),
   ]);
 }
@@ -661,16 +698,36 @@ async function loadProjects() {
   renderList();
 }
 
+// Each project load gets a generation number. Navigating elsewhere (another
+// project, the Decisions view, or nothing selected) starts a new generation,
+// so a response that arrives late, success or failure, is dropped instead of
+// overwriting what is on screen.
+let recordGeneration = 0;
+
+function invalidateRecordLoads() {
+  recordGeneration += 1;
+  state.record = null;
+  state.recordError = null;
+  state.recordLoading = false;
+}
+
 async function loadRecord(id) {
+  recordGeneration += 1;
+  const generation = recordGeneration;
   state.recordLoading = true;
   state.recordError = null;
   state.record = null;
   renderDetail();
+  let record = null;
+  let error = null;
   try {
-    state.record = await api('GET', `/demo/projects/${encodeURIComponent(id)}/record`);
-  } catch (error) {
-    state.recordError = error.message;
+    record = await api('GET', `/demo/projects/${encodeURIComponent(id)}/record`);
+  } catch (e) {
+    error = e.message;
   }
+  if (generation !== recordGeneration) return;
+  state.record = record;
+  state.recordError = error;
   state.recordLoading = false;
   renderDetail();
 }
@@ -679,6 +736,7 @@ function route() {
   const decisionsLink = document.getElementById('decisions-link');
   if (location.hash === '#/decisions') {
     state.selectedId = null;
+    invalidateRecordLoads();
     renderList();
     decisionsLink?.setAttribute('aria-current', 'page');
     renderDecisions();
@@ -689,7 +747,10 @@ function route() {
   state.selectedId = match ? match[1].toLowerCase() : null;
   renderList();
   if (state.selectedId) void loadRecord(state.selectedId);
-  else renderDetail();
+  else {
+    invalidateRecordLoads();
+    renderDetail();
+  }
 }
 
 async function startSimulation(button) {
