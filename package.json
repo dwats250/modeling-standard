@@ -21,7 +21,8 @@
     "start": "node dist/main.js",
     "dev": "node --env-file-if-exists=.env src/main.ts",
     "demo:reset": "node --env-file-if-exists=.env src/scripts/demo-reset.ts",
-    "demo": "node --env-file-if-exists=.env src/scripts/demo.ts"
+    "demo": "node --env-file-if-exists=.env src/scripts/demo.ts",
+    "demo:export": "node --env-file-if-exists=.env src/scripts/demo-export.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.3",

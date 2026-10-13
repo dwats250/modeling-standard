@@ -7,7 +7,12 @@ A record inspector for showing what is built, with invented records, on a develo
 ```
 npm run demo:reset   # drops and recreates modeling_standard_demo, migrates, loads fixtures
 npm run demo         # http://127.0.0.1:3100/ (DEMO_PORT to change)
+npm run demo:export  # .demo/modeling-standard-demo.html — portable, read-only snapshot
 ```
+
+The snapshot is one HTML file with the inspector's markup, styles, script and every record it shows inlined. It opens from disk on any device, makes no network request (its CSP is `default-src 'none'`), refuses every write, and says on every screen that it is a read-only synthetic snapshot. It contains only what the inspector shows: synthetic records and fixture labels; no credentials, database location or internal principal (tested).
+
+The inspector's **Open decisions for Cory** view maps D03, D10, D04 requiredness and D05: what is built, what is undecided, what waits on it, and the smallest question. It poses questions only.
 
 Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 

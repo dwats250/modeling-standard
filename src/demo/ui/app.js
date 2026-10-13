@@ -43,7 +43,25 @@ function idCode(id) {
   return el('code', { className: 'id', text: shortId(id), attrs: { title: id } });
 }
 
+// A portable snapshot (`npm run demo:export`) embeds every response it
+// needs and has no server: reads come from the embedded copy and writes are
+// refused.
+const SNAPSHOT = (() => {
+  const node = document.getElementById('ms-snapshot');
+  if (!node) return null;
+  try {
+    return JSON.parse(node.textContent);
+  } catch {
+    return null;
+  }
+})();
+
 async function api(method, url, body) {
+  if (SNAPSHOT) {
+    if (method !== 'GET') throw new Error('read_only_snapshot');
+    if (!(url in SNAPSHOT.responses)) throw new Error('not_in_snapshot');
+    return structuredClone(SNAPSHOT.responses[url]);
+  }
   const res = await fetch(url, {
     method,
     headers: body === undefined ? {} : { 'content-type': 'application/json' },
@@ -362,6 +380,155 @@ function renderVersion(version, previous, versionCount, partyIds, annotation) {
   return el('section', { className: 'version' }, [head, ...notes, el('div', { className: 'table-scroll' }, [table])]);
 }
 
+
+// ---- Open decisions for Cory (D03, D10, D04 requiredness, D05) ----
+// Wording follows decisions/*.md. Each question is posed, never answered.
+
+const DECISIONS = [
+  {
+    id: 'D03',
+    title: 'Participation credential',
+    file: 'decisions/D03-participation-credential.md',
+    built: [
+      'A party is a bare identifier inside one project (S01). It is bound to no account, person or address.',
+      'Affirmation rows name a party (S05). They cannot yet record the credential used (DOCTRINE:52).',
+      'Production has no way to know who is calling: every protected request is refused.',
+    ],
+    open: [
+      'Whether an account is needed to read terms, to affirm them, or at all.',
+      'Whether a link or one-time code sent to the invited address is enough.',
+      'Forwarded invitations, wrong addresses, lost access, and getting back to a record later.',
+    ],
+    blocks: ['Inviting anyone', 'A party affirming a term (D12: only the party itself may)', 'Credential evidence on each affirmation', 'Real participation'],
+    question:
+      'For the D01 scenario, what must a person have in order to affirm a term, and to come back to their record later?',
+  },
+  {
+    id: 'D10',
+    title: 'What each party sees',
+    file: 'decisions/D10-what-each-party-sees.md',
+    built: [
+      'Pairwise agreements are stored separately; one agreement never relates a third party (S02).',
+      'Shared safety terms live on the project; private terms live on their pairwise agreement (S03).',
+      'Settled rulings: one model does not see another model’s private agreement; safety terms are common to everyone on site.',
+      'This demo shows only an internal record view, labelled as not a party view.',
+    ],
+    open: [
+      'The rest of the grid: roster, counterparties, contact details, exact location, notes, concerns, who has affirmed, what changed between versions, the final record.',
+      'What the person who organized it sees that others do not.',
+      'Whether the final artifact is one record with per-party views, one per party, or one everyone sees in full.',
+    ],
+    blocks: ['Any screen a party sees', 'Notifications', 'Exports and the final artifact', 'Evidence of what each party was shown'],
+    question:
+      'In the two-person D01 case, who sees who has affirmed which term, and what changed between versions — before the agreement is final, and after?',
+  },
+  {
+    id: 'D04',
+    title: 'Requiredness (within terms and affirmation)',
+    file: 'decisions/D04-terms-and-affirmation.md',
+    built: [
+      'Every term is its own row and its own unit of evidence (S03).',
+      'Presented versions are frozen; dropping a term and resending leaves the earlier version intact (S04).',
+      'Each party’s affirmation of each presented term is a separate, timestamped row (S05).',
+      'Settled rule (D02): an agreement is final only when every named party has affirmed every required term.',
+    ],
+    open: [
+      'Which terms are required for the D01 scenario.',
+      'Who decides that a term is required.',
+      'How body and money terms are identified, so they stay out of the group-check convenience.',
+    ],
+    blocks: ['Computing whether an agreement is final', 'Showing anything as “final”', 'The group-check convenience', 'The final record'],
+    question: 'For the D01 scenario, which presented terms must every named party affirm before the agreement is final, and who marks them?',
+  },
+  {
+    id: 'D05',
+    title: 'Vocabulary',
+    file: 'decisions/D05-vocabulary.md',
+    built: [
+      'Internal code names only: project, party, term, version, affirmation.',
+      'Every demo screen says these are internal names, not product words.',
+    ],
+    open: [
+      'The words for the collaboration container, the terms as presented, a response, the finalized agreement, the artifact each party holds, and archived or completed statuses.',
+    ],
+    blocks: ['Any screen, email or document a person outside the team reads'],
+    question:
+      'What should a person see instead of: project, terms (as presented), affirm, final agreement, and the record they keep?',
+  },
+];
+
+const CAPABILITIES = [
+  ['Invite a person', ['D03']],
+  ['A party affirms a term', ['D03']],
+  ['A party sees their own view', ['D10', 'D05']],
+  ['Show an agreement as final', ['D04']],
+  ['Group-check for ordinary terms', ['D04']],
+  ['Deliver the final record', ['D10', 'D04', 'D05']],
+];
+
+function bulletList(items, className) {
+  const ul = el('ul', { className });
+  for (const item of items) ul.append(el('li', { text: item }));
+  return ul;
+}
+
+function renderDecisions() {
+  const root = document.getElementById('detail');
+  root.replaceChildren();
+
+  const strip = el('table', { className: 'capability-table' });
+  const head = el('tr', {}, [el('th', { text: 'Capability', attrs: { scope: 'col' } })]);
+  for (const d of DECISIONS) head.append(el('th', { text: d.id, attrs: { scope: 'col' } }));
+  strip.append(el('thead', {}, [head]));
+  const body = el('tbody');
+  for (const [capability, needs] of CAPABILITIES) {
+    const tr = el('tr', {}, [el('th', { text: capability, attrs: { scope: 'row' } })]);
+    for (const d of DECISIONS) {
+      tr.append(
+        needs.includes(d.id)
+          ? el('td', { className: 'needs', text: 'waits', attrs: { title: `${capability} waits on ${d.id}` } })
+          : el('td', { className: 'free', text: '' }),
+      );
+    }
+    body.append(tr);
+  }
+  strip.append(body);
+
+  const cards = el('div', { className: 'decision-cards' });
+  for (const d of DECISIONS) {
+    cards.append(
+      el('article', { className: 'decision', attrs: { id: `decision-${d.id}` } }, [
+        el('header', {}, [
+          el('span', { className: 'badge', text: d.id }),
+          el('h3', { text: d.title }),
+          el('p', { className: 'source', text: d.file }),
+        ]),
+        el('div', { className: 'decision-cols' }, [
+          el('div', {}, [el('h4', { text: 'Already built' }), bulletList(d.built, 'built')]),
+          el('div', {}, [el('h4', { text: 'Still undecided' }), bulletList(d.open, 'open')]),
+          el('div', {}, [el('h4', { text: 'Waiting on it' }), bulletList(d.blocks, 'blocks')]),
+        ]),
+        el('div', { className: 'question' }, [el('h4', { text: 'Smallest question' }), el('p', { text: d.question })]),
+      ]),
+    );
+  }
+
+  root.append(
+    el('header', { className: 'detail-head' }, [
+      el('p', { className: 'eyebrow', text: 'For Cory' }),
+      el('h2', { text: 'Four open decisions' }),
+      el('p', {
+        className: 'meta',
+        text:
+          'What is built, what is still undecided, what waits on it, and the smallest question that would unblock it. ' +
+          'Questions only: nothing here suggests an answer.',
+      }),
+    ]),
+    section('What waits on what', 'Each row is something the product cannot do yet.', el('div', { className: 'table-scroll' }, [strip])),
+    cards,
+  );
+}
+
 // ---- Data loading ----
 
 async function loadFixture() {
@@ -400,6 +567,15 @@ async function loadRecord(id) {
 }
 
 function route() {
+  const decisionsLink = document.getElementById('decisions-link');
+  if (location.hash === '#/decisions') {
+    state.selectedId = null;
+    renderList();
+    decisionsLink?.setAttribute('aria-current', 'page');
+    renderDecisions();
+    return;
+  }
+  decisionsLink?.removeAttribute('aria-current');
   const match = /^#\/projects\/([0-9a-f-]{36})$/i.exec(location.hash);
   state.selectedId = match ? match[1].toLowerCase() : null;
   renderList();
@@ -423,7 +599,17 @@ async function createProject(button) {
   }
 }
 
-document.getElementById('create-project').addEventListener('click', (event) => void createProject(event.currentTarget));
+const createButton = document.getElementById('create-project');
+if (SNAPSHOT) {
+  createButton.disabled = true;
+  createButton.textContent = 'Create project (live demo only)';
+  document.getElementById('create-hint').textContent = 'This is a read-only snapshot. Nothing can be created or changed.';
+  document.getElementById('snapshot-note').hidden = false;
+  document.getElementById('snapshot-note').textContent =
+    `Read-only snapshot of synthetic fixtures, exported ${new Date(SNAPSHOT.exportedAt).toLocaleString()} from the local demo. Not a product build.`;
+} else {
+  createButton.addEventListener('click', (event) => void createProject(event.currentTarget));
+}
 window.addEventListener('hashchange', route);
 
 await loadFixture();

@@ -14,6 +14,7 @@
         Internal code names (product words are Cory's D05, not chosen). This inspector shows the whole stored
         record; it is not what any party would see (D10 open).
       </span>
+      <span id="snapshot-note" class="snapshot-note" hidden></span>
     </div>
 
     <div class="shell">
@@ -22,8 +23,11 @@
           <h1>Record Inspector</h1>
           <p class="muted">Operator: <code>demo-operator</code> — stands for nobody and is never a party.</p>
           <button id="create-project" type="button" class="primary">Create project</button>
-          <p class="hint">Real <code>project.create</code> operation (S01). A project carries no content yet.</p>
+          <p id="create-hint" class="hint">Real <code>project.create</code> operation (S01). A project carries no content yet.</p>
         </div>
+        <nav aria-label="Decisions" class="decisions-nav">
+          <a id="decisions-link" href="#/decisions">Open decisions for Cory →</a>
+        </nav>
         <nav aria-label="Projects">
           <h2>Projects</h2>
           <div id="project-list" aria-live="polite"></div>
