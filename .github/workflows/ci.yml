@@ -59,6 +59,20 @@ jobs:
       - name: Tests (unit, database, HTTP, boot)
         run: npm test
 
+      - name: Demo regression (real browser, demo database)
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME_PATH"
+          CHROME_PATH="$CHROME_PATH" npm run test:demo
+
+      - name: Demo screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-screenshots
+          path: test-results/demo
+          if-no-files-found: ignore
+
       - name: Migrate the empty database
         run: |
           test "$(psql -tA -h 127.0.0.1 -U postgres -d modeling_standard \

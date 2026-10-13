@@ -8,6 +8,8 @@ if (existsSync('.env')) process.loadEnvFile('.env');
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
+    // The browser regression has its own config (vitest.demo.config.ts).
+    exclude: ['tests/demo-browser/**', 'node_modules/**'],
     globalSetup: ['tests/support/global-setup.ts'],
     testTimeout: 20_000,
     hookTimeout: 30_000,

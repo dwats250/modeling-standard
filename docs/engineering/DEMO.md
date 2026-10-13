@@ -37,6 +37,22 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 - **Reset:** start another simulation for a clean project; `npm run demo:reset` restores the whole demo database. Records are append-only, so nothing is edited or deleted in place.
 - Hidden in the portable snapshot.
 
+## Regression
+
+`npm run test:demo` (needs `CHROME_PATH`, plus the usual database settings) runs the whole demo in a real browser through `playwright-core` and the system Chrome, with no browser download. It covers:
+- reset and the initial fixtures, with exact evidence counts;
+- project creation and its empty states;
+- version history and drop-and-resend;
+- the simulator flow, preserving version 1 and its rows;
+- the portable snapshot from `file://`, with zero network requests;
+- reset repeatability;
+- desktop (1280) and mobile (390) rendering with no horizontal scroll and no browser errors;
+- every demo route returning 404 from the production application.
+
+Screenshots go to `test-results/demo/` and are uploaded by CI as `demo-screenshots`. The suite resets `modeling_standard_demo`.
+
+`demo:reset` refuses while a demo server is connected (the migration role cannot end the runtime role's sessions) and says to stop `npm run demo` first.
+
 ## Deliberately unavailable
 
 Shown disabled with the blocking decision: add a party (D03), create an agreement (D02/D12), add or present terms (D02/D04), record an affirmation (D12/D03), send or invite (D03), view as a party (D10).
