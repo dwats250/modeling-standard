@@ -1,8 +1,9 @@
 # Slice — S04 presented versions
 
-Status: PROPOSED. Built ahead of approval at Dustin's direction (2026-10-08), stacked on S03, and held at the merge seam: not merged until Dustin approves this PRD (and S03 before it).
+Status: APPROVED
 Owner: Claude
-Approved by: (pending: Dustin)
+Approved by: Dustin
+Approved: 2026-10-13
 Date: 2026-10-08
 
 ## Outcome
