@@ -1,0 +1,62 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import pg from 'pg';
+import { createApp } from '../app/create-app.ts';
+import { createLogger } from '../app/logger.ts';
+import { openDatabase } from '../infrastructure/database/client.ts';
+import { runMigrations } from '../infrastructure/database/migrate.ts';
+import { DEMO_DATABASE, assertDemoTarget, demoDatabaseUrl, demoOperatorPrincipal } from './demo.ts';
+import { loadDemoFixtures, type FixtureAnnotations } from './fixtures.ts';
+import { demoOperations } from './operations.ts';
+
+/**
+ * Drops and recreates the demo database (modeling_standard_demo only),
+ * migrates it, loads the fixtures and writes their annotations. Used by
+ * `npm run demo:reset` and by the demo regression suite, so both exercise
+ * the same path.
+ */
+export async function resetDemoDatabase(options: {
+  readonly host: string;
+  /** Runtime and migration URLs as configured; pointed at the demo database here. */
+  readonly databaseUrl: string;
+  readonly migrationDatabaseUrl: string;
+  readonly fixtureDir: string;
+}): Promise<FixtureAnnotations> {
+  const runtimeUrl = demoDatabaseUrl(options.databaseUrl);
+  const migrationUrl = demoDatabaseUrl(options.migrationDatabaseUrl);
+  assertDemoTarget({ host: options.host, databaseUrl: runtimeUrl });
+  assertDemoTarget({ host: options.host, databaseUrl: migrationUrl });
+
+  const admin = new pg.Client({ connectionString: options.migrationDatabaseUrl });
+  await admin.connect();
+  try {
+    try {
+      await admin.query(`DROP DATABASE IF EXISTS ${DEMO_DATABASE} WITH (FORCE)`);
+    } catch (error) {
+      // The migration role cannot end another role's sessions, so a running
+      // demo server (connected as the runtime role) blocks the drop.
+      if ((error as { code?: unknown }).code === '42501') {
+        throw new Error('The demo database is in use. Stop `npm run demo` (and any export) first, then reset.', { cause: error });
+      }
+      throw error;
+    }
+    await admin.query(`CREATE DATABASE ${DEMO_DATABASE}`);
+  } finally {
+    await admin.end();
+  }
+  await runMigrations(migrationUrl);
+
+  const logger = createLogger('warn');
+  const database = openDatabase(runtimeUrl, logger);
+  const app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
+  try {
+    await app.ready();
+    const annotations = await loadDemoFixtures(app, database.db);
+    await mkdir(options.fixtureDir, { recursive: true });
+    await writeFile(resolve(options.fixtureDir, 'fixture.json'), `${JSON.stringify(annotations, null, 2)}\n`);
+    return annotations;
+  } finally {
+    await app.close();
+    await database.close();
+  }
+}
