@@ -1,8 +1,9 @@
 # Slice — S03 term units
 
-Status: PROPOSED. Built ahead of approval at Dustin's direction (2026-10-08). The branch is held at the merge seam and is not merged until Dustin approves this PRD.
+Status: APPROVED
 Owner: Claude
-Approved by: (pending: Dustin)
+Approved by: Dustin
+Approved: 2026-10-13
 Date: 2026-10-08
 
 ## Outcome

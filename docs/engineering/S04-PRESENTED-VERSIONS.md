@@ -1,6 +1,6 @@
 # S04: presented versions, as built
 
-Slice: `docs/slices/S04-presented-versions.md`. The PRD is PROPOSED, stacked on S03, and held at the merge seam.
+Slice: `docs/slices/S04-presented-versions.md`. The PRD is APPROVED and merged.
 
 Grounds:
 - DOCTRINE:46: clause text is frozen as presented;

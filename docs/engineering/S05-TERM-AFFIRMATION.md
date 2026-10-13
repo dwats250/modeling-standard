@@ -1,6 +1,6 @@
 # S05: per-term affirmation evidence, as built
 
-Slice: `docs/slices/S05-term-affirmation.md`. The PRD is PROPOSED, stacked on S04 and S03, and held at the merge seam.
+Slice: `docs/slices/S05-term-affirmation.md`. The PRD is APPROVED and merged.
 
 Grounds:
 - D04's per-term ruling;
