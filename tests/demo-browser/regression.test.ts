@@ -246,6 +246,105 @@ describe('demo regression', () => {
     await page.close();
   });
 
+  describe('stale project responses (Astra R02)', () => {
+    function idOf(prefix: string): string {
+      return Object.entries(annotations.projects).find(([, p]) => p.title.startsWith(prefix))![0];
+    }
+
+    /** Holds the record request for one project until released, then lets it succeed or fail. */
+    async function hold(page: Page, projectId: string): Promise<{ requested: Promise<void>; release(outcome: 'succeed' | 'fail'): void }> {
+      let markRequested!: () => void;
+      const requested = new Promise<void>((done) => (markRequested = done));
+      let release!: (outcome: 'succeed' | 'fail') => void;
+      const released = new Promise<'succeed' | 'fail'>((done) => (release = done));
+      await page.route(`**/demo/projects/${projectId}/record`, async (route) => {
+        markRequested();
+        const outcome = await released;
+        if (outcome === 'succeed') await route.continue();
+        else await route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"internal_error","requestId":"held"}}' });
+      });
+      return { requested, release };
+    }
+
+    async function go(page: Page, hash: string): Promise<void> {
+      await page.evaluate(`location.hash = ${JSON.stringify(hash)}`);
+    }
+
+    async function displayedProjectId(page: Page): Promise<string | null> {
+      return page.locator('.detail-head .meta code').textContent({ timeout: 2000 }).catch(() => null);
+    }
+
+    it('A then B, B resolves first, A last: B stays displayed and the simulator targets B', async () => {
+      const a = idOf('Fixture 1');
+      const b = idOf('Fixture 3');
+      const page = await openPage('desktop');
+      await page.locator('.project-list a').first().waitFor();
+      const held = await hold(page, a);
+      await go(page, `#/projects/${a}`);
+      await held.requested;
+      await go(page, `#/projects/${b}`);
+      await page.locator('h2', { hasText: 'Fixture 3' }).waitFor();
+      held.release('succeed');
+      await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      await page.waitForTimeout(300);
+      expect(await page.locator('h2', { hasText: 'Fixture 1' }).count()).toBe(0);
+      expect(await displayedProjectId(page)).toBe(b);
+
+      // The simulator acts on B, the displayed and selected project. The write is
+      // intercepted and aborted, so no data changes.
+      const writes: string[] = [];
+      await page.route('**/demo/sim/**', async (route) => {
+        writes.push(new URL(route.request().url()).pathname);
+        await route.abort();
+      });
+      const panel = page.locator('details.sim-panel').first();
+      await panel.locator('summary').click();
+      await panel.locator('input[type=text]').fill('[synthetic] intercepted');
+      await panel.locator('button', { hasText: 'Add term' }).click();
+      await expect.poll(() => writes).toEqual([`/demo/sim/projects/${b}/terms`]);
+      await page.close();
+    });
+
+    it('A then Decisions: A completing late does not replace the Decisions view', async () => {
+      const a = idOf('Fixture 1');
+      const page = await openPage('desktop');
+      await page.locator('.project-list a').first().waitFor();
+      const held = await hold(page, a);
+      await go(page, `#/projects/${a}`);
+      await held.requested;
+      await go(page, '#/decisions');
+      await expect.poll(() => page.locator('.decision').count()).toBe(4);
+      held.release('succeed');
+      await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      await page.waitForTimeout(300);
+      expect(await page.locator('.decision').count()).toBe(4);
+      expect(await page.locator('h2', { hasText: 'Fixture 1' }).count()).toBe(0);
+      expect(await page.getByText('Select a project').count()).toBe(0);
+      await page.close();
+    });
+
+    it('A failing after B loaded does not replace B with an error', async () => {
+      const a = idOf('Fixture 1');
+      const b = idOf('Fixture 2');
+      const page = await openPage('desktop');
+      await page.locator('.project-list a').first().waitFor();
+      const held = await hold(page, a);
+      await go(page, `#/projects/${a}`);
+      await held.requested;
+      await go(page, `#/projects/${b}`);
+      await page.locator('h2', { hasText: 'Fixture 2' }).waitFor();
+      held.release('fail');
+      await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      await page.waitForTimeout(300);
+      expect(await page.locator('.state.error').count()).toBe(0);
+      expect(await displayedProjectId(page)).toBe(b);
+      expect(await page.locator('h2', { hasText: 'Fixture 2' }).count()).toBe(1);
+      // The held 500 is this test's own; it is not a page error.
+      pageErrors.splice(0, pageErrors.length, ...pageErrors.filter((e) => !e.includes('500')));
+      await page.close();
+    });
+  });
+
   it('resets to the same fixtures, repeatably', async () => {
     const before = Object.values(annotations.projects).map((p) => p.title);
     // A running server blocks the reset, with a message saying so.

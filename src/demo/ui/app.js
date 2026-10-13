@@ -188,7 +188,9 @@ function renderDetail() {
     return;
   }
   const record = state.record;
-  if (!record) return;
+  // Only ever render the selected project's record, so the inspector and its
+  // simulator controls always act on what navigation shows.
+  if (!record || record.project.id !== state.selectedId) return;
   const annotation = annotationFor(record.project.id);
   // Projects without fixture labels get positional labels by id order.
   state.positional = Object.fromEntries(
@@ -579,6 +581,9 @@ function simError(error) {
 }
 
 async function simulate(url, body, success) {
+  // The project this action was taken on. If navigation has moved on by the
+  // time it completes, the new view is left alone.
+  const projectId = state.record?.project.id ?? null;
   try {
     await api('POST', url, body);
     toast(success);
@@ -586,7 +591,7 @@ async function simulate(url, body, success) {
     toast(simError(error), 'error');
   }
   await loadProjects();
-  await loadRecord(state.selectedId);
+  if (projectId !== null && state.selectedId === projectId) await loadRecord(projectId);
 }
 
 function emptyCell(version, versionCount, term, partyId, annotation, ctx) {
@@ -685,16 +690,36 @@ async function loadProjects() {
   renderList();
 }
 
+// Each project load gets a generation number. Navigating elsewhere (another
+// project, the Decisions view, or nothing selected) starts a new generation,
+// so a response that arrives late, success or failure, is dropped instead of
+// overwriting what is on screen.
+let recordGeneration = 0;
+
+function invalidateRecordLoads() {
+  recordGeneration += 1;
+  state.record = null;
+  state.recordError = null;
+  state.recordLoading = false;
+}
+
 async function loadRecord(id) {
+  recordGeneration += 1;
+  const generation = recordGeneration;
   state.recordLoading = true;
   state.recordError = null;
   state.record = null;
   renderDetail();
+  let record = null;
+  let error = null;
   try {
-    state.record = await api('GET', `/demo/projects/${encodeURIComponent(id)}/record`);
-  } catch (error) {
-    state.recordError = error.message;
+    record = await api('GET', `/demo/projects/${encodeURIComponent(id)}/record`);
+  } catch (e) {
+    error = e.message;
   }
+  if (generation !== recordGeneration) return;
+  state.record = record;
+  state.recordError = error;
   state.recordLoading = false;
   renderDetail();
 }
@@ -703,6 +728,7 @@ function route() {
   const decisionsLink = document.getElementById('decisions-link');
   if (location.hash === '#/decisions') {
     state.selectedId = null;
+    invalidateRecordLoads();
     renderList();
     decisionsLink?.setAttribute('aria-current', 'page');
     renderDecisions();
@@ -713,7 +739,10 @@ function route() {
   state.selectedId = match ? match[1].toLowerCase() : null;
   renderList();
   if (state.selectedId) void loadRecord(state.selectedId);
-  else renderDetail();
+  else {
+    invalidateRecordLoads();
+    renderDetail();
+  }
 }
 
 async function startSimulation(button) {
