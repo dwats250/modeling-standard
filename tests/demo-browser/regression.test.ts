@@ -291,11 +291,12 @@ describe('demo regression', () => {
       expect(await displayedProjectId(page)).toBe(b);
 
       // The simulator acts on B, the displayed and selected project. The write is
-      // intercepted and aborted, so no data changes.
+      // intercepted and answered here, so it never reaches the server and no
+      // data changes.
       const writes: string[] = [];
       await page.route('**/demo/sim/**', async (route) => {
         writes.push(new URL(route.request().url()).pathname);
-        await route.abort();
+        await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000' }) });
       });
       const panel = page.locator('details.sim-panel').first();
       await panel.locator('summary').click();
@@ -333,14 +334,19 @@ describe('demo regression', () => {
       await held.requested;
       await go(page, `#/projects/${b}`);
       await page.locator('h2', { hasText: 'Fixture 2' }).waitFor();
+      // The browser logs the held 500 as a console error; wait for exactly that one.
+      const expectedConsoleError = page.waitForEvent('console', (m) => m.type() === 'error' && m.text().includes('500'));
       held.release('fail');
       await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
+      await expectedConsoleError;
       await page.waitForTimeout(300);
       expect(await page.locator('.state.error').count()).toBe(0);
       expect(await displayedProjectId(page)).toBe(b);
       expect(await page.locator('h2', { hasText: 'Fixture 2' }).count()).toBe(1);
-      // The held 500 is this test's own; it is not a page error.
-      pageErrors.splice(0, pageErrors.length, ...pageErrors.filter((e) => !e.includes('500')));
+      // That 500 is this test's own, already awaited above; it is not a page error.
+      const own = pageErrors.findIndex((e) => e.includes('status of 500'));
+      expect(own).toBeGreaterThanOrEqual(0);
+      pageErrors.splice(own, 1);
       await page.close();
     });
   });
