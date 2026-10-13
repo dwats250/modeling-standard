@@ -1,6 +1,6 @@
 # S03: term units, as built
 
-Slice: `docs/slices/S03-term-units.md`. The PRD is PROPOSED and held at the merge seam.
+Slice: `docs/slices/S03-term-units.md`. The PRD is APPROVED and merged.
 
 Decisions relied on:
 - the D04 partial ruling that every term is individually represented;

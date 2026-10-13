@@ -1,8 +1,9 @@
 # Slice — S05 per-term affirmation evidence
 
-Status: PROPOSED. Built ahead of approval at Dustin's direction (2026-10-08). Stacked on S04, which is stacked on S03. Held at the merge seam: not merged until Dustin approves this PRD and the two before it.
+Status: APPROVED
 Owner: Claude
-Approved by: (pending: Dustin)
+Approved by: Dustin
+Approved: 2026-10-13
 Date: 2026-10-08
 
 ## Outcome
