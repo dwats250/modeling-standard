@@ -1,0 +1,37 @@
+{
+  "projects": {
+    "cbb95331-34a9-4f4e-b309-61c6e9ab2e0a": {
+      "title": "Fixture 1 — D01 first scenario",
+      "source": "D01; D02 two layers; D04 per-term ruling; 2026-10-05 reconciliation",
+      "note": "Two adults who already know each other. In the walk-through the model created the project and sent it to a photographer she knew. The labels below come from that walk-through only; the stored parties carry no role, and the demo operator who created this project is not either party.",
+      "parties": {
+        "694f4a3a-1fe3-4487-bcd3-a745fa132fc7": "Party (walk-through: the model)",
+        "0ab07157-96bd-4331-8be4-259c9c8410b5": "Party (walk-through: the photographer)"
+      },
+      "agreements": {
+        "f330fadb-c3a1-47dc-ac21-1eac57d041e6": "Private pairwise agreement between the two parties"
+      }
+    },
+    "3f670910-6bf5-49be-b64c-b14a72dfb656": {
+      "title": "Fixture 2 — three parties, two pairwise agreements",
+      "source": "D02 structure and drop-and-resend rulings; D04 per-term ruling; reconciliation ruling 11",
+      "note": "Commercial and craft agreements are private and pairwise under the project. Parties A and B each have their own agreement with C; neither agreement relates A and B. A–C shows drop-and-resend: version 2 leaves term three out and version 1 is unchanged. Who may see which agreement is mostly open (D10), so this inspector is not a party view.",
+      "parties": {
+        "dd337e77-7203-48ab-8041-6e723e2beee4": "Party A",
+        "807bca02-1f4a-4a3a-8b12-e26084cbd340": "Party B",
+        "11f242f6-f2c2-4839-92af-742a76c892bc": "Party C"
+      },
+      "agreements": {
+        "1423d33b-06b8-4565-9b78-ff80e8e7afaf": "Agreement A–C",
+        "629dad0d-3926-4f65-9043-6d414a74f72b": "Agreement B–C"
+      }
+    },
+    "29963832-e2fa-4267-8f85-316a2ddcdcf5": {
+      "title": "Fixture 3 — empty project",
+      "source": "S01",
+      "note": "A project with no parties yet. No product path adds a party until D03 is decided.",
+      "parties": {},
+      "agreements": {}
+    }
+  }
+}

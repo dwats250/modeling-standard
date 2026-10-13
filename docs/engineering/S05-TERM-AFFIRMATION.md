@@ -54,7 +54,7 @@ D12 (no proxies) is a precondition on future callers, not a property of these ta
 - **Timing check by transaction start.** A row's `xmin` comparison would miss versions inserted in a savepoint. Comparing the server-set `presented_at` with `now()` cannot be forged and also covers savepoints. The cost is the fail-closed refusal described above.
 - **No finality, outstanding or pending view.** Finality needs requiredness (D04). The absence of a row means nothing.
 - **Universal rows accept any project party.** "On site" is not defined, so this says nothing about who must affirm.
-- **Transactions.** Call the data functions with the database handle or inside READ COMMITTED. Under REPEATABLE READ or SERIALIZABLE, the later-version check reads the transaction's snapshot and may miss a version committed after it began.
+- **Transactions.** Affirmations are accepted only under READ COMMITTED; the stamp triggers reject REPEATABLE READ and SERIALIZABLE (`*_read_committed_only`, `migrations/0013`). Under snapshot isolation the later-version check would read a snapshot older than a version committed after the transaction began, so version 1 could be affirmed after version 2 exists. Review found and reproduced that; 0013 closes it.
 - **Errors.** Database errors (foreign key, check, unique) surface as-is; only an unknown presented term has a domain error. There is no HTTP surface to translate them for.
 - **Migration order.** `migrations/0011` was reordered by hand so the uniques precede the foreign keys that need them. The drift check passes.
 
