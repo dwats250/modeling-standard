@@ -35,16 +35,31 @@ export function demoDatabaseUrl(url: string): string {
   return parsed.toString();
 }
 
-/** Refuses to run anywhere but loopback, and against anything but the demo database. */
+/** True for a loopback host name, with or without IPv6 brackets. */
+export function isLoopbackHost(host: string): boolean {
+  return LOOPBACK_HOSTS.has(host.replace(/^\[(.*)\]$/, '$1'));
+}
+
+/**
+ * Refuses to run anywhere but loopback, against a database server anywhere
+ * but loopback, or against any database but the demo database. Reset drops
+ * that database, so all three must hold.
+ */
 export function assertDemoTarget(options: { host: string; databaseUrl: string }): void {
-  if (!LOOPBACK_HOSTS.has(options.host)) {
+  if (!isLoopbackHost(options.host)) {
     throw new DemoGuardError('The synthetic demo listens on loopback only (127.0.0.1, ::1 or localhost).');
   }
   let database: string;
+  let databaseHost: string;
   try {
-    database = decodeURIComponent(new URL(options.databaseUrl).pathname.slice(1));
+    const url = new URL(options.databaseUrl);
+    database = decodeURIComponent(url.pathname.slice(1));
+    databaseHost = url.hostname;
   } catch {
     throw new DemoGuardError('The demo database URL is not a valid URL.');
+  }
+  if (!isLoopbackHost(databaseHost)) {
+    throw new DemoGuardError('The synthetic demo only uses a PostgreSQL server on loopback.');
   }
   if (database !== DEMO_DATABASE) {
     throw new DemoGuardError(`The synthetic demo only runs against the ${DEMO_DATABASE} database.`);
