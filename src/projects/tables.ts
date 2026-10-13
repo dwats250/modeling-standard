@@ -182,14 +182,19 @@ export const agreementVersion = pgTable(
   'agreement_version',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    pairwiseAgreementId: uuid('pairwise_agreement_id')
-      .notNull()
-      .references(() => pairwiseAgreement.id),
+    pairwiseAgreementId: uuid('pairwise_agreement_id').notNull(),
     sequence: integer('sequence').notNull(),
     termCount: integer('term_count').notNull(),
     presentedAt: timestamp('presented_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    // Named explicitly: the generated name was 64 bytes, which PostgreSQL
+    // truncates to 63 (migrations/0014 renames the created constraint).
+    foreignKey({
+      name: 'agreement_version_agreement_fk',
+      columns: [table.pairwiseAgreementId],
+      foreignColumns: [pairwiseAgreement.id],
+    }),
     unique('agreement_version_pairwise_agreement_id_sequence_unique').on(table.pairwiseAgreementId, table.sequence),
     // Target for the composite key from presented terms.
     unique('agreement_version_pairwise_agreement_id_id_unique').on(table.pairwiseAgreementId, table.id),

@@ -1,0 +1,11 @@
+-- Gives the agreement_version -> pairwise_agreement foreign key a short,
+-- explicit name. Technical hardening only: the constraint, its columns, its
+-- target and its behaviour are unchanged.
+--
+-- migrations/0009 created it under the generated name ending in "_fk",
+-- which is 64 bytes. PostgreSQL truncates identifiers to 63 bytes, so the
+-- catalog holds the name below without its final "k", a name the snapshot
+-- and table definition never matched. Renaming keeps the
+-- same constraint object, so nothing is dropped or revalidated. 0009 is left
+-- as written; the name is fixed forward here.
+ALTER TABLE "agreement_version" RENAME CONSTRAINT "agreement_version_pairwise_agreement_id_pairwise_agreement_id_f" TO "agreement_version_agreement_fk";
