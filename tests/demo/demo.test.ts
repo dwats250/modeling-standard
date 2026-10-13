@@ -207,8 +207,8 @@ describe('demo fixtures and server', () => {
     const d01 = (await demoApp.inject({ method: 'GET', url: `/demo/projects/${d01Id}/record` })).json<Record>();
     expect(d01.universal.versions).toHaveLength(1);
     const uv = d01.universal.versions[0]!;
-    expect(uv.terms).toHaveLength(3);
-    expect(uv.affirmations).toHaveLength(3 * d01.parties.length);
+    expect(uv.terms).toHaveLength(2);
+    expect(uv.affirmations).toHaveLength(2 * d01.parties.length);
     const av = d01.agreements[0]!.versions[0]!;
     expect(av.affirmations.every((a) => d01.agreements[0]!.partyIds.includes(a.partyId))).toBe(true);
     expect(av.affirmations).toHaveLength(av.terms.length * 2);

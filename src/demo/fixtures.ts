@@ -57,11 +57,12 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     const agreement = await createPairwiseAgreement(db, projectId, [first.id, second.id]);
 
     // Universal layer: safety and consent terms for everyone on site (D02).
-    // D01 says coverage, touch and wardrobe-adjustment expectations were discussed.
+    // D01 says coverage, touch and wardrobe-adjustment expectations were
+    // discussed, but which layer such terms belong to, and who classifies
+    // them, is undecided (D04). So this layer holds neutral placeholders only.
     const universal = [
-      await addUniversalTerm(db, projectId, '[synthetic] Coverage expectations, as discussed before the shoot.'),
-      await addUniversalTerm(db, projectId, '[synthetic] Touch expectations, as discussed before the shoot.'),
-      await addUniversalTerm(db, projectId, '[synthetic] Wardrobe-adjustment expectations, as discussed before the shoot.'),
+      await addUniversalTerm(db, projectId, '[synthetic] A shared on-site safety term.'),
+      await addUniversalTerm(db, projectId, '[synthetic] A second shared on-site safety term.'),
     ];
     const universalV1 = await presentUniversalVersion(db, projectId, universal.map((t) => t.id));
 
@@ -87,7 +88,9 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
       note:
         'Two adults who already know each other. In the walk-through the model created the project and sent it ' +
         'to a photographer she knew. The labels below come from that walk-through only; the stored parties carry ' +
-        'no role, and the demo operator who created this project is not either party.',
+        'no role, and the demo operator who created this project is not either party. Coverage, touch and ' +
+        'wardrobe-adjustment expectations were discussed in D01; which layer they belong to is undecided (D04), ' +
+        'so the shared layer below holds neutral placeholders.',
       parties: {
         [first.id]: 'Party (walk-through: the model)',
         [second.id]: 'Party (walk-through: the photographer)',
