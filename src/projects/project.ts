@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
 import type { Executor } from '../infrastructure/database/client.ts';
@@ -32,6 +32,15 @@ export async function findProject(db: Executor, id: string): Promise<ProjectRow 
   return row;
 }
 
+/** Projects a principal created, oldest first. Used only by the local demo inspector. */
+export async function listProjectsCreatedBy(db: Executor, principalId: string): Promise<ProjectRow[]> {
+  return db
+    .select()
+    .from(project)
+    .where(eq(project.createdByPrincipalId, principalId))
+    .orderBy(asc(project.createdAt), project.id);
+}
+
 // ---- Response shape (the only representation that leaves the server) ----
 
 // The creator and creation time are internal audit and authorization facts
@@ -54,7 +63,7 @@ const anyPrincipalMayCreate: Policy<object> = () => true;
  * Only the creator may read a project through this slice. This is the
  * minimum access needed to exercise S01, not a visibility rule for parties.
  */
-const creatorOnly: Policy<ProjectRow> = (principal: SyntheticPrincipal, target) =>
+export const creatorOnly: Policy<ProjectRow> = (principal: SyntheticPrincipal, target) =>
   target.createdByPrincipalId === principal.id;
 
 // ---- Operations ----

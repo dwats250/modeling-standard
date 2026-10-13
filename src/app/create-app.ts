@@ -3,7 +3,7 @@ import Fastify, { type FastifyBaseLogger, type FastifyError, type FastifyInstanc
 import type { Logger } from 'pino';
 import type { ResolvePrincipal } from '../authorization/access.ts';
 import type { Database } from '../infrastructure/database/client.ts';
-import { registerOperations } from '../http/operations.ts';
+import { registerOperations, type AnyOperation } from '../http/operations.ts';
 import { AppError, type ErrorBody } from './errors.ts';
 import { operations } from './operation-list.ts';
 
@@ -17,6 +17,12 @@ export interface AppDependencies {
   readonly logger: Logger;
   /** Production passes `resolveNoPrincipal`. Tests pass a synthetic resolver. */
   readonly resolvePrincipal: ResolvePrincipal;
+  /**
+   * Operations registered after the production list, under the same
+   * boundary (declared access, strict input and output). Only the local
+   * synthetic demo (`src/demo/`) passes any; `src/main.ts` never does.
+   */
+  readonly additionalOperations?: readonly AnyOperation[];
 }
 
 const clientErrorCodes: Record<number, string> = {
@@ -66,7 +72,7 @@ export function createApp(deps: AppDependencies): FastifyInstance {
     return reply.code(404).send(payload);
   });
 
-  registerOperations(app, operations, { db: deps.db, resolvePrincipal: deps.resolvePrincipal });
+  registerOperations(app, [...operations, ...(deps.additionalOperations ?? [])], { db: deps.db, resolvePrincipal: deps.resolvePrincipal });
 
   return app;
 }
