@@ -150,7 +150,7 @@ function section(title, hint, body) {
 }
 
 function partyLabel(annotation, id) {
-  return annotation?.parties?.[id] ?? 'Party (no fixture label)';
+  return annotation?.parties?.[id] ?? state.positional?.[id] ?? 'Party';
 }
 
 /** Display order only: by fixture label, then id. Stored order carries no meaning. */
@@ -190,6 +190,10 @@ function renderDetail() {
   const record = state.record;
   if (!record) return;
   const annotation = annotationFor(record.project.id);
+  // Projects without fixture labels get positional labels by id order.
+  state.positional = Object.fromEntries(
+    [...record.parties].map((p) => p.id).sort().map((id, i) => [id, `Party ${i + 1}`]),
+  );
 
   const head = el('header', { className: 'detail-head' }, [
     el('p', { className: 'eyebrow', text: 'Project' }),
@@ -237,7 +241,7 @@ function renderDetail() {
             ]),
             idCode(agreement.id),
           ]),
-          renderLayer(agreement.terms, agreement.versions, [one, two], annotation),
+          renderLayer(agreement.terms, agreement.versions, [one, two], annotation, { base: `/demo/sim/agreements/${agreement.id}` }),
         ]),
       );
     }
@@ -259,7 +263,7 @@ function renderDetail() {
     section(
       'Shared terms — universal layer',
       'Safety and consent terms held on the project, for everyone on site (D02). Who counts as on site is undecided.',
-      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation),
+      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { base: `/demo/sim/projects/${record.project.id}` }),
     ),
     section(
       'Pairwise agreements',
@@ -267,7 +271,8 @@ function renderDetail() {
       agreementsBody,
     ),
     legend(),
-    section('Not available yet', 'Left out on purpose until Cory decides.', unavailable),
+    SNAPSHOT ? null : simAssumptions(),
+    section('Not available as product actions', SNAPSHOT ? 'Left out on purpose until Cory decides.' : 'Left out on purpose until Cory decides. The simulator stands in for some of them, labelled as simulation.', unavailable),
   );
 }
 
@@ -293,10 +298,11 @@ function legend() {
   ]);
 }
 
-function renderLayer(terms, versions, partyIds, annotation) {
+function renderLayer(terms, versions, partyIds, annotation, ctx) {
   const wrap = el('div', { className: 'layer' });
   if (terms.length === 0 && versions.length === 0) {
     wrap.append(el('div', { className: 'state empty' }, [el('p', { text: 'No terms stored.' })]));
+    if (!SNAPSHOT && ctx) wrap.append(simPanel(terms, versions, ctx));
     return wrap;
   }
 
@@ -309,7 +315,7 @@ function renderLayer(terms, versions, partyIds, annotation) {
 
   versions.forEach((version, index) => {
     const previous = index > 0 ? versions[index - 1] : null;
-    wrap.append(renderVersion(version, previous, versions.length, partyIds, annotation));
+    wrap.append(renderVersion(version, previous, versions.length, partyIds, annotation, ctx));
   });
 
   if (neverPresented.length > 0) {
@@ -322,10 +328,11 @@ function renderLayer(terms, versions, partyIds, annotation) {
       ]),
     );
   }
+  if (!SNAPSHOT && ctx) wrap.append(simPanel(terms, versions, ctx));
   return wrap;
 }
 
-function renderVersion(version, previous, versionCount, partyIds, annotation) {
+function renderVersion(version, previous, versionCount, partyIds, annotation, ctx) {
   const rows = new Map(version.affirmations.map((a) => [`${a.presentedTermId}|${a.partyId}`, a]));
 
   const head = el('header', { className: 'version-head' }, [
@@ -370,7 +377,7 @@ function renderVersion(version, previous, versionCount, partyIds, annotation) {
               el('span', { text: '✓ ' }),
               el('span', { className: 'meta', text: new Date(row.affirmedAt).toLocaleTimeString() }),
             ])
-          : el('td', { className: 'cell none', text: '', attrs: { 'aria-label': 'no row stored' } }),
+          : emptyCell(version, versionCount, term, partyId, annotation, ctx),
       );
     }
     body.append(tr);
@@ -529,6 +536,108 @@ function renderDecisions() {
   );
 }
 
+
+// ---- Simulator (live demo only; never in the snapshot) ----
+
+const SIM_ERRORS = {
+  version_not_affirmable: 'Only a sole version 1 can take rows (S05). Whether and how a resend is affirmed is undecided (D02).',
+  already_affirmed: 'That party already has a row for this term.',
+  party_not_in_agreement: 'That party is not one of this agreement’s two parties.',
+  term_not_in_container: 'A chosen term is not stored in this container.',
+  presented_term_not_found: 'That presented term is not in this container.',
+  affirmed_too_soon: 'The version was presented in the same transaction; try again.',
+  invalid_input: 'Check the input: a term needs some text, and a version needs at least one term.',
+};
+
+function simError(error) {
+  const code = String(error.message).split(' ')[0];
+  return SIM_ERRORS[code] ?? `Rejected: ${error.message}`;
+}
+
+async function simulate(url, body, success) {
+  try {
+    await api('POST', url, body);
+    toast(success);
+  } catch (error) {
+    toast(simError(error), 'error');
+  }
+  await loadProjects();
+  await loadRecord(state.selectedId);
+}
+
+function emptyCell(version, versionCount, term, partyId, annotation, ctx) {
+  const cell = el('td', { className: 'cell none', attrs: { 'aria-label': 'no row stored' } });
+  // Offer the simulated act only where S05 would accept a row: a sole version 1.
+  if (SNAPSHOT || !ctx || versionCount !== 1 || version.sequence !== 1) return cell;
+  const button = el('button', {
+    className: 'sim-affirm',
+    text: 'simulate',
+    attrs: {
+      type: 'button',
+      title: `Simulation: record a row as if ${partyLabel(annotation, partyId)} had affirmed this term. Only the party itself may affirm in the product (D12); how is D03.`,
+    },
+  });
+  button.addEventListener('click', () => {
+    button.disabled = true;
+    void simulate(`${ctx.base}/affirmations`, { presentedTermId: term.id, partyId }, `Simulated row recorded for ${partyLabel(annotation, partyId)}.`);
+  });
+  cell.append(button);
+  return cell;
+}
+
+function simPanel(terms, versions, ctx) {
+  const latest = versions.at(-1);
+  const inLatest = new Set(latest ? latest.terms.map((t) => t.sourceTermId) : terms.map((t) => t.id));
+
+  const input = el('input', { attrs: { type: 'text', maxlength: '2000', placeholder: '[synthetic] term text', 'aria-label': 'New term text' } });
+  const add = el('button', { className: 'secondary', text: 'Add term', attrs: { type: 'button' } });
+  add.addEventListener('click', () => {
+    if (!/\S/.test(input.value)) return toast('A term needs some text.', 'error');
+    add.disabled = true;
+    void simulate(`${ctx.base}/terms`, { content: input.value }, 'Term stored (not yet presented).');
+  });
+
+  const boxes = el('ul', { className: 'sim-terms' });
+  for (const term of terms) {
+    const box = el('input', { attrs: { type: 'checkbox', value: term.id, id: `sim-${term.id}` } });
+    box.checked = inLatest.has(term.id);
+    boxes.append(el('li', {}, [box, el('label', { text: term.content, attrs: { for: `sim-${term.id}` } })]));
+  }
+  const next = (latest?.sequence ?? 0) + 1;
+  const present = el('button', { className: 'secondary', text: `Present version ${next}`, attrs: { type: 'button' } });
+  present.addEventListener('click', () => {
+    const chosen = [...boxes.querySelectorAll('input:checked')].map((b) => b.value);
+    if (chosen.length === 0) return toast('Choose at least one term to present.', 'error');
+    present.disabled = true;
+    void simulate(`${ctx.base}/versions`, { termIds: chosen }, `Version ${next} presented and sealed.`);
+  });
+
+  return el('details', { className: 'sim-panel' }, [
+    el('summary', { text: 'Simulate — demo only' }),
+    el('p', { className: 'hint', text: 'Who may add or present terms is undecided (D02, D04). Here the demo operator does it.' }),
+    el('div', { className: 'sim-row' }, [input, add]),
+    terms.length > 0
+      ? el('div', {}, [
+          el('p', { className: 'hint', text: 'Choose the terms to present. Leaving one out is how a term is dropped and resent (D02); earlier versions stay as they are.' }),
+          boxes,
+          present,
+        ])
+      : null,
+  ]);
+}
+
+function simAssumptions() {
+  return el('aside', { className: 'sim-assumptions' }, [
+    el('strong', { text: 'Simulation assumptions. ' }),
+    el('span', {
+      text:
+        'The demo operator adds and presents terms and records affirmation rows naming a party. None of that is a product act: ' +
+        'who may author or present terms is undecided (D02, D04), and only a party may affirm for itself (D12), by means not yet decided (D03). ' +
+        'A version needing at least one term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
+    }),
+  ]);
+}
+
 // ---- Data loading ----
 
 async function loadFixture() {
@@ -583,6 +692,20 @@ function route() {
   else renderDetail();
 }
 
+async function startSimulation(button) {
+  button.disabled = true;
+  try {
+    const project = await api('POST', '/demo/sim/scenarios', {});
+    await loadProjects();
+    location.hash = `#/projects/${project.id}`;
+    toast('New simulation: one project, two parties, one pairwise agreement. Open “Simulate” in each layer.');
+  } catch (error) {
+    toast(`Could not start a simulation: ${error.message}`, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function createProject(button) {
   button.disabled = true;
   button.textContent = 'Creating…';
@@ -607,8 +730,10 @@ if (SNAPSHOT) {
   document.getElementById('snapshot-note').hidden = false;
   document.getElementById('snapshot-note').textContent =
     `Read-only snapshot of synthetic fixtures, exported ${new Date(SNAPSHOT.exportedAt).toLocaleString()} from the local demo. Not a product build.`;
+  document.getElementById('start-simulation').hidden = true;
 } else {
   createButton.addEventListener('click', (event) => void createProject(event.currentTarget));
+  document.getElementById('start-simulation').addEventListener('click', (event) => void startSimulation(event.currentTarget));
 }
 window.addEventListener('hashchange', route);
 
