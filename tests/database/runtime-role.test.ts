@@ -4,7 +4,7 @@ import { INSUFFICIENT_PRIVILEGE, sqlErrorCode, withClient } from '../support/sql
 
 /**
  * The runtime credential is distinct from the migration credential and holds
- * exactly the privileges Stage 0, S01 and S02 need. Checked as the runtime role, in SQL.
+ * exactly the privileges Stage 0 and S01 to S03 need. Checked as the runtime role, in SQL.
  */
 
 describe('runtime and migration credentials', () => {
@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0, S01 and S02 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01 to S03 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -37,6 +37,8 @@ describe('runtime and migration credentials', () => {
       project: ['SELECT', 'INSERT'],
       project_party: ['SELECT', 'INSERT'],
       pairwise_agreement: ['SELECT', 'INSERT'],
+      universal_term: ['SELECT', 'INSERT'],
+      agreement_term: ['SELECT', 'INSERT'],
     };
     await withClient(inject('runtimeUrl'), async (c) => {
       const tables = await c.query<{ table_name: string }>(
