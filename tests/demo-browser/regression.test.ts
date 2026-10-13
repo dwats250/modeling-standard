@@ -335,18 +335,23 @@ describe('demo regression', () => {
       await go(page, `#/projects/${b}`);
       await page.locator('h2', { hasText: 'Fixture 2' }).waitFor();
       // The browser logs the held 500 as a console error; wait for exactly that one.
+      const errorsBefore = pageErrors.length;
       const expectedConsoleError = page.waitForEvent('console', (m) => m.type() === 'error' && m.text().includes('500'));
       held.release('fail');
       await page.waitForResponse((r) => r.url().endsWith(`/demo/projects/${a}/record`));
-      await expectedConsoleError;
+      const controlled = `desktop: ${(await expectedConsoleError).text()}`;
       await page.waitForTimeout(300);
       expect(await page.locator('.state.error').count()).toBe(0);
       expect(await displayedProjectId(page)).toBe(b);
       expect(await page.locator('h2', { hasText: 'Fixture 2' }).count()).toBe(1);
-      // That 500 is this test's own, already awaited above; it is not a page error.
-      const own = pageErrors.findIndex((e) => e.includes('status of 500'));
+      // Discount only this test's own controlled 500, and only among errors
+      // logged since it was released. Anything else logged since then goes
+      // back, so the final no-browser-errors check still sees it.
+      const added = pageErrors.splice(errorsBefore);
+      const own = added.indexOf(controlled);
       expect(own).toBeGreaterThanOrEqual(0);
-      pageErrors.splice(own, 1);
+      added.splice(own, 1);
+      pageErrors.push(...added);
       await page.close();
     });
   });
