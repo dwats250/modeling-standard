@@ -1,0 +1,793 @@
+{
+  "id": "34ca3b11-dd8e-4fb7-989b-5d1a589a365a",
+  "prevId": "fe2b471d-f8c9-40ca-a720-ff80a3f11c80",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.synthetic_evidence": {
+      "name": "synthetic_evidence",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "payload": {
+          "name": "payload",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "synthetic_evidence_sha256_matches_payload": {
+          "name": "synthetic_evidence_sha256_matches_payload",
+          "value": "\"synthetic_evidence\".\"sha256\" = sha256(\"synthetic_evidence\".\"payload\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.synthetic_resource": {
+      "name": "synthetic_resource",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_principal_id": {
+          "name": "owner_principal_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.agreement_term": {
+      "name": "agreement_term",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pairwise_agreement_id": {
+          "name": "pairwise_agreement_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agreement_term_pairwise_agreement_id_pairwise_agreement_id_fk": {
+          "name": "agreement_term_pairwise_agreement_id_pairwise_agreement_id_fk",
+          "tableFrom": "agreement_term",
+          "tableTo": "pairwise_agreement",
+          "columnsFrom": [
+            "pairwise_agreement_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agreement_term_pairwise_agreement_id_position_unique": {
+          "name": "agreement_term_pairwise_agreement_id_position_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "pairwise_agreement_id",
+            "position"
+          ]
+        },
+        "agreement_term_pairwise_agreement_id_id_unique": {
+          "name": "agreement_term_pairwise_agreement_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "pairwise_agreement_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agreement_term_position_positive": {
+          "name": "agreement_term_position_positive",
+          "value": "\"agreement_term\".\"position\" >= 1"
+        },
+        "agreement_term_content_not_blank": {
+          "name": "agreement_term_content_not_blank",
+          "value": "\"agreement_term\".\"content\" ~ '[^[:space:]]'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agreement_version": {
+      "name": "agreement_version",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pairwise_agreement_id": {
+          "name": "pairwise_agreement_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "term_count": {
+          "name": "term_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "presented_at": {
+          "name": "presented_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agreement_version_pairwise_agreement_id_pairwise_agreement_id_fk": {
+          "name": "agreement_version_pairwise_agreement_id_pairwise_agreement_id_fk",
+          "tableFrom": "agreement_version",
+          "tableTo": "pairwise_agreement",
+          "columnsFrom": [
+            "pairwise_agreement_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agreement_version_pairwise_agreement_id_sequence_unique": {
+          "name": "agreement_version_pairwise_agreement_id_sequence_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "pairwise_agreement_id",
+            "sequence"
+          ]
+        },
+        "agreement_version_pairwise_agreement_id_id_unique": {
+          "name": "agreement_version_pairwise_agreement_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "pairwise_agreement_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agreement_version_sequence_positive": {
+          "name": "agreement_version_sequence_positive",
+          "value": "\"agreement_version\".\"sequence\" >= 1"
+        },
+        "agreement_version_term_count_positive": {
+          "name": "agreement_version_term_count_positive",
+          "value": "\"agreement_version\".\"term_count\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.agreement_version_term": {
+      "name": "agreement_version_term",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pairwise_agreement_id": {
+          "name": "pairwise_agreement_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agreement_version_id": {
+          "name": "agreement_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agreement_term_id": {
+          "name": "agreement_term_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agreement_version_term_version_in_agreement_fk": {
+          "name": "agreement_version_term_version_in_agreement_fk",
+          "tableFrom": "agreement_version_term",
+          "tableTo": "agreement_version",
+          "columnsFrom": [
+            "pairwise_agreement_id",
+            "agreement_version_id"
+          ],
+          "columnsTo": [
+            "pairwise_agreement_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "agreement_version_term_source_in_agreement_fk": {
+          "name": "agreement_version_term_source_in_agreement_fk",
+          "tableFrom": "agreement_version_term",
+          "tableTo": "agreement_term",
+          "columnsFrom": [
+            "pairwise_agreement_id",
+            "agreement_term_id"
+          ],
+          "columnsTo": [
+            "pairwise_agreement_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agreement_version_term_version_position_unique": {
+          "name": "agreement_version_term_version_position_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "agreement_version_id",
+            "position"
+          ]
+        },
+        "agreement_version_term_version_source_unique": {
+          "name": "agreement_version_term_version_source_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "agreement_version_id",
+            "agreement_term_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agreement_version_term_position_positive": {
+          "name": "agreement_version_term_position_positive",
+          "value": "\"agreement_version_term\".\"position\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.pairwise_agreement": {
+      "name": "pairwise_agreement",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_one_id": {
+          "name": "party_one_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_two_id": {
+          "name": "party_two_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pairwise_agreement_project_id_project_id_fk": {
+          "name": "pairwise_agreement_project_id_project_id_fk",
+          "tableFrom": "pairwise_agreement",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pairwise_agreement_party_one_in_project_fk": {
+          "name": "pairwise_agreement_party_one_in_project_fk",
+          "tableFrom": "pairwise_agreement",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_one_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pairwise_agreement_party_two_in_project_fk": {
+          "name": "pairwise_agreement_party_two_in_project_fk",
+          "tableFrom": "pairwise_agreement",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_two_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "pairwise_agreement_distinct_parties": {
+          "name": "pairwise_agreement_distinct_parties",
+          "value": "\"pairwise_agreement\".\"party_one_id\" <> \"pairwise_agreement\".\"party_two_id\""
+        },
+        "pairwise_agreement_canonical_order": {
+          "name": "pairwise_agreement_canonical_order",
+          "value": "\"pairwise_agreement\".\"party_one_id\" < \"pairwise_agreement\".\"party_two_id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.project": {
+      "name": "project",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_by_principal_id": {
+          "name": "created_by_principal_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_party": {
+      "name": "project_party",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_party_project_id_project_id_fk": {
+          "name": "project_party_project_id_project_id_fk",
+          "tableFrom": "project_party",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "project_party_project_id_id_unique": {
+          "name": "project_party_project_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universal_term": {
+      "name": "universal_term",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universal_term_project_id_project_id_fk": {
+          "name": "universal_term_project_id_project_id_fk",
+          "tableFrom": "universal_term",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "universal_term_project_id_position_unique": {
+          "name": "universal_term_project_id_position_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "position"
+          ]
+        },
+        "universal_term_project_id_id_unique": {
+          "name": "universal_term_project_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "universal_term_position_positive": {
+          "name": "universal_term_position_positive",
+          "value": "\"universal_term\".\"position\" >= 1"
+        },
+        "universal_term_content_not_blank": {
+          "name": "universal_term_content_not_blank",
+          "value": "\"universal_term\".\"content\" ~ '[^[:space:]]'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.universal_version": {
+      "name": "universal_version",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "term_count": {
+          "name": "term_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "presented_at": {
+          "name": "presented_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universal_version_project_id_project_id_fk": {
+          "name": "universal_version_project_id_project_id_fk",
+          "tableFrom": "universal_version",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "universal_version_project_id_sequence_unique": {
+          "name": "universal_version_project_id_sequence_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "sequence"
+          ]
+        },
+        "universal_version_project_id_id_unique": {
+          "name": "universal_version_project_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "universal_version_sequence_positive": {
+          "name": "universal_version_sequence_positive",
+          "value": "\"universal_version\".\"sequence\" >= 1"
+        },
+        "universal_version_term_count_positive": {
+          "name": "universal_version_term_count_positive",
+          "value": "\"universal_version\".\"term_count\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.universal_version_term": {
+      "name": "universal_version_term",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "universal_version_id": {
+          "name": "universal_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "universal_term_id": {
+          "name": "universal_term_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universal_version_term_version_in_project_fk": {
+          "name": "universal_version_term_version_in_project_fk",
+          "tableFrom": "universal_version_term",
+          "tableTo": "universal_version",
+          "columnsFrom": [
+            "project_id",
+            "universal_version_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "universal_version_term_source_in_project_fk": {
+          "name": "universal_version_term_source_in_project_fk",
+          "tableFrom": "universal_version_term",
+          "tableTo": "universal_term",
+          "columnsFrom": [
+            "project_id",
+            "universal_term_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "universal_version_term_version_position_unique": {
+          "name": "universal_version_term_version_position_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "universal_version_id",
+            "position"
+          ]
+        },
+        "universal_version_term_version_source_unique": {
+          "name": "universal_version_term_version_source_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "universal_version_id",
+            "universal_term_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "universal_version_term_position_positive": {
+          "name": "universal_version_term_position_positive",
+          "value": "\"universal_version_term\".\"position\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
