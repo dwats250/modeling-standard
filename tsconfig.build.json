@@ -13,6 +13,7 @@
     "src/demo",
     "src/scripts/demo.ts",
     "src/scripts/demo-reset.ts",
-    "src/scripts/demo-export.ts"
+    "src/scripts/demo-export.ts",
+    "src/scripts/check-migration-identifiers.ts"
   ]
 }

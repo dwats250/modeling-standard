@@ -99,6 +99,13 @@
       "when": 1791919530781,
       "tag": "0013_affirmation_read_committed_only",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791922595191,
+      "tag": "0014_agreement_version_fk_name",
+      "breakpoints": true
     }
   ]
 }
