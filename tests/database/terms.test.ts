@@ -152,6 +152,122 @@ describe('ordering', () => {
   });
 });
 
+describe('concurrent additions and UUID letter case', () => {
+  /**
+   * A technical invariant only: concurrent additions to one container must
+   * serialize on the same application advisory lock whatever the letter case
+   * of the UUID text, as PostgreSQL treats both as the same uuid. The race is
+   * made deterministic: the owning role holds the container row FOR UPDATE, so
+   * the first addition takes its advisory lock, inserts, and then waits in its
+   * foreign-key check; the second starts only once that is so, and the row is
+   * released only once the second is waiting too. Blocked calls are found by
+   * who blocks them (pg_blocking_pids), so other suites' sessions do not count.
+   */
+
+  type Outcome = { ok: true; position: number } | { ok: false; code: string | null };
+  const settle = (p: Promise<{ position: number }>): Promise<Outcome> =>
+    p.then(
+      (row) => ({ ok: true as const, position: row.position }),
+      async (error: unknown) => ({ ok: false as const, code: await failureCode(() => Promise.reject(error instanceof Error ? error : new Error(String(error)))) }),
+    );
+
+  async function blockedBy(c: import('pg').Client, blocker: number): Promise<number | null> {
+    const { rows } = await c.query<{ pid: number }>(
+      'select pid from pg_stat_activity where $1 = any(pg_blocking_pids(pid)) order by pid limit 1',
+      [blocker],
+    );
+    return rows[0]?.pid ?? null;
+  }
+
+  async function until<T>(read: () => Promise<T | null>, what: string): Promise<T> {
+    const deadline = Date.now() + 10_000;
+    for (;;) {
+      const value = await read();
+      if (value !== null) return value;
+      if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  }
+
+  /** Runs `first` while the container row is held, then `second` once `first` is blocked, then releases. */
+  async function race(
+    table: 'project' | 'pairwise_agreement',
+    containerId: string,
+    first: () => Promise<{ position: number }>,
+    second: () => Promise<{ position: number }>,
+  ): Promise<[Outcome, Outcome]> {
+    // Waits are observed from a separate connection outside any transaction:
+    // pg_stat_activity is a per-transaction snapshot, so the holder cannot poll it.
+    return withClient(inject('migrationUrl'), (observer) =>
+      withClient(inject('migrationUrl'), async (holder) => {
+        const holderPid = (await holder.query<{ pid: number }>('select pg_backend_pid() as pid')).rows[0]!.pid;
+        await holder.query('begin');
+        await holder.query(`select 1 from ${table} where id = $1 for update`, [containerId]);
+        const one = settle(first());
+        const firstPid = await until(() => blockedBy(observer, holderPid), 'the first addition to wait on the held row');
+        const two = settle(second());
+        // Before the fix the second waits on the first's uncommitted position;
+        // after it, on the first's advisory lock. Either way, the first blocks it.
+        await until(() => blockedBy(observer, firstPid), 'the second addition to wait on the first');
+        await holder.query('commit');
+        return [await one, await two];
+      }),
+    );
+  }
+
+  function positionsOf(outcomes: Outcome[]): number[] {
+    return outcomes.map((o) => (o.ok ? o.position : -1)).sort((a, b) => a - b);
+  }
+
+  it('universal: lowercase and uppercase forms of one project id both succeed, at positions 1 and 2', async () => {
+    const created = await insertProject(database.db, { createdByPrincipalId: `s03-${randomUUID()}` });
+    const lower = created.id.toLowerCase();
+    const outcomes = await race(
+      'project',
+      created.id,
+      () => addUniversalTerm(database.db, lower, 'lowercase id'),
+      () => addUniversalTerm(database.db, lower.toUpperCase(), 'uppercase id'),
+    );
+    expect(outcomes).toEqual([expect.objectContaining({ ok: true }), expect.objectContaining({ ok: true })]);
+    expect(positionsOf(outcomes)).toEqual([1, 2]);
+    expect((await listUniversalTerms(database.db, created.id)).map((t) => t.position)).toEqual([1, 2]);
+  });
+
+  it('pairwise: lowercase and uppercase forms of one agreement id both succeed, at positions 1 and 2', async () => {
+    const { agreementId } = await agreementFixture();
+    const lower = agreementId.toLowerCase();
+    const outcomes = await race(
+      'pairwise_agreement',
+      agreementId,
+      () => addAgreementTerm(database.db, lower, 'lowercase id'),
+      () => addAgreementTerm(database.db, lower.toUpperCase(), 'uppercase id'),
+    );
+    expect(outcomes).toEqual([expect.objectContaining({ ok: true }), expect.objectContaining({ ok: true })]);
+    expect(positionsOf(outcomes)).toEqual([1, 2]);
+    expect((await listAgreementTerms(database.db, agreementId)).map((t) => t.position)).toEqual([1, 2]);
+  });
+
+  it('does not make different containers wait on each other', async () => {
+    const held = await insertProject(database.db, { createdByPrincipalId: `s03-${randomUUID()}` });
+    const other = await insertProject(database.db, { createdByPrincipalId: `s03-${randomUUID()}` });
+    await withClient(inject('migrationUrl'), (observer) => withClient(inject('migrationUrl'), async (holder) => {
+      const holderPid = (await holder.query<{ pid: number }>('select pg_backend_pid() as pid')).rows[0]!.pid;
+      await holder.query('begin');
+      await holder.query('select 1 from project where id = $1 for update', [held.id]);
+      const blocked = settle(addUniversalTerm(database.db, held.id, 'held container'));
+      await until(() => blockedBy(observer, holderPid), 'the held container addition to wait');
+      // A genuinely different container proceeds while the first still holds its lock.
+      const free = await Promise.race([
+        addUniversalTerm(database.db, other.id.toUpperCase(), 'other container'),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('different container was blocked')), 5_000)),
+      ]);
+      expect(free.position).toBe(1);
+      await holder.query('commit');
+      expect(await blocked).toEqual({ ok: true, position: 1 });
+    }));
+  });
+});
+
 describe('the database rejects', () => {
   it('empty or blank text', async () => {
     const f = await agreementFixture();

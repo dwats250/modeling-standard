@@ -43,9 +43,14 @@ export interface AgreementTermRecord {
   readonly content: string;
 }
 
-/** Serializes position assignment for one container until the transaction ends. */
+/**
+ * Serializes position assignment for one container until the transaction
+ * ends. PostgreSQL reads upper- and lowercase UUID text as the same uuid, so
+ * the key is lowercased (PostgreSQL's canonical `uuid::text`, as in
+ * `versions.ts`): every caller naming the same container takes the same lock.
+ */
 async function lockContainer(tx: Executor, containerId: string): Promise<void> {
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`term-container:${containerId}`}, 0))`);
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`term-container:${containerId.toLowerCase()}`}, 0))`);
 }
 
 export async function addUniversalTerm(db: Executor, projectId: string, content: string): Promise<UniversalTermRecord> {
