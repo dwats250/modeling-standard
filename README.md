@@ -30,6 +30,8 @@ This is the whole operating model. Tool-specific instructions may narrow an agen
 
 ## Start here
 
+For Cory: `docs/CORY-CATCH-UP.md` summarizes what is built, what is decided and what is still his to answer.
+
 1. `planning/README.md`
 2. `planning/RECONCILIATION-REPORT.md` for what changed in the reconciliation and why
 3. `planning/H-cory-decision-packet.md` for the decisions that are Cory's
