@@ -31,7 +31,7 @@ The team has built the record-keeping core that your decisions so far allow, and
 
 - **A project.** The container for one collaboration. Whoever creates it is recorded only as the creator: not as photographer, payer or anyone's representative (your D01 ruling).
 - **Project-local parties.** A project can hold parties. Today a party is only an identifier inside one project. It is not linked to any person, account or email address.
-- **Private pairwise agreements.** An agreement relates exactly two parties of one project. Several agreements can sit under one project without involving each other (your D02 ruling).
+- **Private pairwise agreements.** An agreement relates exactly two parties of one project. Separate pairwise agreements can sit under one project, and an unrelated participant does not hold up another pair's agreement (your D02 ruling).
 - **Two layers of terms.** Shared safety and consent terms are stored on the project. Private commercial and craft terms are stored on a pairwise agreement. Each term is its own row of text.
 - **Frozen presented versions.** A chosen set of terms, in a chosen order, can be frozen as a version. Once frozen, nothing in it can be changed, and a later version never alters an earlier one.
 - **Per-term affirmation evidence.** The database can hold one row per party per presented term, stamped with the database's own clock.
@@ -81,14 +81,14 @@ Two rules to keep in mind while reading this table:
 | Universal omission | Storage can freeze a later universal version with a different term set | **No** | Whether a shared safety or consent term may be left out is yours to decide (A5). |
 | Affirmation | Yes, per-term evidence rows (S05) | Per-term unit, and body/money individually: yes (D04) | Only a sole version 1 can take rows today. No credential is recorded. No production path writes rows. The ordinary-term group-check convenience is not built. |
 | Real signer identity | **No** | No proxies (D12) and real verification required (D11): yes. How a person is bound to a party: no (D03) | |
-| Finality | **No** | The rule, yes: final only when every named party has affirmed every required term (D02) | Cannot be computed until requiredness is decided. |
+| Finality | **No** | Partly: the necessary condition is settled. An agreement cannot be final until every named party has affirmed every required term (D02). Whether any additional confirmation step exists remains unresolved under D02 (b) | Even the necessary condition cannot be checked until requiredness is decided. |
 | Visibility | **No** party views | Partly (D10) | The demo shows the whole stored record and says so. It is not any party's view. |
 | Invitations | **No** | **No** (D03) | |
 | Artifacts | **No** | Photo release needed for the first scenario: yes (D08). Artifact contents and shape: no (D10, D08) | |
 | Preservation/retrieval | Append-only storage yes. Retrieval and retention no | Removal needs a reason and all-party approval: yes (D09). The rest: no, and partly counsel | |
 | Real use | Not permitted | **No** (D06) | A working synthetic demo is not permission for real use. |
 | Free tier and capacity | No billing exists | Yes: free tier completes the full loop; monetize capacity, never completion (D07) | |
-| Witness | **No** | Optional and useful: yes (ruling 10, D12). What it attests to: no | |
+| Witness | **No** | Partly: you described witness signatures as potentially useful and optional (ruling 10, D12). Their scope and evidentiary meaning remain open | |
 | "No means no" acknowledgment | **No** | Yes: value stated publicly, signed acknowledgment on every brief (ruling 14) | |
 
 ---
@@ -107,9 +107,9 @@ You do not need to answer these again. Each line links to its decision file, whi
 - Safety and consent terms are universal: shared by and affirmed by everyone on site.
 - An unrelated participant does not hold up another pair's agreement.
 - For an agreement, "all parties" means the parties named in it.
-- An agreement is final only when every named party has affirmed every required term.
+- An agreement cannot be final until every named party has affirmed every required term.
 - No counters. If a term is not accepted, the proposer may drop it and resend, or withdraw the proposal.
-- **Still open:** a party withdrawing their own agreement before finality, cancellation, roster changes, amendments and re-acceptance, and the earlier agreement while a replacement is pending.
+- **Still open:** whether finality needs any additional confirmation step beyond those affirmations (D02 (b); see [section 12](#12-points-we-noticed-and-did-not-resolve)), a party withdrawing their own agreement before finality, cancellation, roster changes, amendments and re-acceptance, and the earlier agreement while a replacement is pending.
 
 **[D04: terms and affirmation](../decisions/D04-terms-and-affirmation.md)** (OPEN, settled piece)
 - Every term is individually represented and is the unit of the record.
@@ -224,7 +224,7 @@ Recommended order: **A1 → A2 → A3 → A4 → A5**.
 
 ### A2. What each party sees ([D10](../decisions/D10-what-each-party-sees.md)), one row at a time
 
-**Question.** For each kind of information below, who sees it at each point? For each cell, the answer can be: everyone, only the parties it concerns, only the organizer, or nobody. You do not need to fill the grid in one sitting. Each row stands alone.
+**Question.** For each kind of information below, who sees it at each point? These are common answer shapes, not a closed list: everyone, only the parties it concerns, only the organizer, nobody, or another rule — describe it. You do not need to fill the grid in one sitting. Each row stands alone.
 
 | Information | Before agreeing | During review | After agreement | In the delivered artifact |
 |---|---|---|---|---|
@@ -274,11 +274,11 @@ This is separate from clause wording.
 
 **Already settled.**
 - Each term is individually affirmable. Body and money terms always need their own affirmation, and ordinary terms may be group-checked (D04).
-- Finality needs every named party to affirm every required term (D02).
+- An agreement cannot be final until every named party has affirmed every required term (D02). That is a necessary prerequisite for finality; whether any additional confirmation step exists remains unresolved under D02 (b).
 - The three field buckets, and deliberately open being different from accidentally unfinished (ruling 5).
 - Field ordering replaces brief types (ruling 4).
 
-**Why we're asking now.** Finality cannot be computed, and the group-check cannot be built, without knowing which terms are required and which are body or money. Nothing in storage records either today, on purpose.
+**Why we're asking now.** Even the necessary prerequisite for finality cannot be checked, and the group-check cannot be built, without knowing which terms are required and which are body or money. Nothing in storage records either today, on purpose.
 
 **Smallest sufficient answer.** Answers to 1, 2, 5 and 6 for the first scenario. Items 3, 4 and 7 can follow.
 
@@ -611,9 +611,9 @@ These are **candidate** next slices. Each still needs its own PRD and Dustin's a
 Five questions, in this order. Each can be answered in a few sentences.
 
 1. **Participation (A1).** "In the first scenario, what must a person have in order to read the brief, what must they have in order to affirm a term, and how do they get back to their record later?"
-2. **Applying versus affirming (A4).** "When someone applies to posted work, which terms, if any, have they accepted at that moment, and which still need their own separate affirmation afterwards?"
-3. **Visibility, four rows (A2).** "In the two-person first scenario, before the agreement is final, may each party see: who the other party is; the other's contact details; the exact location; and which terms the other has already affirmed?"
-4. **Requiredness (A3).** "In the first scenario, which terms must every named party affirm before the agreement is final, and who decides that a term is required?"
+2. **Visibility, four rows (A2).** "In the two-person first scenario, before the agreement is final, may each party see: who the other party is; the other's contact details; the exact location; and which terms the other has already affirmed?"
+3. **Requiredness (A3).** "In the first scenario, which terms must every named party affirm before the agreement is final, and who decides that a term is required?"
+4. **Applying versus affirming (A4).** "When someone applies to posted work, which terms, if any, have they accepted at that moment, and which still need their own separate affirmation afterwards?"
 5. **After a resend (A5a).** "When a term is dropped and the rest resent, how are the resent terms affirmed, and do affirmations already given on the earlier version still count?"
 
 No counsel questions are in this list on purpose.
