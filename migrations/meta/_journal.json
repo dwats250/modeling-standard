@@ -120,6 +120,20 @@
       "when": 1792081805582,
       "tag": "0016_account_party_binding_stamps_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792099698035,
+      "tag": "0017_direct_invitation",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792099710262,
+      "tag": "0018_direct_invitation_stamp_and_grants",
+      "breakpoints": true
     }
   ]
 }

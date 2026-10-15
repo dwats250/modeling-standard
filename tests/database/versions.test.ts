@@ -452,6 +452,7 @@ describe('presented versions', () => {
         'agreement_version_check_sealed',
         'agreement_version_stamp',
         'agreement_version_term_check_copy',
+        'direct_invitation_stamp',
         'party_account_binding_stamp',
         'universal_affirmation_stamp',
         'universal_version_check_sealed',
