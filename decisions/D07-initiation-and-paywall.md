@@ -36,6 +36,19 @@ The exact shape of any standalone document tool remains a document-product quest
 
 Source: `2026-10-05-cory-reconciliation.md`.
 
+### Direct rulings — 2026-10-09 and 2026-10-14/15
+
+Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md) (Q1, B5). These add to the ruling above; they do not change it.
+
+**Profile and portfolio sit behind the paywall; doing collaborations does not.** (Q1) Participating in collaborations remains free, and the full-loop-free ruling for completing a collaboration is unchanged. No capacity numbers or prices are chosen here.
+
+**Start routes: three, plus shareable links. No fourth route.** (B5) This closes the 2026-10-05 open seam on a fourth route.
+
+- The three known starts stand: talent applies to posted work; someone sends a project directly to a known person; talent converts an off-platform approach into a brief.
+- **A referral — including an agent passing a project to their roster — is just a shared link.** Whoever receives it applies through the ordinary route. No special machinery; the creator still never browses anyone; links are a growth mechanism in their own right.
+- **A referrer introduces and nothing more.** A referrer never acts for talent, ticks a term, signs, accepts a fee or agrees to a boundary (D12). Link-as-invitation is recorded in D03.
+- How each route reaches agreement differs: posted work is wholesale acceptance, direct send is per-term (D02).
+
 ## What this unlocks
 
 - Product access rules.
@@ -47,3 +60,5 @@ Billing is not built in the first stages either way. Its absence is not evidence
 ## Amendments
 
 2026-10-05 — Replaces the earlier July documents-only candidate direction with the directly confirmed capacity-not-completion rule.
+
+2026-10-15 — Adds the profile/portfolio paywall boundary (collaborating stays free) and closes the fourth-route seam: three routes plus shareable links; a referrer introduces only. Status unchanged: DECIDED.

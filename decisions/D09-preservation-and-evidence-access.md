@@ -1,6 +1,6 @@
 # D09 — Preservation and evidence access
 
-Status: OPEN
+Status: OPEN — counsel-dependent parts only: retention periods, purge policy and statutory erasure
 
 ## Why this needs Cory
 
@@ -30,9 +30,23 @@ For ordinary in-product removal of a shared record, removal requires both a reas
 
 This does not override statutory privacy or erasure rights. Legal requests follow the legal path; the interaction between preservation, restriction, legal-claims bases and erasure remains counsel-dependent.
 
-Still open: retention period and purge policy; lost-credential recovery; access after closure or suspension; removed-participant historical access; statutory-erasure implementation.
+Still open at that date: retention period and purge policy; lost-credential recovery; access after closure or suspension; removed-participant historical access; statutory-erasure implementation. *(Recovery, closure and suspension answered 2026-10-15; see below.)*
 
 Source: `2026-10-05-cory-reconciliation.md`.
+
+### Direct rulings — 2026-10-09 and 2026-10-14/15
+
+Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md) (A1, B3, Q17, C2).
+
+- **Records outlive the account.** On account closure the final email carries the person's reference numbers; the records stay in an archive reachable by reference number (D03). **Archive access does not require an active account**, and no dormant account is kept.
+- **Suspension blocks acting, never reading.** "Of course they still need access to their records, and they don't need an account to do it." If a suspension is ever contested, the record is exactly what they would need.
+- **Lost credentials: re-verification of identity is the fallback** for recovery. The exact technical recovery mechanics are Dustin's call.
+- **What the record holds** (Q17, recorded in D04): fingerprint, IP, device, chained timestamps and every version, retained as long as the document, never shown.
+- Third parties are used only where a specialist means Modeling Standard holds less; the archive lookup needs no third party (doctrine 9).
+
+**Still open — counsel-dependent:** retention periods, any purge policy, and statutory erasure and how it meets preservation (C2). These are not Cory instinct questions.
+
+**Not directly addressed:** historical access for a participant removed or replaced after an earlier agreement, and the effect of deleting profile data while keeping the account. The archive model (each person's reference numbers reach their own records) is the governing direction; these edges should be confirmed when D09 is taken to counsel rather than queued as separate Cory homework. Reconciliation question R1 (whether a dropped term persists in retained versions) also bears on what is retained.
 
 ## What this unlocks
 
@@ -40,3 +54,5 @@ Source: `2026-10-05-cory-reconciliation.md`.
 - Until this is answered, the build has no purge path **[F]** and makes no promise about how long in-product access lasts. Each party's delivered copy of the artifact is theirs regardless.
 
 ## Amendments
+
+2026-10-15 — Records the archive model, closure email with reference numbers, account-free archive access, suspension blocks acting but never reading, and re-verification as the recovery fallback. Remains OPEN only for counsel-dependent retention and erasure.

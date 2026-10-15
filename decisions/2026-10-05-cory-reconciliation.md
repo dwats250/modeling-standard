@@ -2,6 +2,8 @@
 
 Status: DIRECT CORY RULINGS
 
+> **Later rulings exist.** Cory's 2026-10-09 and 2026-10-14/15 sessions ([`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md)) govern where they conflict with this note — among others ruling 6 (escalation and delay), the private commercial/craft layer, the body/money framing, the optional witness and every open seam listed below. This note is kept unchanged as historical evidence.
+
 ## Purpose
 
 This note preserves the result of Cory's live reconciliation session after the greenfield planning package was found to have a source cutoff of 2026-07-23.

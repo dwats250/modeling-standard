@@ -1,6 +1,6 @@
 # D02 — Agreement topology and lifecycle
 
-Status: OPEN
+Status: OPEN — for the photo-shoot scope, only reconciliation question R2 (who may drop a declined term, given no recorded authorship) remains
 
 ## Why this needs Cory
 
@@ -45,7 +45,7 @@ Still open in the sources: the confirmation model and exact workflow (VISION:156
 
 Partial direct ruling — 2026-10-05.
 
-**Structure.** Commercial and craft agreements are private and pairwise under the project. One model does not see another model's contract. An unrelated unresponsive participant does not hold up another pair's agreement.
+**Structure.** *(Privacy scope superseded 2026-10-15: money is the only private thing; see below.)* Commercial and craft agreements are private and pairwise under the project. One model does not see another model's contract. An unrelated unresponsive participant does not hold up another pair's agreement.
 
 **Universal safety layer.** Safety and consent terms are shared by everyone who will be on site and are affirmed by everyone on site.
 
@@ -55,11 +55,64 @@ Partial direct ruling — 2026-10-05.
 
 **Responses.** There are no counters. If a term is not accepted, the proposer may drop it and resend or withdraw the proposal. One number, one answer: yes or no.
 
-Still open: (d) withdrawal before finality; (e) cancellation; (f) roster changes; (g) amendments and re-acceptance; (h) the earlier agreement while a replacement is pending.
+Still open at that date: (d) withdrawal before finality; (e) cancellation; (f) roster changes; (g) amendments and re-acceptance; (h) the earlier agreement while a replacement is pending. *(All answered 2026-10-09 and 2026-10-14/15; see below.)*
 
 The newly described term-attached recorded dialogue belongs to the pre-presentation composition flow and must not be mistaken for counter-offering.
 
 Source: `2026-10-05-cory-reconciliation.md`.
+
+### Direct rulings — 2026-10-09 and 2026-10-14/15
+
+Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md). These are later than the 2026-10-05 ruling above and govern where they conflict. Scope: **photo shoots only.** Nothing here is generalized to fashion shows, which Cory treats as a separate product (cross-cutting doctrine 10).
+
+**Topology.**
+
+- **One agreement per pair, per project.** Dual roles and extra obligations are additional terms inside it, not a second agreement. (Q5)
+- **Three layers, not two:** universal safety (everyone on site, same terms); shared logistics, which is the call sheet (schedule, call times, location, seen by everyone involved including each other's slots); private money (compensation only). **Money is the only private thing.** Craft terms, deliverables and usage move to the shared layer; the pairwise agreement carries the fee and little else. (Q14, A2) **SUPERSEDES** the 2026-10-05 statement that commercial and craft agreements are the private pairwise layer. The exact data topology is not decided by this wording.
+- **"On site" means physical proximity, not role.** Anyone physically in the room affirms the universal safety terms, whoever they are. Someone never physically present signs only the terms that concern them. (Q8; see also D12 presence rulings.)
+- **Universal safety terms can never be dropped or left out**, including from a later version. (Q7, A5b)
+
+**Start routes and response mechanics.**
+
+- **Posted work: applying is wholesale acceptance** of the published terms. An applicant cannot apply conditionally. (Q15)
+- **Direct send: per-term.** The recipient may decline individual items, which are then dropped, or it stops. (Q15)
+- Governing rule: **what is written and accepted is closed; what is absent is what remains to be settled.** (Q15) This **SUPERSEDES** any broad reading that every start route uses the same per-term response mechanic. D04 records how this meets affirmation evidence.
+- **The subject of a term controls it** (Q7). D04 holds the full rule; for lifecycle it means a counterparty's choice on another person's declaration is to accept the resulting terms or walk away.
+
+**Resend and escalation.**
+
+- **The whole document always returns intact** on resend. Already-agreed terms show as agreed; nobody re-ticks what they already approved. The document keeps cycling to whoever needs to act until everything is green for everyone. (Q3)
+- **Escalation cannot happen.** After a response the proposer's only moves are **drop the declined term and resend, or withdraw**. Nothing can ever be added or widened. (Q4) **SUPERSEDES 2026-10-05 ruling 6**: there is no escalation record and **no mandatory delay is built**.
+- **Dropping is only ever done by whoever proposed the declined term.** Authorship is **not recorded** (Q9). How these two rulings combine is reconciliation question **R2**, left for Cory; proposer authorization is not designed until it is answered.
+- **A "no" is not recorded.** The final whitelist is the record: if a term is not on the final contract, it is not agreed. (Q10) How this interacts with retained versions is reconciliation question **R1** (see D04).
+
+**Finality and signing.**
+
+- **No organizer confirmation step.** All terms green for everyone, then everyone signs; that is the final act. (A5a) Answers (b).
+- Ticking and signing are separate acts; nobody signs while the document can still change (Q12; recorded in D04).
+
+**After commitment: the agreement can only shrink.**
+
+- "You're not allowed to add anything to it, but you are absolutely allowed to take away from it." (Q11)
+- **Withdrawal before finality** is allowed; a term withdrawn before the shoot is simply absent. (Q11, A5a) Answers (d).
+- **Consent withdrawn during the shoot** is allowed and is recorded as a factual event such as "stopped early, called by X" — never as a failure or misconduct. (Q11) This is distinct from cancellation and is not classified as DNF; no downstream contractual consequence is decided here.
+- **No rewriting** an agreed agreement. Terms either survive a change completely intact, or the agreement ends and a new one begins. Nothing in between. (A5a)
+- **Coverage ceiling:** a hard cap that nothing agreed on the day expands; exceeding it voids the agreement through a signed term (B6). Recorded in D04; the lifecycle consequence is that the agreement's force comes from that signed term, not from a product action.
+
+**Cancellation.** No new category. Doesn't show on the day = **DNS**. Cancels after signing = **DNF**. Anyone may cancel; it costs them the DNF, and the signed deposit terms handle the money. (A5a) Answers (e).
+
+**Date change.** **A changed date ends the agreement.** Terms carry over so a new one is quick, but everyone signs the new agreement. No extension mechanism, no rolling forward. (A5a) With no amendment path, (g) and (h) dissolve: there is no pending amended agreement.
+
+**Roster changes.** (A5a) Answers (f).
+
+- **Anyone onboarded may be replaced** if the replacement accepts every term exactly as it stands — every term stays literally true.
+- **Unless they supply a variable the terms depend on** (a designer's wardrobe, a location, a concept). Then the agreement ends and a new one begins from scratch; terms are never rewritten.
+- **Additions are separate decisions** that everyone green-lights. A declined addition simply does not come; everything else stands.
+- **SUPERSEDES** an earlier statement in the same session that a photographer or model can never be replaced.
+
+Cross-cutting: rigidity after commitment — easy to enter, hard to alter — governs changing committed terms, never using the product (doctrine 6).
+
+**Status for the photo-shoot scope.** (a) through (h) are answered. The one item this file cannot close is **R2**: enforcing "only the proposer drops a declined term" against "authorship is not recorded". It is needed before drop-and-resend can be built for real participants, so the file stays OPEN on that point alone.
 
 ## What this unlocks
 
@@ -68,3 +121,5 @@ Source: `2026-10-05-cory-reconciliation.md`.
 - (e) blocks cancellation work only; (g) and (h) block amendment work only. Neither is offered until answered.
 
 ## Amendments
+
+2026-10-15 — Records the 2026-10-09 and 2026-10-14/15 rulings: one agreement per pair; three layers with money the only private thing; no escalation and no delay (supersedes ruling 6); whole-document resend; no organizer confirmation; shrink-only after commitment; mid-shoot withdrawal as a fact; DNS/DNF cancellation; date change ends the agreement; replacement and addition rules; route-specific acceptance; physical-proximity meaning of "on site". (a)–(h) answered; R2 remains.

@@ -6,11 +6,13 @@ This repository intentionally begins with product planning rather than applicati
 
 ## Current state
 
-**Stage 1 in progress.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation is described in `docs/engineering/STAGE-0.md`.
+**Stage 1 in progress.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation is described in `docs/engineering/STAGE-0.md`. Cory's 2026-10-09 and 2026-10-14/15 rulings are reconciled into `decisions/` (`decisions/2026-10-09-15-cory-reconciliation.md`); several change what S02–S05 assume, mapped in `docs/engineering/OCTOBER-SEMANTIC-IMPACT.md`.
 
 - **Merged:** S01 project and party core, S02 pairwise agreement topology, S03 term units, S04 presented versions and S05 per-term affirmation evidence. Slices are in `docs/slices/`; each is described as built in `docs/engineering/`.
 - **Integrated:** a local synthetic demo with a record inspector, scenario simulator, portable read-only snapshot and an end-to-end browser regression in CI (`docs/engineering/DEMO.md`). It runs only on loopback against the demo database, with invented records.
-- **Gated:** no real participant flow exists. Production has no principal, so every protected operation is refused. Who takes part and how (D03), what each party sees (D10), requiredness and finality (D04), public vocabulary (D05) and real use (D06) remain OPEN Cory decisions (`decisions/README.md`).
+- **Decided, not built:** participation credential (D03), what each party sees (D10) and Cory's authorization of pre-launch real use (D06) are now DECIDED for photo shoots, and D02 and D04 are largely answered. None of that is implemented yet: deciding a semantic does not build it.
+- **Still open:** no-means-no wording, the visible signing act and two reconciliation questions (D04, D02), remaining public vocabulary (D05), the document trigger table and counsel review (D08), counsel-dependent retention and erasure (D09), and synthetic-demo verification (D11). See `decisions/README.md`.
+- **Gated:** no real participant flow exists. Production has no principal, so every protected operation is refused. Real use (Gate 2) is not open: D06 authorizes it in principle, but its prerequisites, including counsel-dependent D08/D09 items and the participant flow itself, are unmet.
 
 ## Product authority
 
@@ -30,7 +32,7 @@ This is the whole operating model. Tool-specific instructions may narrow an agen
 
 ## Start here
 
-For Cory: `docs/CORY-CATCH-UP.md` summarizes what is built, what is decided and what is still his to answer.
+For Cory: `decisions/README.md` lists what is still his to answer. `docs/CORY-CATCH-UP.md` is the question set he answered on 2026-10-09 and 2026-10-14/15, kept as history.
 
 1. `planning/README.md`
 2. `planning/RECONCILIATION-REPORT.md` for what changed in the reconciliation and why

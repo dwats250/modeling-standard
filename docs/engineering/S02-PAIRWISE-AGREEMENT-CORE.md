@@ -1,5 +1,7 @@
 # S02: pairwise agreement topology core, as built
 
+> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled one agreement per pair, per project, and that money is the only private thing (2026-10-14/15). The duplicate-pair and "commercial and craft" statements below describe what was built, not current product semantics.
+
 Slice: `docs/slices/S02-pairwise-agreement-core.md`. Decisions relied on: the D02 structure ruling (commercial and craft agreements are private and pairwise under the project), D12 (no proxy authority) and D01 (project is the container; creator is role-neutral). No other D02 subpart, and nothing from D03, D04 or D10.
 
 ## What exists

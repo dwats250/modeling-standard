@@ -1,5 +1,7 @@
 # Local synthetic demo
 
+> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Several labels and open-decision texts in the demo predate Cory's 2026-10-14/15 rulings (two layers, open universal omission, D03/D10 open). The demo is unchanged; its stale wording is listed in the impact analysis.
+
 A record inspector for showing what is built, with invented records, on a developer machine. Not a product flow, not a credential mechanism, not real-use approval (Gate 2).
 
 ## Run
