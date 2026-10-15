@@ -1,9 +1,14 @@
 # Cory catch-up: Stage 1 as of October 2026
 
+> **ANSWERED — historical. Do not use this packet as a list of open questions.**
+> Cory answered every question in it (Tiers A, B and C) across his 2026-10-09 and 2026-10-14/15 sessions. His direct answers live in [`decisions/2026-10-09-15-cory-reconciliation.md`](../decisions/2026-10-09-15-cory-reconciliation.md) and in the reconciled decision files, which are the only active answer surface. What is still his to answer is in [`decisions/README.md`](../decisions/README.md#next-cory-conversation).
+>
+> This packet is kept unchanged below as the question set that produced those answers. Its descriptions of what is "open", "undecided" or "homework", its built-versus-decided table and its summary of rulings reflect the state on 2026-10-08 and are now partly superseded — for example the two-layer model, ruling 6 (escalation and delay), the body/money framing and the optional witness. Several questions were rejected by Cory as posed; the reconciliation note records the replacement rulings. How the rulings bear on what is built is in [`docs/engineering/OCTOBER-SEMANTIC-IMPACT.md`](engineering/OCTOBER-SEMANTIC-IMPACT.md).
+
 > **This document summarizes and routes to the active decision files. It does not itself ratify or amend product semantics.**
 > If anything here disagrees with a file in [`decisions/`](../decisions/README.md), the decision file is right and this document is wrong.
 
-**For Cory.** Read sections 1 to 3 in about ten minutes. They cover what exists, what you have already decided, and what is still yours. Sections 4 to 7 are your homework, ordered by how much each answer unblocks. If you only have twenty minutes, go straight to [section 10](#10-if-cory-only-has-20-minutes).
+**For Cory (historical, as written on 2026-10-08).** Read sections 1 to 3 in about ten minutes. They cover what exists, what you had already decided, and what was still yours. Sections 4 to 7 were your homework, ordered by how much each answer unblocks; you have since answered them.
 
 **For Dustin and agents.** This is a navigator. It points at the decision files, slice PRDs and engineering notes; it never replaces them. Questions here are posed, not answered: nothing in this packet suggests which answer is better.
 
