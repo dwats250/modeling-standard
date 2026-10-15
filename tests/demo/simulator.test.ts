@@ -107,7 +107,7 @@ describe('a simulated scenario', () => {
 
     // Pairwise layer: three terms, version 1, one row, then drop term three and resend.
     const a = [];
-    for (const text of ['craft one', 'commercial two', 'three, to drop']) {
+    for (const text of ['pairwise one', 'pairwise two', 'three, to drop']) {
       a.push((await post(me, `/demo/sim/agreements/${agreementId}/terms`, { content: `[synthetic] ${text}` })).body.id!);
     }
     expect((await post(me, `/demo/sim/agreements/${agreementId}/versions`, { termIds: a })).status).toBe(201);
@@ -118,7 +118,7 @@ describe('a simulated scenario', () => {
 
     r = await record(me, projectId);
     const [v1, v2] = r.agreements[0]!.versions;
-    expect(v1!.terms.map((t) => t.content)).toEqual(['[synthetic] craft one', '[synthetic] commercial two', '[synthetic] three, to drop']);
+    expect(v1!.terms.map((t) => t.content)).toEqual(['[synthetic] pairwise one', '[synthetic] pairwise two', '[synthetic] three, to drop']);
     expect(v1!.affirmations).toEqual([{ presentedTermId: v1Term1, partyId: p1, affirmedAt: expect.any(String) }]);
     expect(v2!.terms.map((t) => t.sourceTermId)).toEqual([a[0], a[1]]);
     expect(r.universal.versions[0]!.affirmations).toHaveLength(2);
@@ -128,6 +128,45 @@ describe('a simulated scenario', () => {
       const res = await post(me, `/demo/sim/agreements/${agreementId}/affirmations`, { presentedTermId, partyId: p2 });
       expect(res).toEqual({ status: 409, body: { error: { code: 'version_not_affirmable', requestId: expect.any(String) } } });
     }
+  });
+
+  it('refuses a resend that adds a term (no escalation) or leaves out a shared safety term, writing nothing', async () => {
+    const me = `sim-${randomUUID()}`;
+    const { projectId, rec } = await scenario(me);
+    const agreementId = rec.agreements[0]!.id;
+    const conflict = (code: string) => ({ status: 409, body: { error: { code, requestId: expect.any(String) } } });
+
+    // Pairwise: v1 = [a, b]; c is stored later and cannot be added to a resend.
+    const a = (await post(me, `/demo/sim/agreements/${agreementId}/terms`, { content: '[synthetic] a' })).body.id!;
+    const b = (await post(me, `/demo/sim/agreements/${agreementId}/terms`, { content: '[synthetic] b' })).body.id!;
+    expect((await post(me, `/demo/sim/agreements/${agreementId}/versions`, { termIds: [a, b] })).status).toBe(201);
+    const c = (await post(me, `/demo/sim/agreements/${agreementId}/terms`, { content: '[synthetic] c' })).body.id!;
+    expect(await post(me, `/demo/sim/agreements/${agreementId}/versions`, { termIds: [a, b, c] })).toEqual(
+      conflict('term_added_after_presentation'),
+    );
+    expect(await post(me, `/demo/sim/agreements/${agreementId}/versions`, { termIds: [a, c] })).toEqual(
+      conflict('term_added_after_presentation'),
+    );
+    // Keeping or leaving out terms of the previous version is allowed.
+    expect((await post(me, `/demo/sim/agreements/${agreementId}/versions`, { termIds: [a] })).status).toBe(201);
+    // And the resend after that is measured against version 2, not version 1.
+    expect(await post(me, `/demo/sim/agreements/${agreementId}/versions`, { termIds: [a, b] })).toEqual(
+      conflict('term_added_after_presentation'),
+    );
+
+    // Universal: v1 = [s1, s2]; no later version may omit either or add s3.
+    const s1 = (await post(me, `/demo/sim/projects/${projectId}/terms`, { content: '[synthetic] safety one' })).body.id!;
+    const s2 = (await post(me, `/demo/sim/projects/${projectId}/terms`, { content: '[synthetic] safety two' })).body.id!;
+    expect((await post(me, `/demo/sim/projects/${projectId}/versions`, { termIds: [s1, s2] })).status).toBe(201);
+    const s3 = (await post(me, `/demo/sim/projects/${projectId}/terms`, { content: '[synthetic] safety three' })).body.id!;
+    expect(await post(me, `/demo/sim/projects/${projectId}/versions`, { termIds: [s1] })).toEqual(conflict('universal_term_omitted'));
+    expect(await post(me, `/demo/sim/projects/${projectId}/versions`, { termIds: [s1, s2, s3] })).toEqual(
+      conflict('term_added_after_presentation'),
+    );
+
+    const r = await record(me, projectId);
+    expect(r.agreements[0]!.versions.map((v) => v.terms.map((t) => t.sourceTermId))).toEqual([[a, b], [a]]);
+    expect(r.universal.versions.map((v) => v.terms.map((t) => t.sourceTermId))).toEqual([[s1, s2]]);
   });
 
   it('reports the database rules as 409s: duplicate row, party outside the pair, term from elsewhere', async () => {

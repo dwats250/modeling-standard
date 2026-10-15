@@ -25,7 +25,8 @@ import { simulatorOperations } from './simulator.ts';
  * policy.
  *
  * The inspector shows the stored record as it is. It is not a view any party
- * would get: what each party sees is D10, still open. It writes nothing.
+ * would get: D10 is decided for photo shoots, but no party view is built. It
+ * writes nothing.
  */
 
 const anyPrincipalMayListOwn: Policy<object> = () => true;
