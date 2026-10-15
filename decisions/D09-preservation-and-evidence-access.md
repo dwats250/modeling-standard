@@ -41,12 +41,12 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 - **Records outlive the account.** On account closure the final email carries the person's reference numbers; the records stay in an archive reachable by reference number (D03). **Archive access does not require an active account**, and no dormant account is kept.
 - **Suspension blocks acting, never reading.** "Of course they still need access to their records, and they don't need an account to do it." If a suspension is ever contested, the record is exactly what they would need.
 - **Lost credentials: re-verification of identity is the fallback** for recovery. The exact technical recovery mechanics are Dustin's call.
-- **What the record holds** (Q17, recorded in D04): fingerprint, IP, device, chained timestamps and every version, retained as long as the document, never shown.
+- **What is preserved is the final contract** (Q17, recorded in D04): the document everyone green-lit and signed, with its fingerprint and each person's affirmation and signature evidence, time, credential, device and IP. **No negotiation or version history exists to preserve** — intermediate states of the live brief are not retained (Correction HC1). *(2026-10-15: this line previously said "every version"; that was a handoff error, not a Cory ruling.)*
 - Third parties are used only where a specialist means Modeling Standard holds less; the archive lookup needs no third party (doctrine 9).
 
-**Still open — counsel-dependent:** retention periods, any purge policy, and statutory erasure and how it meets preservation (C2). These are not Cory instinct questions.
+**Still open — counsel-dependent:** retention periods for the final contract and its evidence, any purge policy, and statutory erasure and how it meets preservation (catch-up item C2). These are not Cory instinct questions.
 
-**Not directly addressed:** historical access for a participant removed or replaced after an earlier agreement, and the effect of deleting profile data while keeping the account. The archive model (each person's reference numbers reach their own records) is the governing direction; these edges should be confirmed when D09 is taken to counsel rather than queued as separate Cory homework. Reconciliation question R1 (whether a dropped term persists in retained versions) also bears on what is retained.
+**Not directly addressed:** historical access for a participant removed or replaced after an earlier agreement, and the effect of deleting profile data while keeping the account. The archive model (each person's reference numbers reach their own records) is the governing direction; these edges should be confirmed when D09 is taken to counsel rather than queued as separate Cory homework.
 
 ## What this unlocks
 
@@ -56,3 +56,5 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 ## Amendments
 
 2026-10-15 — Records the archive model, closure email with reference numbers, account-free archive access, suspension blocks acting but never reading, and re-verification as the recovery fallback. Remains OPEN only for counsel-dependent retention and erasure.
+
+2026-10-15 — Corrects a handoff error (not Cory changing his mind): preservation concerns the final contract and its evidence, not a negotiation or version history, which does not exist (HC1 in `2026-10-09-15-cory-reconciliation.md`). Retention duration remains counsel's. Status unchanged.

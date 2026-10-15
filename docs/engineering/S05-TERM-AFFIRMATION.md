@@ -1,6 +1,6 @@
 # S05: per-term affirmation evidence, as built
 
-> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that ticking and signing are separate acts, that approvals carry forward across a shrink-only resend, and that escalation cannot occur (2026-10-14/15). These rows are tick evidence, not signatures; the single-version guard below is now a replaceable temporary guard.
+> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that ticking and signing are separate acts, that approvals carry forward across a shrink-only resend, and that escalation cannot occur (2026-10-14/15). These rows are tick evidence, not signatures; the single-version guard below is now a replaceable temporary guard. *Corrected 2026-10-15 (HC1): there is no carry-forward across retained versions, because Cory's model retains no versions; ticks are live-brief state and evidence attaches to the final contract. The "approvals carry forward" wording above came from a handoff error.*
 
 Slice: `docs/slices/S05-term-affirmation.md`. The PRD is APPROVED and merged.
 

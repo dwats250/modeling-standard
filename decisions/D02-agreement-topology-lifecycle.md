@@ -1,6 +1,6 @@
 # D02 — Agreement topology and lifecycle
 
-Status: OPEN — for the photo-shoot scope, only reconciliation question R2 (who may drop a declined term, given no recorded authorship) remains
+Status: DECIDED — for the photo-shoot scope (2026-10-15). Fashion shows are a separate product and are not covered.
 
 ## Why this needs Cory
 
@@ -53,7 +53,7 @@ Partial direct ruling — 2026-10-05.
 
 **Finality.** That agreement is not final until every named party has affirmed every required term.
 
-**Responses.** There are no counters. If a term is not accepted, the proposer may drop it and resend or withdraw the proposal. One number, one answer: yes or no.
+**Responses.** There are no counters. If a term is not accepted, the proposer may drop it and resend or withdraw the proposal. One number, one answer: yes or no. *(Read through Correction HC2, 2026-10-15: there is no proposer role; a declined term is gone and the other person continues or withdraws.)*
 
 Still open at that date: (d) withdrawal before finality; (e) cancellation; (f) roster changes; (g) amendments and re-acceptance; (h) the earlier agreement while a replacement is pending. *(All answered 2026-10-09 and 2026-10-14/15; see below.)*
 
@@ -81,15 +81,19 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 
 **Resend and escalation.**
 
-- **The whole document always returns intact** on resend. Already-agreed terms show as agreed; nobody re-ticks what they already approved. The document keeps cycling to whoever needs to act until everything is green for everyone. (Q3)
-- **Escalation cannot happen.** After a response the proposer's only moves are **drop the declined term and resend, or withdraw**. Nothing can ever be added or widened. (Q4) **SUPERSEDES 2026-10-05 ruling 6**: there is no escalation record and **no mandatory delay is built**.
-- **Dropping is only ever done by whoever proposed the declined term.** Authorship is **not recorded** (Q9). How these two rulings combine is reconciliation question **R2**, left for Cory; proposer authorization is not designed until it is answered.
-- **A "no" is not recorded.** The final whitelist is the record: if a term is not on the final contract, it is not agreed. (Q10) How this interacts with retained versions is reconciliation question **R1** (see D04).
+- **There is one live brief before signing.** It cycles while terms are resolved: the whole document always returns intact, already-agreed terms stay agreed, and nobody re-ticks what they already approved. It keeps cycling to whoever needs to act until everything is green for everyone. (Q3; Correction HC1)
+- **A declined term is gone.** The other person either continues without it or withdraws. There is no privileged drop action, no proposer role and no proposer identity. (Correction HC2)
+- **Escalation cannot happen.** Nothing can ever be added or widened. (Q4) **SUPERSEDES 2026-10-05 ruling 6**: there is no escalation record and **no mandatory delay is built**.
+- **Authorship is not recorded** (Q9), visibly or invisibly.
+- **A "no" is not recorded.** Nothing preserves the fact that a term was declined. The final contract is the record: if a term is not on it, it is not agreed. (Q10)
+- **No version history.** Intermediate states of the live brief are not retained; the only thing that exists afterwards is the final contract everyone green-lit and signed. (Correction HC1)
+
+*Handoff corrections, 2026-10-15.* An earlier version of this section recorded "dropping is only ever done by whoever proposed the declined term" (Q9) and referred to retained versions. Both came from errors in the session handoff, not from Cory (Corrections HC1 and HC2 in [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md#corrections-to-the-session-handoff)). The reconciliation questions R1 and R2 that rested on them are withdrawn, not answered.
 
 **Finality and signing.**
 
 - **No organizer confirmation step.** All terms green for everyone, then everyone signs; that is the final act. (A5a) Answers (b).
-- Ticking and signing are separate acts; nobody signs while the document can still change (Q12; recorded in D04).
+- Ticking and signing are separate acts; nobody signs while the document can still change (Q12; recorded in D04). The signing event produces the final contract, which is the evidentiary document (Correction HC1).
 
 **After commitment: the agreement can only shrink.**
 
@@ -112,7 +116,7 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 
 Cross-cutting: rigidity after commitment — easy to enter, hard to alter — governs changing committed terms, never using the product (doctrine 6).
 
-**Status for the photo-shoot scope.** (a) through (h) are answered. The one item this file cannot close is **R2**: enforcing "only the proposer drops a declined term" against "authorship is not recorded". It is needed before drop-and-resend can be built for real participants, so the file stays OPEN on that point alone.
+**Status for the photo-shoot scope.** (a) through (h) are answered. R2, previously the only blocker, is withdrawn because it rested on a handoff error. Nothing in this file's photo-shoot scope remains open, so the file is DECIDED for that scope. Fashion shows are not covered.
 
 ## What this unlocks
 
@@ -123,3 +127,5 @@ Cross-cutting: rigidity after commitment — easy to enter, hard to alter — go
 ## Amendments
 
 2026-10-15 — Records the 2026-10-09 and 2026-10-14/15 rulings: one agreement per pair; three layers with money the only private thing; no escalation and no delay (supersedes ruling 6); whole-document resend; no organizer confirmation; shrink-only after commitment; mid-shoot withdrawal as a fact; DNS/DNF cancellation; date change ends the agreement; replacement and addition rules; route-specific acceptance; physical-proximity meaning of "on site". (a)–(h) answered; R2 remains.
+
+2026-10-15 — Corrects two handoff errors (not Cory changing his mind): there is no version history, only the final contract (HC1); and there is no proposer-only drop — a declined term is gone and the other person continues or withdraws (HC2). R2 is withdrawn, not answered. Status OPEN → DECIDED for the photo-shoot scope.

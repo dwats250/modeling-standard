@@ -1,6 +1,6 @@
 # D04 — Terms and affirmation
 
-Status: OPEN — no-means-no wording, the visible signing act, and reconciliation question R1 remain (see "Still open" below)
+Status: OPEN — no-means-no wording and the visible signing act remain (see "Still open" below)
 
 ## Why this needs Cory
 
@@ -72,7 +72,7 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 
 - **Ticking a term and signing are two different acts.**
 - Everyone ticks terms until every term is green for every person. **Only then does anyone sign.** Nobody signs a document that can still change.
-- **Implication for S05 (understanding only; no code change here):** the S05 rows titled "per-term affirmation evidence" are tick evidence. They are not the signature and do not make anything final. See `docs/engineering/OCTOBER-SEMANTIC-IMPACT.md`.
+- **Implication for S05 (understanding only; no code change here):** the S05 rows titled "per-term affirmation evidence" record ticks. They are not the signature and do not make anything final. Under Correction HC1 ticks are live-brief state, not retained evidence; see `docs/engineering/OCTOBER-SEMANTIC-IMPACT.md`.
 
 **Coverage ceiling.** (B6)
 
@@ -80,7 +80,11 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 - **Exceeding it voids the entire agreement**, not just the extra frames. Modeling Standard does not itself void anything: the force comes from a **signed contract term** stating that exceeding the agreed terms voids the agreement. No legal wording is designed here, and "void" is not interpreted beyond Cory's product requirement.
 - **Purpose:** to remove later hearsay about alleged on-the-day permission. It **protects all parties**, including a photographer against someone offering to exceed in order to create a claim.
 
-**Evidence kept.** (Q17) **A decided product requirement**, not a security recommendation: document fingerprint, IP, device, chained timestamps, and a retained audit and version trail, kept as long as the document. Held in the record, never shown to participants (recording versus showing, doctrine 2). The chain is not designed here.
+**Evidence kept.** (Q17, as corrected by HC1) **A decided product requirement**, not a security recommendation. **Evidence attaches to the final contract** — the document everyone green-lit and signed: its fingerprint, each person's affirmation and signature evidence, time, credential, device and IP, with chained timestamps, kept as long as the document. Participants are shown what was agreed, never process data (recording versus showing, doctrine 2). No signing UX or chain structure is designed here.
+
+**No version history.** (Correction HC1) There is one live brief before signing; it cycles while terms are resolved, and its intermediate states are not retained. A declined term disappears and nothing preserves that it was declined (Q10). Ticks are state on that live brief, not signatures; only the signing event, once everything is green, produces the final contract that carries the evidence.
+
+*Handoff correction, 2026-10-15.* This section previously said the evidence included "a retained audit and version trail". That came from an error in the session handoff ("every version"), not from Cory; see Correction HC1 in [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md#corrections-to-the-session-handoff).
 
 **No means no.** (Q13)
 
@@ -95,8 +99,7 @@ Cross-cutting doctrine that applies here: noise doctrine; recording versus showi
 
 1. **No-means-no wording** — Cory's to write.
 2. **The visible signing act** — what signing looks like once all is green (typed name, drawn signature or other) is not answered by these rulings.
-3. **Reconciliation question R1** — "a no is not recorded" (Q10) against "every version is retained" (Q17): whether a dropped term persists in the evidentiary version history. Needed before the evidence record for resends is designed.
-4. Representation of trade or non-money value beyond the single fee field was not addressed. It is not needed for the D01 scenario (no money changed hands) and is not queued as homework.
+3. Representation of trade or non-money value beyond the single fee field was not addressed. It is not needed for the D01 scenario (no money changed hands) and is not queued as homework.
 
 The rule for what is required is decided (above). The concrete required-term list for the D01 shoot has not been drafted; it is to be drafted against that rule and checked by Cory, like the document trigger table in D08.
 
@@ -109,3 +112,5 @@ The rule for what is required is decided (above). The concrete required-term lis
 ## Amendments
 
 2026-10-15 — Records the 2026-10-09 and 2026-10-14/15 rulings: product-owned requiredness; no body/money taxonomy, replaced by a fixed deliberate-tick list (fee, coverage level, physical contact, stop rule) outside the group-check convenience (supersedes the 2026-10-09 every-field statement); subject controls the term, with open parameters; ticking versus signing; coverage hard cap (B6); evidence metadata as a product requirement; no-means-no as an individually affirmed safety term with two faces. Remains OPEN on wording, the signing act and R1.
+
+2026-10-15 — Corrects a handoff error (not Cory changing his mind): there is no version history; evidence attaches to the final contract only (HC1). R1 is withdrawn from the open list, not answered — its premise was invalid. Remains OPEN on the no-means-no wording and the visible signing act.

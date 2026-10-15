@@ -7,12 +7,54 @@ Status: DIRECT CORY RULINGS
 - **Where they conflict, these later rulings govern.** Explicit supersessions are marked **SUPERSEDES** in Cory's text and mapped against repository text in the [supersession ledger](#repository-supersession-ledger) below.
 - **Recording a ruling here authorizes no implementation.** Only an approved slice PRD may select from these rulings. Existing code is not evidence against them.
 - Where Cory rejected a question as malformed, the replacement ruling is recorded rather than an answer in the old frame. Where he left something open, it stays open.
+- **Two statements in the session handoff were never Cory rulings.** They are errors in the Claude-generated handoff, not changes of Cory's mind, and are corrected below in [Corrections to the session handoff](#corrections-to-the-session-handoff). They are marked inline where they appear; nothing else in the record changed.
+
+## Corrections to the session handoff
+
+Recorded 2026-10-15 from Cory's direct corrections, supplied by Dustin. These correct **errors in the handoff document**. They are not supersessions: Cory did not change his mind, and the erroneous statements were never his rulings.
+
+### HC1 — There is no version history
+
+> "There is no version history. The only thing that exists is the final contract that everyone green-lit and signed. Earlier states are not retained."
+
+Handoff statements that were **not** Cory rulings:
+
+- A2, row "Change history": "Held in the record, never shown."
+- §3 item 2 ("Recording versus showing"): the record holds "every version".
+
+The product model, as corrected:
+
+- There is **one live brief** before signing. It cycles while terms are resolved (Q3).
+- **Intermediate states are not retained** as evidence. A declined term disappears, and nothing preserves the fact that it was declined (Q10).
+- **Ticks on the live brief are not signatures** (Q12).
+- Only after everything is green is there a **signing event**. The resulting **final contract is the evidentiary document**.
+- Evidence attaches to that final contract: its fingerprint, each person's affirmation and signature evidence, time, credential, device, and the other metadata Cory directly required (Q17). Exact signing UX and any hash-chain structure are not inferred here.
+
+The participant-facing model and the evidentiary model agree: there is no retained change or version history in either.
+
+### HC2 — No proposer identity
+
+> "'Dropping is only ever done by whoever proposed the declined term' was never my ruling."
+
+Handoff statement that was **not** a Cory ruling: Q9's second sentence, "Dropping is only ever done by whoever proposed the declined term."
+
+The valid Q9 ruling is: **do not record authorship.** The actual flow is:
+
+- a person declines a term;
+- that term is gone;
+- the other person either continues without it or withdraws.
+
+There is no privileged drop action, no proposer authorization and no proposer identity, and no need to store proposer identity visibly or invisibly. Q4's "the proposer's only moves are drop the declined term and resend, or withdraw" is read through this flow: no term can be added or widened, a declined term is simply gone, and the other person continues or withdraws.
+
+### Consequence — R1 and R2 are withdrawn
+
+The two reconciliation questions this note previously raised (R1, R2) arose only from these handoff errors. **They are withdrawn, not answered: their premises were invalid.** They are no longer Cory questions. Their original text is kept below, marked withdrawn, as provenance.
 
 ## How this file is laid out
 
-1. [Cory's rulings, as supplied](#corys-rulings-as-supplied) — preserved verbatim from the session record Dustin supplied. Its own section numbers (§1 to §5) are kept so cross-references inside it still resolve. Nothing in it was edited, improved or normalized.
+1. [Cory's rulings, as supplied](#corys-rulings-as-supplied) — preserved verbatim from the session record Dustin supplied. Its own section numbers (§1 to §5) are kept so cross-references inside it still resolve. Nothing in it was edited, improved or normalized, except three inline markers added on 2026-10-15 flagging the handoff errors corrected above.
 2. [Repository supersession ledger](#repository-supersession-ledger) — which repository text each supersession replaces.
-3. [Reconciliation questions requiring Cory clarification](#reconciliation-questions-requiring-cory-clarification) — two interactions between rulings that this reconciliation deliberately did not resolve.
+3. [Reconciliation questions (withdrawn)](#reconciliation-questions-withdrawn) — R1 and R2, withdrawn on 2026-10-15 because both arose from handoff errors.
 4. [Cross-cutting doctrine](#cross-cutting-doctrine) — where Cory's §3 rulings are referenced from the decision files.
 5. [Where each ruling now lives](#where-each-ruling-now-lives) — routing into `D01` to `D12`.
 
@@ -44,7 +86,7 @@ Required means **anything protecting physical or emotional safety**, and Cory ex
 
 **Q3 — what happens to the earlier set when terms are resent.** **The whole document always returns intact.** Everything already agreed shows green; the disputed term shows a red X. Nobody re-ticks what they already approved. Same as any form that bounces you back to one missing field with the rest still filled. The form keeps cycling to whoever needs to act until everything is green for everyone.
 
-**Q4 — what counts as escalation, and how long the delay.** **Escalation cannot happen.** After a response, the proposer's only moves are **drop the declined term and resend, or withdraw**. Nothing can ever be added or widened. **There is no second version that escalates, so there is no delay to build.** → **SUPERSEDES ruling 6.**
+**Q4 — what counts as escalation, and how long the delay.** **Escalation cannot happen.** After a response, the proposer's only moves are **drop the declined term and resend, or withdraw**. *[2026-10-15: read through Correction HC2 — there is no proposer role or privileged drop action; a declined term is gone and the other person continues or withdraws.]* Nothing can ever be added or widened. **There is no second version that escalates, so there is no delay to build.** → **SUPERSEDES ruling 6.**
 
 **Q5 — more than one agreement between the same pair.** **One agreement per pair, per project.** Dual roles and extra obligations are additional terms inside it, not a second agreement. *"Everybody involved is a part of the brief, and then they are given their respective questions and things that they are required to do."*
 
@@ -58,7 +100,7 @@ If she declares "don't touch my hair," the other party cannot decline it. *"That
 
 **Q8 — who counts as "on site."** **Physical proximity, not role.** In the room, you affirm the safety terms whoever you are. Never present, you sign only what concerns you.
 
-**Q9 — who may drop a term; record who proposed.** **Do not record authorship.** *"By the time everyone's agreed to everything, everyone is accountable for what was said yes to."* Dropping is only ever done by whoever proposed the declined term.
+**Q9 — who may drop a term; record who proposed.** **Do not record authorship.** *"By the time everyone's agreed to everything, everyone is accountable for what was said yes to."* Dropping is only ever done by whoever proposed the declined term. *[HANDOFF ERROR — not a Cory ruling; see Correction HC2.]*
 
 **Q10 — is a "no" recorded.** **No.** The whitelist does the work: *"if it's not on the final contract, it's not on the final contract."* Absence is the prohibition; nothing needs preserving.
 
@@ -114,7 +156,7 @@ Items 1–4 answered above. The rest:
 | **Compensation** | **Private. The only private thing.** |
 | **Private notes** | **Do not exist** — no DM channel, all dialogue is term-bound. |
 | **Concerns raised** | **Not recorded** — see Q10. |
-| **Change history** | **Held in the record, never shown.** See noise doctrine. |
+| **Change history** | **Held in the record, never shown.** See noise doctrine. *[HANDOFF ERROR — not a Cory ruling. There is no version history; see Correction HC1.]* |
 | **The final record** | **Everything jointly agreed, plus their own payment terms, and nobody else's numbers.** |
 
 ### A3 — requiredness
@@ -206,7 +248,7 @@ Cory's reasoning: *"humans are wired for pattern recognition to a literal fault 
 
 This is sharper than the no-shame copy rule, which is about tone. This is about **what data exists at all** — gentle wording does not help if the fact itself invites a verdict. It governs: response times, read receipts, revision counts, edit history, opened-and-didn't-reply.
 
-**2. Recording versus showing — two layers that do not conflict.** What people see: only what was agreed. What the record holds: fingerprint, IP, device, chained timestamps, every version. Invisible, and the thing that makes a signature survive being challenged.
+**2. Recording versus showing — two layers that do not conflict.** What people see: only what was agreed. What the record holds: fingerprint, IP, device, chained timestamps, every version. *[HANDOFF ERROR — "every version" is not a Cory ruling. Evidence attaches to the final contract only; see Correction HC1.]* Invisible, and the thing that makes a signature survive being challenged.
 
 **3. The new standard, not the existing one.** Cory rejected "would a real studio do this?" as the design test: ***"the exact problem with the industry is that most of these safety documents are missing on purpose to take advantage of models."*** Copying existing practice would inherit its deliberate omissions.
 
@@ -261,7 +303,7 @@ Cory's own §4 table above is preserved as he gave it. This ledger maps each sup
 
 | # | Topic | Old repository authority | Superseded by (this note) | Where amended |
 |---|---|---|---|---|
-| L1 | **Escalation / mandatory delay** | 2026-10-05 ruling 6: escalation requires a neutral record and a mandatory delay before acceptance | Escalation cannot occur. After a response the proposer may only drop the declined term and resend, or withdraw. Nothing can be added or widened. **No delay feature is built.** (Q4) | D02 |
+| L1 | **Escalation / mandatory delay** | 2026-10-05 ruling 6: escalation requires a neutral record and a mandatory delay before acceptance | Escalation cannot occur. A declined term is gone; the other person continues without it or withdraws (Correction HC2: there is no proposer role). Nothing can be added or widened. **No delay feature is built.** (Q4) | D02 |
 | L2 | **Privacy / layer topology** | 2026-10-05 D02 and D10 rulings and ruling 11: two layers — universal safety, and private pairwise "commercial and craft" terms | Three layers: universal safety; **shared logistics (the call sheet)**; **private money**. Money is the only private thing. Craft terms, deliverables and usage move to the shared layer. The pairwise agreement carries the fee and little else. (Q14, A2, §4.) Exact data topology is not decided by this language. | D02, D10, D08 |
 | L3 | **Bulk-check interaction** | 2026-10-05 D04: group-check for ordinary terms, with "body and money terms" always individual. Separately, a 2026-10-09 statement that every individual field is acted on individually, not by section | Every term remains individually represented and individually recorded. Ordinary terms may use a bulk/group-check convenience. The product-owned fixed deliberate-tick terms — Cory named the **fee, coverage level, physical contact and stop rule** — stay outside it. The "body/money" framing is rejected: there is no taxonomy (Q6). | D04 |
 | L4 | **Replacement** | An earlier statement in the 2026-10-14/15 session: a photographer or model can never be replaced. D02 (f) open | Anyone onboarded may be replaced if the replacement accepts every term exactly as it stands. If the person supplies a variable the terms depend on (wardrobe, location, concept), the agreement ends and a new one begins. Terms are never rewritten. Additions are separate decisions everyone green-lights. (A5a) | D02 |
@@ -283,11 +325,11 @@ Further repository statements closed or replaced by this note (not supersessions
 
 ---
 
-## Reconciliation questions requiring Cory clarification
+## Reconciliation questions (withdrawn)
 
-These are interactions between Cory's rulings that this reconciliation **did not resolve**. They are not agent-resolved contradictions, and nothing may be designed on an assumed answer.
+> **Withdrawn 2026-10-15.** Both questions below arose from handoff errors (Corrections HC1 and HC2), not from Cory's rulings. They are not answered — their premises were invalid — and they are no longer open Cory questions. The original text is kept as provenance only. Nothing may be designed from it.
 
-### R1 — Q10 versus Q17: declined term versus retained versions
+### R1 — Q10 versus Q17: declined term versus retained versions (WITHDRAWN — premise was handoff error HC1)
 
 Cory said:
 
@@ -302,7 +344,7 @@ A prior presented version that contained a term later dropped may itself reveal 
 
 Both rulings stand as recorded. This exact interaction needs Cory's clarification.
 
-### R2 — Q9 versus proposer enforcement
+### R2 — Q9 versus proposer enforcement (WITHDRAWN — premise was handoff error HC2)
 
 Cory said:
 
@@ -328,7 +370,7 @@ Cory's §3 rulings apply across decisions. They are recorded once, above, and re
 | Doctrine (Cory §3) | Governs | Referenced from |
 |---|---|---|
 | 1. Noise doctrine — people see what was agreed, never how someone went about agreeing | Participant-facing information: response times, read receipts, revision counts, edit history, opened-and-didn't-reply, whether someone used a group-check | D10, D04 |
-| 2. Recording versus showing | Participant experience minimizes process data; the evidentiary record keeps fingerprint, IP, device, chained timestamps and every version, invisibly | D04, D10, D09 |
+| 2. Recording versus showing | Participant experience minimizes process data; evidence attaches to the final contract — fingerprint, each person's affirmation and signature evidence, time, credential, device. No version history is kept (Correction HC1; "every version" was a handoff error) | D04, D10, D09 |
 | 3. The new standard, not the existing one | Industry omissions are not a design authority. Borrow the normality, never the contents | D08, D04 |
 | 4. Over-protection is itself a harm | No manufactured fear through constant safety prompts | D04, D10 |
 | 5. The app's existence does half the protection | Users inside are not presumptive suspects. This is product direction, not a security guarantee | D10, D11 |
@@ -354,15 +396,15 @@ Cory's §3 rulings apply across decisions. They are recorded once, above, and re
 | Q6 fixed deliberate-tick list | D04 | — |
 | Q7 safety terms cannot drop; subject controls | D04, D02 | — |
 | Q8 "on site" is physical proximity | D02 | D10, D12 |
-| Q9 authorship; who drops | D02 | R2 |
-| Q10 a "no" is not recorded | D02, D10 | R1 |
+| Q9 do not record authorship | D02 | HC2 (handoff error corrected) |
+| Q10 a "no" is not recorded | D02, D10 | HC1 |
 | Q11 take away, never add; mid-shoot withdrawal | D02 | — |
 | Q12 tick versus sign | D04 | D02 |
 | Q13 no-means-no acknowledgment | D04 | — |
 | Q14 three layers; call sheet | D10, D08 | D02 |
 | Q15 route-specific acceptance | D02 | D04 |
 | Q16 group-check not recorded/shown | D10 | D04 |
-| Q17 evidence metadata | D04 | D09, R1 |
+| Q17 evidence metadata, attached to the final contract | D04 | D09, HC1 |
 | Q18 / B1 vocabulary | D05 | — |
 | A1 credential, archive | D03 | D09 |
 | A2 visibility | D10 | — |
