@@ -1,6 +1,6 @@
 # Local synthetic demo
 
-> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Several labels and open-decision texts in the demo predate Cory's 2026-10-14/15 rulings (two layers, open universal omission, D03/D10 open). The demo is unchanged; its stale wording is listed in the impact analysis.
+> **Reconciled with Cory's 2026-10-14/15 rulings** (Sprint 1, Phase 2). The demo no longer claims D03, D10, "on site" or universal omission are undecided, no longer offers a universal-omission or escalating resend, calls S05 rows tick rows rather than signatures, and labels the two-layer storage as a known-stale stand-in. What the demo still shows only because S03–S05 storage has not been rebuilt is listed under "Still stale by construction" below.
 
 A record inspector for showing what is built, with invented records, on a developer machine. Not a product flow, not a credential mechanism, not real-use approval (Gate 2).
 
@@ -14,7 +14,7 @@ npm run demo:export  # .demo/modeling-standard-demo.html — portable, read-only
 
 The snapshot is one HTML file with the inspector's markup, styles, script and every record it shows inlined. It opens from disk on any device, makes no network request (its CSP is `default-src 'none'`), refuses every write, and says on every screen that it is a read-only synthetic snapshot. It contains only what the inspector shows: synthetic records and fixture labels; no credentials, database location or internal principal (tested).
 
-The inspector's **Open decisions for Cory** view is a selected walkthrough, not the full list of open decisions (`decisions/README.md` has every decision and its status). It maps D03, D10, D04 requiredness and D05: what is built, what is undecided, what waits on it, and the smallest question. It poses questions only.
+The inspector's **Open decisions for Cory** view walks through only the current Cory seams: D04 no-means-no wording, D04 signing act, R1, R2 and the remaining D05 vocabulary. For each it shows what is already decided and built, what is still open, what waits on it, and the smallest question. It poses questions only. Below the cards it lists what is **decided but not built** (DECIDED ≠ IMPLEMENTED), and **counsel items**, labelled as not Cory homework. `decisions/README.md` remains the full list.
 
 Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 
@@ -29,22 +29,21 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 - **Same boundary.** The two inspector reads (`GET /demo/projects`, `GET /demo/projects/:id/record`) are ordinary protected operations with strict input/output and the S01 creator-only policy, registered through `createApp({ additionalOperations })`.
 - **Front door.** `src/demo/server.ts` serves the static UI and forwards everything else to the app with `app.inject`, passing only `content-type`. Fastify's "every route is an operation" rule is untouched.
 - **Fixtures.** Parties and agreements are written with the S01/S02 data functions (fixture construction; no product path exists — D03, D02/D12). Labels such as "the model" are demo annotations in `.demo/fixture.json`, never stored in the product database.
-- **Terms, versions, affirmation rows (S03–S05).** The record shows stored terms per layer, each sealed presented version with its frozen wording, which terms a later version left out (a pairwise drop-and-resend, or an undecided universal omission), and a term × party grid of stored affirmation rows. It computes no finality, requiredness, "pending" or "declined": an empty cell means only that no row is stored. Fixture term text is marked `[synthetic]`.
-- **Not a party view.** The inspector shows the whole stored record. What each party sees is D10.
+- **Terms, versions, tick rows (S03–S05).** The record shows stored terms per layer, each sealed presented version with its frozen wording, which terms a later pairwise version dropped, and a term × party grid of stored tick rows (S05 per-term affirmation evidence). Tick rows are not signatures: signing comes only after every term is green for everyone, and is not built. It computes no finality, "pending" or "declined": an empty cell means only that no row is stored. Fixture term text is marked `[synthetic]`.
+- **Not a party view.** The inspector shows the whole stored record. D10 is decided for photo shoots; no party view is built.
 
 ## Scenario simulator (live demo only)
 
 "Start a simulation" creates a fresh project with two parties and one pairwise agreement (the D01 shape). Each layer has a **Simulate — demo only** panel to add a term and present a version from chosen terms, and empty cells of a sole version 1 offer **simulate** to record a row naming that party.
 
-What a later version with fewer terms means differs by layer, and the inspector says so in each:
-- **Pairwise:** leaving a term out is drop-and-resend, decided in D02. Earlier versions stay exactly as they were.
-- **Universal (shared safety and consent):** storage can freeze a later version with a different set of terms, so the simulator can show the mechanics. Whether a shared safety or consent term may actually be left out is undecided and Cory's call.
-
-Neither layer's wording claims withdrawal, replacement or finality.
+What a later version may do follows Cory's rulings, enforced by the simulator (demo-only; production S04 does not enforce these yet):
+- **No escalation, either layer.** A later version may keep or leave out terms of the version before it, but may not add a term that version did not hold. The UI disables such terms; the server refuses them with `term_added_after_presentation`.
+- **Pairwise:** leaving a term out is the decided drop-and-resend (D02). Who may drop a declined term is open (R2); the operator stands in. Earlier versions stay visible because storage retains them; whether a dropped term persists in retained history is open (R1).
+- **Universal (shared safety):** a shared safety term can never be left out. After version 1 every shared term is locked in; the server refuses an omission with `universal_term_omitted`.
 
 - Seven demo-only operations under `/demo/sim/` (`src/demo/simulator.ts`), protected, creator-only on the project (directly or through the agreement), strict input; never in the production list.
-- **Assumptions, shown in the UI:** the operator adds and presents terms (who may is D02/D04) and records rows naming a party (only the party may, D12; how is D03). A version needs at least one term: the database requires a positive term count (S04), a current storage restriction rather than a product rule. No repeated term is a simulator input rule.
-- Everything else is the database's own S03–S05 rules; violations come back as 409s (`version_not_affirmable`, `already_affirmed`, `party_not_in_agreement`, `presented_term_not_found`, `term_not_in_container`).
+- **Assumptions, shown in the UI:** the operator adds and presents terms (who may drop a declined term is R2) and records tick rows naming a party (only the party may, D12, signed in to its own account, D03 — decided, not built). A version needs at least one term: the database requires a positive term count (S04), a current storage restriction rather than a product rule. No repeated term is a simulator input rule.
+- Everything else is the database's own S03–S05 rules; violations come back as 409s (`version_not_affirmable`, `already_affirmed`, `party_not_in_agreement`, `presented_term_not_found`, `term_not_in_container`, `affirmed_too_soon`).
 - **Reset:** start another simulation for a clean project; `npm run demo:reset` restores the whole demo database. Records are append-only, so nothing is edited or deleted in place.
 - Hidden in the portable snapshot.
 
@@ -54,7 +53,8 @@ Neither layer's wording claims withdrawal, replacement or finality.
 - reset and the initial fixtures, with exact evidence counts;
 - project creation and its empty states;
 - version history and pairwise drop-and-resend;
-- the simulator flow, preserving version 1 and its rows;
+- the simulator flow, preserving version 1 and its rows, refusing an escalating resend and offering no universal omission (including when a disabled control is forced on);
+- no superseded wording (D03 or D10 undecided, universal omission open, "on site" open, two private layers, "affirmation row") on any fixture or the decisions view, which names only the current seams;
 - the portable snapshot from `file://`, with zero network requests;
 - reset repeatability;
 - desktop (1280) and mobile (390) rendering with no horizontal scroll and no browser errors;
@@ -66,4 +66,14 @@ Screenshots go to `test-results/demo/` and are uploaded by CI as `demo-screensho
 
 ## Deliberately unavailable
 
-Shown disabled with the blocking decision: add a party (D03), create an agreement (D02/D12), add or present terms (D02/D04), record an affirmation (D12/D03), send or invite (D03), view as a party (D10).
+Shown disabled, each saying whether it is decided-but-not-built or still open: add a party, create an agreement, add or present terms, tick a term, sign, send or invite, view as a party.
+
+## Still stale by construction
+
+These remain because fixing them belongs to later S03–S05 slices, not to the demo:
+
+- Terms still sit in two storage layers (project and pairwise). The UI labels the pairwise layer as a storage stand-in; the shared-logistics layer and the call sheet are not built and are not faked.
+- A later version takes no tick rows (S05's temporary single-version guard); carrying ticks forward across a resend is decided but not built.
+- Earlier presented versions remain visible because storage retains them (R1 open).
+- The simulator lets the operator name any project party on a universal row; presence ("on site") is not recorded.
+- Production S04 itself still accepts an escalating or omitting version; only the simulator refuses them.

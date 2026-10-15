@@ -9,9 +9,9 @@ import { projectParty } from './tables.ts';
  * exists within a project and nothing more. It does not invite anyone,
  * identify or verify anyone, record acceptance or a signature, assign a
  * role, or give any principal (including the project's creator) authority to
- * act for the party (D12). How a person becomes a party, and how a party is
- * bound to a person, is D03, still open; that binding is meant to be added
- * here without changing the project container.
+ * act for the party (D12). Binding a party to a sign-in account is S06
+ * (`src/accounts/binding.ts`), kept separate so this record is unchanged;
+ * how a person reaches a party (the invitation link, D03) is a later slice.
  */
 
 export interface ProjectPartyRecord {

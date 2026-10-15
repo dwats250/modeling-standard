@@ -7,8 +7,8 @@ import type { ExplicitDatabaseTarget } from '../infrastructure/database/client.t
  *
  * The demo exists to show what is built, with invented records, on a
  * developer machine. It is not a credential mechanism and not a product
- * flow. D03 (how a person takes part) is open, so the demo has exactly one
- * principal, a fixed synthetic operator that stands for nobody. That
+ * flow. D03 is decided (Google or Apple sign-in to an account) but no
+ * sign-in is built, so the demo has exactly one principal, a fixed synthetic operator that stands for nobody. That
  * operator never acts as a party: it creates projects (S01: the creator is
  * an audit and authorization fact, not a party) and reads its own records.
  */

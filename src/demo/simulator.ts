@@ -10,33 +10,51 @@ import { addProjectParty } from '../projects/party.ts';
 import { creatorOnly, findProject, insertProject } from '../projects/project.ts';
 import { agreementVersionTerm, universalVersionTerm } from '../projects/tables.ts';
 import { addAgreementTerm, addUniversalTerm } from '../projects/terms.ts';
-import { presentAgreementVersion, presentUniversalVersion, TermNotInContainerError } from '../projects/versions.ts';
+import {
+  findAgreementVersion,
+  findUniversalVersion,
+  listAgreementVersions,
+  listUniversalVersions,
+  presentAgreementVersion,
+  presentUniversalVersion,
+  TermNotInContainerError,
+} from '../projects/versions.ts';
 
 /**
  * The demo's scenario simulator. Demo-only operations, registered only by the
  * demo server, that drive the S01 to S05 data functions so a viewer can watch
- * terms being presented, a pairwise term dropped and resent (D02), and
- * affirmation rows appear. A later universal version with a different set of
- * terms can be stored too, but whether a shared safety or consent term may be
- * left out is undecided (Cory); the inspector says so.
+ * terms being presented, a pairwise term dropped and resent (D02), and tick
+ * rows (S05 per-term affirmation evidence) appear.
+ *
+ * Demo-only restrictions for truthfulness (Cory, 2026-10-14/15). Production
+ * S04 does not enforce either yet; this simulator does, so the demo cannot
+ * demonstrate a rule the product rejects:
+ *
+ * - No escalation (D02): a later version may keep or leave out terms of the
+ *   version before it, but may not add a term that version did not hold
+ *   (`term_added_after_presentation`).
+ * - No universal omission (D02, D04): a later shared version must keep every
+ *   term of the version before it (`universal_term_omitted`).
  *
  * Every one of these is a SIMULATION. The product has no path for any of
- * them, because who may do each is undecided:
+ * them yet:
  *
- * - The demo operator adds and presents terms. Who may author or present
- *   terms is undecided (D02, D04).
- * - The demo operator records an affirmation row naming a chosen party. In
- *   the product only the party itself may affirm (D12), and how a person acts
- *   as a party is undecided (D03). These rows are fixture evidence, not
- *   anyone's act.
+ * - The demo operator adds and presents terms. Who may drop a declined term
+ *   is open (R2); the operator stands in.
+ * - The demo operator records a tick row naming a chosen party. In the
+ *   product only the party itself may tick (D12), acting as the party bound
+ *   to their own sign-in account (D03 decided; S06 stores the binding; no
+ *   sign-in is built). These rows are fixture evidence, not anyone's act, and
+ *   not a signature: signing comes only after every term is green for
+ *   everyone, and is not built.
  * - A presented version must hold at least one term: the database requires
  *   a positive term count (S04), a current storage restriction rather than a
  *   product rule, and the simulator checks it up front. Not presenting a term
  *   twice is this simulator's own input rule.
  *
  * Everything else is enforced by the database exactly as in S03 to S05:
- * frozen versions, gapless numbering, affirmation only of a sole version 1,
- * one row per party per presented term. Errors from those rules are reported
+ * frozen versions, gapless numbering, rows only on a sole version 1 (a
+ * temporary S05 guard), one row per party per presented term. Errors from those rules are reported
  * as 409s with a stable code.
  *
  * Authorization: every operation loads the project it acts on (directly or
@@ -78,6 +96,7 @@ const agreementCreatorOnly = (principal: SyntheticPrincipal, target: AgreementTa
 
 /** Maps the database's own rule violations to stable 409 codes. */
 function asConflict(error: unknown): never {
+  if (error instanceof AppError) throw error;
   if (error instanceof TermNotInContainerError) throw new AppError(409, 'term_not_in_container');
   if (error instanceof PresentedTermNotFoundError) throw new AppError(409, 'presented_term_not_found');
   const e = error as { code?: unknown; constraint?: unknown; cause?: { code?: unknown; constraint?: unknown } };
@@ -92,6 +111,31 @@ function asConflict(error: unknown): never {
   if (code === '23503') throw new AppError(409, 'not_in_container');
   if (code === '23514') throw new AppError(409, 'rejected_by_database');
   throw error;
+}
+
+/**
+ * The source-term ids of a container's latest presented version, or null if
+ * none has been presented. Demo-only: used to refuse resends Cory has ruled
+ * out. Not a lock: the demo operator is a single synthetic actor.
+ */
+async function latestPresentedSources(
+  versions: readonly { id: string; sequence: number }[],
+  find: (id: string) => Promise<{ readonly terms: readonly { readonly sourceTermId: string }[] } | undefined>,
+): Promise<Set<string> | null> {
+  const latest = versions.at(-1);
+  if (!latest) return null;
+  const version = await find(latest.id);
+  return new Set((version?.terms ?? []).map((t) => t.sourceTermId.toLowerCase()));
+}
+
+/** Refuses a later version that adds a term, or (shared layer) omits one. */
+function refuseRuledOutResend(previous: Set<string> | null, chosen: readonly string[], layer: 'universal' | 'pairwise'): void {
+  if (previous === null) return;
+  const next = new Set(chosen.map((id) => id.toLowerCase()));
+  for (const id of next) if (!previous.has(id)) throw new AppError(409, 'term_added_after_presentation');
+  if (layer === 'universal') {
+    for (const id of previous) if (!next.has(id)) throw new AppError(409, 'universal_term_omitted');
+  }
 }
 
 async function guarded<T>(fn: () => Promise<T>): Promise<T> {
@@ -154,7 +198,13 @@ export const presentUniversalVersionOperation = defineOperation({
   output: idOutput,
   access: projectAccess,
   run: async (input, { db, target }) =>
-    guarded(async () => ({ id: (await presentUniversalVersion(db, target.id, input.body.termIds)).id })),
+    guarded(async () => {
+      const previous = await latestPresentedSources(await listUniversalVersions(db, target.id), (id) =>
+        findUniversalVersion(db, id),
+      );
+      refuseRuledOutResend(previous, input.body.termIds, 'universal');
+      return { id: (await presentUniversalVersion(db, target.id, input.body.termIds)).id };
+    }),
 });
 
 export const affirmUniversalTermOperation = defineOperation({
@@ -207,7 +257,13 @@ export const presentAgreementVersionOperation = defineOperation({
   output: idOutput,
   access: agreementAccess,
   run: async (input, { db, target }) =>
-    guarded(async () => ({ id: (await presentAgreementVersion(db, target.agreement.id, input.body.termIds)).id })),
+    guarded(async () => {
+      const previous = await latestPresentedSources(await listAgreementVersions(db, target.agreement.id), (id) =>
+        findAgreementVersion(db, id),
+      );
+      refuseRuledOutResend(previous, input.body.termIds, 'pairwise');
+      return { id: (await presentAgreementVersion(db, target.agreement.id, input.body.termIds)).id };
+    }),
 });
 
 export const affirmAgreementTermOperation = defineOperation({

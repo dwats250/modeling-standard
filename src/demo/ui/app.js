@@ -12,14 +12,16 @@ const state = {
   recordLoading: false,
 };
 
-// Actions the product does not have yet, and the Cory decision each waits on.
+// Actions the product does not have yet. Decided is not implemented: several
+// of these are decided by Cory and simply not built.
 const UNAVAILABLE = [
-  ['Add a party', 'How a person becomes a party of a project is undecided (D03).'],
-  ['Create a pairwise agreement', 'Who may create an agreement is undecided (D02, D12).'],
-  ['Add or present terms', 'Who may author and present terms is undecided (D02, D04).'],
-  ['Record an affirmation', 'Only the party itself may affirm (D12); how a person acts as a party is undecided (D03).'],
-  ['Send or invite', 'Participation credential and invitation are undecided (D03).'],
-  ['View as a party', 'What each party sees is mostly undecided (D10).'],
+  ['Add a party', 'Decided (D03): a person joins through the invitation link and signs in with Google or Apple. Not built: account storage exists (S06), sign-in and invitation do not.'],
+  ['Create a pairwise agreement', 'Not built. One agreement per pair, per project is decided (D02); the current storage does not enforce it yet.'],
+  ['Add or present terms', 'Not built. Who may drop a declined term is open (R2).'],
+  ['Tick a term', 'Not built. Only the party itself ticks (D12), signed in to its own account (D03).'],
+  ['Sign', 'Not built. Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
+  ['Send or invite', 'Decided (D03): the link is the invitation. Not built.'],
+  ['View as a party', 'Decided for photo shoots (D10). Not built: no party view exists yet.'],
 ];
 
 function el(tag, options = {}, children = []) {
@@ -261,20 +263,20 @@ function renderDetail() {
 
   root.append(
     head,
-    section('Parties', 'Project-local parties (S01). No role, identity or account binding.', partiesBody),
+    section('Parties', 'Project-local parties (S01). No role or identity. Binding a party to a sign-in account is stored by S06 but not shown here.', partiesBody),
     section(
       'Shared terms — universal layer',
-      'Safety and consent terms held on the project, for everyone on site (D02). Who counts as on site is undecided.',
+      'Safety and consent terms held on the project. On site means physical proximity (D02, decided): everyone in the room ticks these. The current data model does not record who is present.',
       renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { layer: 'universal', base: `/demo/sim/projects/${record.project.id}` }),
     ),
     section(
       'Pairwise agreements',
-      'Private commercial and craft terms, each agreement relating exactly two parties (S02, D02).',
+      'Current S03 storage: terms held on an agreement relating exactly two parties (S02). This is not the product’s privacy model. Cory has ruled three layers — universal safety, shared logistics including the call sheet (not built), and private money only — so craft terms here are a storage stand-in, known to be stale.',
       agreementsBody,
     ),
     legend(),
     SNAPSHOT ? null : simAssumptions(),
-    section('Not available as product actions', SNAPSHOT ? 'Left out on purpose until Cory decides.' : 'Left out on purpose until Cory decides. The simulator stands in for some of them, labelled as simulation.', unavailable),
+    section('Not available as product actions', SNAPSHOT ? 'Decided is not implemented: not built yet, or still open.' : 'Decided is not implemented: not built yet, or still open. The simulator stands in for some of them, labelled as simulation.', unavailable),
   );
 }
 
@@ -292,33 +294,37 @@ function legend() {
       el('strong', { text: 'Reading the grids. ' }),
       el('span', {
         text:
-          'A ✓ cell is a stored affirmation row: that party, that exact frozen wording, a database time. ' +
-          'An empty cell means no row is stored — nothing more. It is not "pending" or "declined", and no ' +
-          'agreement is shown as final: which terms are required is undecided (D04), so finality is not computed.',
+          'A ✓ cell is a stored tick row (S05 term affirmation evidence): that party, that exact frozen wording, a database time. ' +
+          'A tick is not a signature. Everyone ticks until every term is green for everyone; only then does anyone sign (D04). ' +
+          'Signing is not built, and what the signing act looks like is still open. ' +
+          'An empty cell means no row is stored — nothing more. It is not "pending" or "declined", and nothing is shown as final.',
       }),
     ]),
   ]);
 }
 
-// What a later version means differs by layer. Pairwise drop-and-resend is
-// decided (D02). For the shared universal layer the storage can freeze a later
-// version with a different set of terms, but whether a safety or consent term
-// may be left out is undecided and Cory's call. Neither layer's wording claims
-// withdrawal, replacement or finality.
+// What a later version may do, per Cory's 2026-10-14/15 rulings. A resend may
+// only shrink: nothing is ever added (no escalation, D02). A shared safety
+// term can never be left out (D02, D04). The simulator enforces both for the
+// demo; production S04 does not yet.
+const LATER_ROWS =
+  'No rows can be recorded against a later version in the current storage: S05’s single-version guard predates Cory’s ruling that already-ticked terms stay ticked across a resend. That carry-forward is not built.';
 const LAYER_COPY = {
   pairwise: {
     presentHint:
-      'Choose the terms to present. Leaving a term out of the next version is how a term is dropped and resent (D02). Earlier versions stay exactly as they were.',
+      'Choose the terms to present. A later version may keep or leave out terms of the version before it — leaving one out is how a declined term is dropped and resent (D02) — but may not add one: escalation cannot happen. Who may drop a term is open (R2); the demo operator stands in.',
+    newTermNote: 'Not in the previous version, so it cannot be added to a resend (no escalation).',
     notInLater: (sequence, content) => `Dropped since version ${sequence}: “${content}”`,
     notInLaterNote: null,
-    laterVersion: 'No rows can be recorded against a later version yet: how a resent version is affirmed is undecided (D02).',
+    laterVersion: LATER_ROWS,
   },
   universal: {
     presentHint:
-      'Choose the terms to present. Storage can freeze a later version with a different set of terms, but whether a shared safety or consent term may be left out is undecided — that is for Cory. This shows the storage mechanics only.',
+      'A shared safety term can never be dropped (D02, D04, decided). Once version 1 is presented, a later version must keep every term, and nothing may be added.',
+    newTermNote: 'Not in the presented version, so it cannot be added to a later one.',
     notInLater: (sequence, content) => `Not in this version, though in version ${sequence}: “${content}”`,
-    notInLaterNote: 'Whether a shared safety or consent term may be left out of a later version is undecided (Cory).',
-    laterVersion: 'No rows can be recorded against a later version yet. What a later shared version means is undecided.',
+    notInLaterNote: 'Stored before Cory ruled that a shared safety term can never be left out (2026-10-14/15). The demo no longer allows this.',
+    laterVersion: LATER_ROWS,
   },
 };
 
@@ -381,7 +387,7 @@ function renderVersion(version, previous, versionCount, partyIds, annotation, ct
         className: 'hint',
         text:
           version.sequence === 1
-            ? 'Unchanged by the later version. Once a later version exists, no new rows can be recorded here (S05).'
+            ? 'Unchanged by the later version, and kept here because that is how storage retains versions. Whether a dropped term persists in retained history is an open question for Cory (R1). Once a later version exists, no new rows can be recorded here (S05 guard).'
             : copy.laterVersion,
       }),
     );
@@ -414,91 +420,100 @@ function renderVersion(version, previous, versionCount, partyIds, annotation, ct
 }
 
 
-// ---- Open decisions for Cory (D03, D10, D04 requiredness, D05) ----
-// Wording follows decisions/*.md. Each question is posed, never answered.
+// ---- Remaining Cory seams, and what is decided but not built ----
+// Wording follows decisions/*.md and the 2026-10-09–15 reconciliation note.
+// Each open seam is posed, never answered.
 
 const DECISIONS = [
   {
-    id: 'D03',
-    title: 'Participation credential',
-    file: 'decisions/D03-participation-credential.md',
-    built: [
-      'A party is a bare identifier inside one project (S01). It is bound to no account, person or address.',
-      'Affirmation rows name a party (S05). They cannot yet record the credential used (DOCTRINE:52).',
-      'Production has no way to know who is calling: every protected request is refused.',
-      'Settled in D11: real participation requires real verification; self-attestation is not enough.',
-    ],
-    open: [
-      'Whether an account is needed to read terms, to affirm them, or at all.',
-      'Whether a link or one-time code sent to the invited address is enough.',
-      'Forwarded invitations, wrong addresses, lost access, and getting back to a record later.',
-      'How the credential, the binding of a person to a party, and the timing of D11 verification fit together (D11 timing is open too).',
-    ],
-    blocks: ['Inviting anyone', 'A party affirming a term (D12: only the party itself may)', 'Credential evidence on each affirmation', 'Real participation'],
-    question:
-      'For the D01 scenario, what must a person have in order to affirm a term, and to come back to their record later?',
-  },
-  {
-    id: 'D10',
-    title: 'What each party sees',
-    file: 'decisions/D10-what-each-party-sees.md',
-    built: [
-      'Pairwise agreements are stored separately; one agreement never relates a third party (S02).',
-      'Shared safety terms live on the project; private terms live on their pairwise agreement (S03).',
-      'Settled rulings: one model does not see another model’s private agreement; safety terms are common to everyone on site.',
-      'This demo shows only an internal record view, labelled as not a party view.',
-    ],
-    open: [
-      'The rest of the grid: roster, counterparties, contact details, exact location, notes, concerns, who has affirmed, what changed between versions, the final record.',
-      'What the person who organized it sees that others do not.',
-      'Whether the final artifact is one record with per-party views, one per party, or one everyone sees in full.',
-    ],
-    blocks: ['Any screen a party sees', 'Notifications', 'Exports and the final artifact', 'Evidence of what each party was shown'],
-    question:
-      'In the two-person D01 case, who sees who has affirmed which term, and what changed between versions — before the agreement is final, and after?',
-  },
-  {
-    id: 'D04',
-    title: 'Requiredness (within terms and affirmation)',
+    id: 'D04 wording',
+    title: 'No-means-no wording',
     file: 'decisions/D04-terms-and-affirmation.md',
     built: [
-      'Every term is its own row and its own unit of evidence (S03).',
-      'Presented versions are frozen, and a later version never changes an earlier one (S04). Pairwise drop-and-resend is a later version without the term (D02).',
-      'Each party’s affirmation of each presented term is a separate, timestamped row (S05).',
-      'Settled rule (D02): an agreement is final only when every named party has affirmed every required term.',
+      'Decided: a safety term every person ticks individually, with a signed acknowledgment on every brief.',
+      'Decided: one term, two faces — for the person protected, the tools she has; for the people bound by it, the obligation.',
+      'Not built: no term content or presentation exists for it.',
     ],
-    open: [
-      'Which terms are required for the D01 scenario.',
-      'Who decides that a term is required.',
-      'How body and money terms are identified, so they stay out of the group-check convenience.',
+    open: ['The exact wording. Cory writes it.'],
+    blocks: ['Presenting the no-means-no term to anyone'],
+    question: 'What does the no-means-no term say, for the person it protects and for the people it binds?',
+  },
+  {
+    id: 'D04 signing',
+    title: 'What signing looks like',
+    file: 'decisions/D04-terms-and-affirmation.md',
+    built: [
+      'Decided: ticking and signing are separate acts. Everyone ticks until every term is green for everyone; only then does anyone sign.',
+      'Built: per-term tick rows (S05). They are not signatures.',
+      'Not built: any signing step.',
     ],
-    blocks: ['Computing whether an agreement is final', 'Showing anything as “final”', 'The group-check convenience', 'The final record'],
-    question: 'For the D01 scenario, which presented terms must every named party affirm before the agreement is final, and who marks them?',
+    open: ['The visible signing act once everything is green.'],
+    blocks: ['Building the signing step'],
+    question: 'Once every term is green for everyone, what does each person do to sign?',
+  },
+  {
+    id: 'R1',
+    title: 'A declined term versus retained versions',
+    file: 'decisions/2026-10-09-15-cory-reconciliation.md',
+    built: [
+      'Decided: a “no” is not recorded; the final contract is the record (Q10).',
+      'Decided: every version is retained invisibly as evidence (Q17).',
+      'Built: storage keeps every presented version, including one holding a term later dropped (this inspector shows them).',
+    ],
+    open: ['Whether a dropped term stays in the evidentiary version history.'],
+    blocks: ['Designing evidence retention for resends'],
+    question: 'When a declined term is dropped and the rest resent, should the earlier version that held it stay in the evidence record?',
+  },
+  {
+    id: 'R2',
+    title: 'Who may drop a declined term',
+    file: 'decisions/2026-10-09-15-cory-reconciliation.md',
+    built: [
+      'Decided: authorship of a term is not recorded (Q9).',
+      'Decided: only whoever proposed a declined term may drop it (Q9).',
+      'Not built: no presenter or proposer is stored; the demo operator stands in.',
+    ],
+    open: ['How “only the proposer may drop” is enforced without recording who proposed.'],
+    blocks: ['Authorizing drop-and-resend for real people'],
+    question: 'Should who proposed a term be not stored at all, stored only as invisible evidence, or stored but never shown?',
   },
   {
     id: 'D05',
-    title: 'Vocabulary',
+    title: 'Remaining vocabulary',
     file: 'decisions/D05-vocabulary.md',
     built: [
-      'Internal code names only: project, party, term, version, affirmation.',
-      'Every demo screen says these are internal names, not product words.',
+      'Decided: “brief” before signing, “contract” after; each person walks away with the contract.',
+      'Every demo screen still uses internal code names, not product words.',
     ],
-    open: [
-      'The words for the collaboration container, the terms as presented, a response, the finalized agreement, the artifact each party holds, and archived or completed statuses.',
-    ],
+    open: ['The words for a presented version, a response, and the archived states — to be drafted in context, on real screens, for Cory to react to.'],
     blocks: ['Any screen, email or document a person outside the team reads'],
-    question:
-      'What should a person see instead of: project, terms (as presented), affirm, final agreement, and the record they keep?',
+    question: 'Seeing a draft screen and email, what should a presented version, a response and an archived state be called?',
   },
 ];
 
 const CAPABILITIES = [
-  ['Invite a person', ['D03']],
-  ['A party affirms a term', ['D03']],
-  ['A party sees their own view', ['D10', 'D05']],
-  ['Show an agreement as final', ['D04']],
-  ['Group-check for ordinary terms', ['D04']],
-  ['Deliver the final record', ['D10', 'D04', 'D05']],
+  ['Present the no-means-no term', ['D04 wording']],
+  ['Sign once every term is green', ['D04 signing']],
+  ['Keep evidence across a resend', ['R1']],
+  ['Let a real person drop a declined term', ['R2']],
+  ['Show any product words to a person', ['D05']],
+];
+
+// Decided by Cory but not built. DECIDED is not IMPLEMENTED.
+const DECIDED_NOT_BUILT = [
+  'D03 participation credential: account by Google or Apple sign-in, the link is the invitation. Account storage exists (S06); sign-in and invitation do not.',
+  'D10 what each party sees (photo shoots): decided in full. No party view is built.',
+  'D02 lifecycle: answered except R2 — one agreement per pair, shrink-only resends, no organizer confirmation. Mostly not built.',
+  'Three layers: universal safety, shared logistics including the call sheet, private money only. The current storage still has the older two layers.',
+  'On site means physical proximity. Presence is not recorded.',
+  'D11 verification at first participation. Not built.',
+  'D06 pre-launch real use in sequence. Gate 2 is not open.',
+];
+
+// Counsel items: not Cory homework.
+const COUNSEL_ITEMS = [
+  'Which document templates need legal review (D08).',
+  'Retention periods and statutory erasure (D09).',
 ];
 
 function bulletList(items, className) {
@@ -532,15 +547,15 @@ function renderDecisions() {
   const cards = el('div', { className: 'decision-cards' });
   for (const d of DECISIONS) {
     cards.append(
-      el('article', { className: 'decision', attrs: { id: `decision-${d.id}` } }, [
+      el('article', { className: 'decision', attrs: { id: `decision-${d.id.replace(/\s+/g, '-')}` } }, [
         el('header', {}, [
           el('span', { className: 'badge', text: d.id }),
           el('h3', { text: d.title }),
           el('p', { className: 'source', text: d.file }),
         ]),
         el('div', { className: 'decision-cols' }, [
-          el('div', {}, [el('h4', { text: 'Already built' }), bulletList(d.built, 'built')]),
-          el('div', {}, [el('h4', { text: 'Still undecided' }), bulletList(d.open, 'open')]),
+          el('div', {}, [el('h4', { text: 'Decided and built so far' }), bulletList(d.built, 'built')]),
+          el('div', {}, [el('h4', { text: 'Still open' }), bulletList(d.open, 'open')]),
           el('div', {}, [el('h4', { text: 'Waiting on it' }), bulletList(d.blocks, 'blocks')]),
         ]),
         el('div', { className: 'question' }, [el('h4', { text: 'Smallest question' }), el('p', { text: d.question })]),
@@ -551,22 +566,24 @@ function renderDecisions() {
   root.append(
     el('header', { className: 'detail-head' }, [
       el('p', { className: 'eyebrow', text: 'For Cory' }),
-      el('h2', { text: 'Four open decisions' }),
+      el('h2', { text: 'Remaining open seams' }),
       el('p', {
         className: 'meta',
         text:
-          'What is built, what is still undecided, what waits on it, and the smallest question that would unblock it. ' +
+          'The few product questions still Cory’s to answer, what is already decided around each, and the smallest question that would close it. ' +
           'Questions only: nothing here suggests an answer.',
       }),
       el('p', {
         className: 'meta scope-note',
         text:
-          'A selected walkthrough of four decisions, not the full list. Other decisions are open too (among them D02 lifecycle, ' +
-          'D06 real use, D08 documents, D09 preservation and D11 verification timing); decisions/README.md lists every decision and its status.',
+          'A walkthrough of the current seams, not the full list; decisions/README.md lists every decision and its status. ' +
+          'Decided is not implemented: much of what Cory has decided is not built yet (below).',
       }),
     ]),
-    section('What waits on what', 'Each row is something the product cannot do yet.', el('div', { className: 'table-scroll' }, [strip])),
+    section('What waits on what', 'Each row is something the product cannot do until the seam is answered.', el('div', { className: 'table-scroll' }, [strip])),
     cards,
+    section('Decided, not built', 'Cory has answered these. Building them is engineering work, not a question for him.', bulletList(DECIDED_NOT_BUILT, 'decided-not-built')),
+    section('Counsel items', 'For counsel, not Cory homework.', bulletList(COUNSEL_ITEMS, 'counsel-items')),
   );
 }
 
@@ -574,7 +591,9 @@ function renderDecisions() {
 // ---- Simulator (live demo only; never in the snapshot) ----
 
 const SIM_ERRORS = {
-  version_not_affirmable: 'Only a sole version 1 can take rows (S05). How a later version is affirmed is undecided.',
+  version_not_affirmable: 'Only a sole version 1 can take rows in current storage (S05 guard). Carrying ticks forward across a resend is decided but not built.',
+  term_added_after_presentation: 'A later version cannot add a term the previous version did not hold: escalation cannot happen (D02).',
+  universal_term_omitted: 'A shared safety term can never be left out of a later version (D02, D04).',
   already_affirmed: 'That party already has a row for this term.',
   party_not_in_agreement: 'That party is not one of this agreement’s two parties.',
   term_not_in_container: 'A chosen term is not stored in this container.',
@@ -611,12 +630,12 @@ function emptyCell(version, versionCount, term, partyId, annotation, ctx) {
     text: 'simulate',
     attrs: {
       type: 'button',
-      title: `Simulation: record a row as if ${partyLabel(annotation, partyId)} had affirmed this term. Only the party itself may affirm in the product (D12); how is D03.`,
+      title: `Simulation: record a tick row as if ${partyLabel(annotation, partyId)} had ticked this term. Not a signature. In the product only the party itself ticks (D12), signed in to its own account (D03).`,
     },
   });
   button.addEventListener('click', () => {
     button.disabled = true;
-    void simulate(`${ctx.base}/affirmations`, { presentedTermId: term.id, partyId }, `Simulated row recorded for ${partyLabel(annotation, partyId)}.`);
+    void simulate(`${ctx.base}/affirmations`, { presentedTermId: term.id, partyId }, `Simulated tick row recorded for ${partyLabel(annotation, partyId)}.`);
   });
   cell.append(button);
   return cell;
@@ -634,11 +653,18 @@ function simPanel(terms, versions, ctx) {
     void simulate(`${ctx.base}/terms`, { content: input.value }, 'Term stored (not yet presented).');
   });
 
+  // Once a version exists: no term outside it may be added (both layers), and
+  // no shared term may be left out (universal). The server enforces the same.
+  const copy = LAYER_COPY[ctx.layer];
   const boxes = el('ul', { className: 'sim-terms' });
   for (const term of terms) {
     const box = el('input', { attrs: { type: 'checkbox', value: term.id, id: `sim-${term.id}` } });
     box.checked = inLatest.has(term.id);
-    boxes.append(el('li', {}, [box, el('label', { text: term.content, attrs: { for: `sim-${term.id}` } })]));
+    const addable = !latest || inLatest.has(term.id);
+    const droppable = ctx.layer !== 'universal' || !latest;
+    if (!addable || !droppable) box.disabled = true;
+    const label = el('label', { text: term.content, attrs: { for: `sim-${term.id}` } });
+    boxes.append(el('li', {}, [box, label, addable ? null : el('span', { className: 'hint sim-locked', text: copy.newTermNote })]));
   }
   const next = (latest?.sequence ?? 0) + 1;
   const present = el('button', { className: 'secondary', text: `Present version ${next}`, attrs: { type: 'button' } });
@@ -651,7 +677,7 @@ function simPanel(terms, versions, ctx) {
 
   return el('details', { className: 'sim-panel' }, [
     el('summary', { text: 'Simulate — demo only' }),
-    el('p', { className: 'hint', text: 'Who may add or present terms is undecided (D02, D04). Here the demo operator does it.' }),
+    el('p', { className: 'hint', text: 'The demo operator adds and presents terms. In the product this is not built, and who may drop a declined term is open (R2).' }),
     el('div', { className: 'sim-row' }, [input, add]),
     terms.length > 0
       ? el('div', {}, [
@@ -668,8 +694,10 @@ function simAssumptions() {
     el('strong', { text: 'Simulation assumptions. ' }),
     el('span', {
       text:
-        'The demo operator adds and presents terms and records affirmation rows naming a party. None of that is a product act: ' +
-        'who may author or present terms is undecided (D02, D04), and only a party may affirm for itself (D12), by means not yet decided (D03). ' +
+        'The demo operator adds and presents terms and records tick rows naming a party. None of that is a product act: ' +
+        'who may drop a declined term is open (R2), and only a party may tick for itself (D12), signed in to its own account (D03 decided, not built). ' +
+        'Tick rows are not signatures; signing is not built. ' +
+        'Demo-only rules matching Cory’s rulings: a later version may not add a term (no escalation), and a shared safety term may not be left out. Production storage does not enforce these yet. ' +
         'A version needing at least one term is a current storage restriction: the database requires a positive term count (S04). That is how it is built today, not a product rule. Not repeating a term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
     }),
   ]);

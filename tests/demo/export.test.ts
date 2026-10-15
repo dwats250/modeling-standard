@@ -63,16 +63,37 @@ describe('portable snapshot', () => {
     }
   });
 
-  it('carries the layer-aware wording, not the old universal drop-and-resend claim (Astra B02)', () => {
-    expect(html).not.toContain('Leaving one out is how a term is dropped and resent (D02)');
-    expect(html).toContain('whether a shared safety or consent term may be left out is undecided');
-    expect(html).toContain('Leaving a term out of the next version is how a term is dropped and resent (D02)');
+  it('carries Cory’s October rulings, not the superseded wording', () => {
+    // Universal omission is ruled out, escalation is impossible, and the layer
+    // model is three layers with only money private.
+    expect(html).toContain('A shared safety term can never be dropped');
+    expect(html).toContain('escalation cannot happen');
+    expect(html).toContain('private money only');
+    expect(html).toContain('On site means physical proximity');
+    // Tick rows are not signatures; signing is not built.
+    expect(html).toContain('A tick is not a signature');
+    expect(html).toContain('Signing is not built');
+    // Decided is not implemented, for D03 and D10.
+    expect(html).toContain('D10 is decided for photo shoots, but no party view is built');
+    for (const stale of [
+      'may be left out is undecided',
+      'Who counts as on site is undecided',
+      'Private commercial and craft terms',
+      '(D10 open)',
+      'is undecided (D03)',
+      'mostly undecided (D10)',
+      'Leaving one out is how a term is dropped and resent (D02)',
+    ]) {
+      expect({ stale, present: html.includes(stale) }).toEqual({ stale, present: false });
+    }
   });
 
-  it('describes the decisions view as a selection, with D11 acknowledged on D03, and the term-count rule accurately', () => {
-    expect(html).toContain('A selected walkthrough of four decisions, not the full list');
-    expect(html).toContain('Settled in D11: real participation requires real verification');
+  it('presents only the current Cory seams, with counsel items labelled as counsel, and the term-count rule accurately', () => {
+    expect(html).toContain('A walkthrough of the current seams, not the full list');
+    expect(html).toContain('Counsel items');
+    expect(html).toContain('For counsel, not Cory homework.');
     expect(html).toContain('the database requires a positive term count (S04)');
+    expect(html).not.toContain('four decisions');
     expect(html).not.toContain('A version needing at least one term is a simulator input rule');
   });
 

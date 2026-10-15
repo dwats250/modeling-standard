@@ -97,6 +97,8 @@ Nothing here is urgent in the sense of a defect: no production path writes any o
 
 Classification: **WORDING/DOCS STALE ONLY** for labels, plus simulator abilities that now demonstrate behaviour Cory has decided against. Nothing is fixed in this task.
 
+> **Update, Sprint 1 Phase 2:** the labels and simulator abilities below have since been corrected in the demo only (`docs/engineering/DEMO.md`, "Still stale by construction" lists what remains). The list is kept as the record of what was stale at `1ef4b1a`.
+
 Misleading labels (file and line from the inventory at `1ef4b1a`):
 
 - `src/demo/ui/app.js:271-272` — "Private commercial and craft terms, each agreement relating exactly two parties (S02, D02)." Superseded: money is the only private thing.

@@ -106,6 +106,20 @@
       "when": 1791922595191,
       "tag": "0014_agreement_version_fk_name",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792081789758,
+      "tag": "0015_account_party_binding",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792081805582,
+      "tag": "0016_account_party_binding_stamps_and_grants",
+      "breakpoints": true
     }
   ]
 }

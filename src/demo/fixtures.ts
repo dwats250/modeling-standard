@@ -12,9 +12,9 @@ import { presentAgreementVersion, presentUniversalVersion } from '../projects/ve
  * Projects are created through the real `project.create` operation, as the
  * demo operator. Parties, agreements, terms, presented versions and
  * affirmation rows are then written with the S01 to S05 data functions
- * directly, because no product path for any of them exists: how a person
- * becomes a party and how a party acts is D03 (and D12: nobody affirms for
- * another), and who may create an agreement or author a term is open.
+ * directly, because no product path for any of them is built: a person
+ * reaches a party by signing in (D03, decided, not built; D12: nobody ticks
+ * for another), and who may drop a declined term is open (R2).
  *
  * Term text is synthetic sample wording, marked as such. Term text is opaque
  * to the product; nothing here is a clause catalog or a minimum term set.
@@ -56,18 +56,19 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     const second = await addProjectParty(db, projectId);
     const agreement = await createPairwiseAgreement(db, projectId, [first.id, second.id]);
 
-    // Universal layer: safety and consent terms for everyone on site (D02).
-    // D01 says coverage, touch and wardrobe-adjustment expectations were
-    // discussed, but which layer such terms belong to, and who classifies
-    // them, is undecided (D04). So this layer holds neutral placeholders only.
+    // Universal layer: safety and consent terms for everyone on site
+    // (physical proximity, D02). The current storage has no term subject or
+    // fixed deliberate-tick identity (D04, decided, not built), so this layer
+    // holds neutral placeholders only.
     const universal = [
       await addUniversalTerm(db, projectId, '[synthetic] A shared on-site safety term.'),
       await addUniversalTerm(db, projectId, '[synthetic] A second shared on-site safety term.'),
     ];
     const universalV1 = await presentUniversalVersion(db, projectId, universal.map((t) => t.id));
 
-    // Pairwise layer: private commercial and craft terms between the two (D02).
-    // D01: no money; the photographer shot, edited and delivered files; a
+    // Pairwise storage (S03). Cory has since ruled that only money is private;
+    // deliverable and usage terms belong to the shared layer, which is not
+    // built. These sit here as a storage stand-in. D01: no money; the photographer shot, edited and delivered files; a
     // possible album-cover use by the model was discussed.
     const pairwise = [
       await addAgreementTerm(db, agreement.id, '[synthetic] Edited files are delivered after the shoot.'),
@@ -75,8 +76,9 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     ];
     const agreementV1 = await presentAgreementVersion(db, agreement.id, pairwise.map((t) => t.id));
 
-    // Each party's own per-term rows. In the product only the party itself
-    // could act (D12); how is D03. Here they are fixture rows.
+    // Each party's own per-term tick rows. In the product only the party
+    // itself could tick (D12), signed in to its own account (D03). Here they
+    // are fixture rows, not signatures.
     for (const party of [first, second]) {
       for (const term of universalV1.terms) await affirmUniversalTerm(db, term.id, party.id);
       for (const term of agreementV1.terms) await affirmAgreementTerm(db, term.id, party.id);
@@ -84,18 +86,19 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
 
     projects[projectId] = {
       title: 'Fixture 1 — D01 first scenario',
-      source: 'D01; D02 two layers; D04 per-term ruling; 2026-10-05 reconciliation',
+      source: 'D01; D04 per-term ruling; S03 storage (two layers, now known to be stale)',
       note:
         'Two adults who already know each other. In the walk-through the model created the project and sent it ' +
         'to a photographer she knew. The labels below come from that walk-through only; the stored parties carry ' +
         'no role, and the demo operator who created this project is not either party. Coverage, touch and ' +
-        'wardrobe-adjustment expectations were discussed in D01; which layer they belong to is undecided (D04), ' +
-        'so the shared layer below holds neutral placeholders.',
+        'wardrobe-adjustment expectations were discussed in D01; the terms below are neutral placeholders. ' +
+        'The delivery and usage terms sit in pairwise storage, but Cory has ruled that only money is private: ' +
+        'they belong to the shared layer, which is not built.',
       parties: {
         [first.id]: 'Party (walk-through: the model)',
         [second.id]: 'Party (walk-through: the photographer)',
       },
-      agreements: { [agreement.id]: 'Private pairwise agreement between the two parties' },
+      agreements: { [agreement.id]: 'Pairwise agreement between the two parties (storage stand-in)' },
     };
   }
 
@@ -118,8 +121,8 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     // A–C: version 1 with three terms; A records a row for the first term;
     // then the third term is dropped and the rest resent as version 2 (D02).
     const acTerms = [
-      await addAgreementTerm(db, ac.id, '[synthetic] Craft term one between A and C.'),
-      await addAgreementTerm(db, ac.id, '[synthetic] Commercial term two between A and C.'),
+      await addAgreementTerm(db, ac.id, '[synthetic] Term one between A and C.'),
+      await addAgreementTerm(db, ac.id, '[synthetic] Term two between A and C.'),
       await addAgreementTerm(db, ac.id, '[synthetic] Term three, later dropped.'),
     ];
     const acV1 = await presentAgreementVersion(db, ac.id, acTerms.map((t) => t.id));
@@ -127,17 +130,17 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     await presentAgreementVersion(db, ac.id, [acTerms[0]!.id, acTerms[1]!.id]);
 
     // B–C: one presented term, no rows yet.
-    const bcTerm = await addAgreementTerm(db, bc.id, '[synthetic] Commercial term between B and C.');
+    const bcTerm = await addAgreementTerm(db, bc.id, '[synthetic] A term between B and C.');
     await presentAgreementVersion(db, bc.id, [bcTerm.id]);
 
     projects[projectId] = {
       title: 'Fixture 2 — three parties, two pairwise agreements',
-      source: 'D02 structure and drop-and-resend rulings; D04 per-term ruling; reconciliation ruling 11',
+      source: 'D02 pairwise topology and drop-and-resend; D04 per-term ruling',
       note:
-        'Commercial and craft agreements are private and pairwise under the project. Parties A and B each have ' +
-        'their own agreement with C; neither agreement relates A and B. A–C shows drop-and-resend: version 2 ' +
-        'leaves term three out and version 1 is unchanged. Who may see which agreement is mostly open (D10), so ' +
-        'this inspector is not a party view.',
+        'Parties A and B each have their own pairwise agreement with C; neither agreement relates A and B. ' +
+        'A–C shows drop-and-resend: version 2 leaves term three out, adds nothing, and version 1 is unchanged. ' +
+        'Only money is private (D10, decided); terms held on these agreements are a storage stand-in. ' +
+        'This inspector is not a party view.',
       parties: { [a.id]: 'Party A', [b.id]: 'Party B', [c.id]: 'Party C' },
       agreements: { [ac.id]: 'Agreement A–C', [bc.id]: 'Agreement B–C' },
     };
@@ -149,7 +152,7 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     projects[projectId] = {
       title: 'Fixture 3 — empty project',
       source: 'S01',
-      note: 'A project with no parties yet. No product path adds a party until D03 is decided.',
+      note: 'A project with no parties yet. D03 is decided, but no product path adds a party until invitation and sign-in are built.',
       parties: {},
       agreements: {},
     };
