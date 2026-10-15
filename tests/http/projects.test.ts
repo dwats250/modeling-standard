@@ -5,6 +5,8 @@ import { inject } from 'vitest';
 import { z } from 'zod';
 import { operations } from '../../src/app/operation-list.ts';
 import { runMigrations } from '../../src/infrastructure/database/migrate.ts';
+import { resolveAccountForLogin } from '../../src/accounts/account.ts';
+import { bindPartyToAccount } from '../../src/accounts/binding.ts';
 import { addProjectParty } from '../../src/projects/party.ts';
 import { createProjectOperation, readProjectOperation } from '../../src/projects/project.ts';
 import { project, projectParty } from '../../src/projects/tables.ts';
@@ -173,6 +175,22 @@ describe('reading a project', () => {
     expect(res.json()).toEqual({ id: created.id });
     expect(res.body).not.toContain(first.id);
     expect(res.body).not.toContain(second.id);
+  });
+
+  it('exposes no account, login provider or subject when a party is bound to an account (S06)', async () => {
+    const creator = newPrincipal();
+    const created = await createAs(creator);
+    const party = await addProjectParty(t.database.db, created.id);
+    const subject = `dto-${randomUUID()}`;
+    const acct = await resolveAccountForLogin(t.database.db, { provider: 'google', providerSubject: subject });
+    await bindPartyToAccount(t.database.db, { projectId: created.id, partyId: party.id, accountId: acct.id });
+
+    const res = await t.app.inject({ method: 'GET', url: `/projects/${created.id}`, headers: as(creator) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ id: created.id });
+    expect(res.body).not.toContain(acct.id);
+    expect(res.body).not.toContain(subject);
+    expect(res.body).not.toMatch(/google|apple|account|provider|subject/i);
   });
 });
 

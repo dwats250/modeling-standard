@@ -447,10 +447,12 @@ describe('presented versions', () => {
       // Every trigger function in the schema, including later slices', is
       // pinned by name and held to the same rule.
       expect(functions.rows.map((r) => r.name)).toEqual([
+        'account_stamp',
         'agreement_affirmation_stamp',
         'agreement_version_check_sealed',
         'agreement_version_stamp',
         'agreement_version_term_check_copy',
+        'party_account_binding_stamp',
         'universal_affirmation_stamp',
         'universal_version_check_sealed',
         'universal_version_stamp',

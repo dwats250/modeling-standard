@@ -21,6 +21,7 @@ const T0011 = '0011_term_affirmation';
 const T0012 = '0012_term_affirmation_rules_and_grants';
 const T0013 = '0013_affirmation_read_committed_only';
 const T0014 = '0014_agreement_version_fk_name';
+const T0016 = '0016_account_party_binding_stamps_and_grants';
 
 const ROW_TABLES = [
   'project',
@@ -34,6 +35,8 @@ const ROW_TABLES = [
   'universal_version_term',
   'agreement_affirmation',
   'universal_affirmation',
+  'account',
+  'party_account_binding',
 ] as const;
 
 const STAMP_FUNCTIONS = ['agreement_affirmation_stamp', 'universal_affirmation_stamp'] as const;
@@ -464,12 +467,61 @@ describe('populated migration upgrades', () => {
           expect((await c.query('select 1 from pg_constraint where conname = $1', [TRUNCATED_FK])).rowCount).toBe(0);
           expect(await rowsOf(c)).toEqual(before.rows);
           expect((await bookkeeping(c)).map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(15));
+        });
+
+        // The normal path then applies whatever later migrations exist and
+        // reaches exactly the freshly migrated schema, rows unchanged.
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => {
+          const all = journal().entries.length;
+          expect((await bookkeeping(c)).map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(all));
+          expect(await rowsOf(c)).toMatchObject(before.rows);
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'populated 0014 → current (S06): S01–S05 rows unchanged, account tables arrive empty, existing parties can be bound',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0014);
+        const s = await asRuntime(db, populateThroughS04);
+        await asRuntime(db, (c) => c.query(...agreementAffirmationSql(s, s.agreementPresentedTermIds[0]!, s.pair[0])));
+        const before = await asOwner(db, async (c) => ({
+          rows: await rowsOf(c),
+          accountAbsent: (await c.query(`select to_regclass('public.account') as r`)).rows[0].r,
+        }));
+        expect(before.accountAbsent).toBeNull();
+
+        await runMigrations(db.migrationUrl);
+
+        await asOwner(db, async (c) => {
+          const after = await rowsOf(c);
+          for (const table of Object.keys(before.rows)) {
+            expect({ table, rows: after[table] }).toEqual({ table, rows: before.rows[table] });
+          }
+          expect(after['account']).toEqual([]);
+          expect(after['party_account_binding']).toEqual([]);
+          expect((await bookkeeping(c)).map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(
+            expectedBookkeeping(journal().entries.findIndex((e) => e.tag === T0016) + 1),
+          );
           expect(await catalog(c)).toEqual(await freshCatalog());
         });
 
-        // The normal path then finds nothing left to apply.
-        await runMigrations(db.migrationUrl);
-        await asOwner(db, async (c) => expect((await bookkeeping(c)).length).toBe(15));
+        // A party created before S06 can be bound through the runtime role.
+        await asRuntime(db, async (c) => {
+          const acct = await c.query<{ id: string }>(
+            `insert into account (login_provider, provider_subject) values ('google', 'upgrade-subject') returning id`,
+          );
+          const bound = await c.query(
+            'insert into party_account_binding (project_id, party_id, account_id) values ($1, $2, $3) returning party_id',
+            [s.projectId, s.pair[0], acct.rows[0]!.id],
+          );
+          expect(bound.rows).toEqual([{ party_id: s.pair[0] }]);
+        });
       });
     },
     UPGRADE_TIMEOUT,

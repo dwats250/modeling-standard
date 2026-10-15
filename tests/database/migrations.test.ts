@@ -9,7 +9,7 @@ import { withClient } from '../support/sql.ts';
 /**
  * Migrations against real PostgreSQL: an empty database migrates, a second
  * run changes nothing, and the result contains exactly the Stage 0 synthetic
- * tables and the S01 to S05 project tables.
+ * tables and the S01 to S06 project and account tables.
  */
 
 async function withEmptyDatabase<T>(fn: (migrationUrl: string) => Promise<T>): Promise<T> {
@@ -43,18 +43,20 @@ describe('migrations', () => {
     });
   });
 
-  it('produce exactly the Stage 0 synthetic tables and the S01 to S05 project tables', async () => {
+  it('produce exactly the Stage 0 synthetic tables and the S01 to S06 project and account tables', async () => {
     const tables = await withClient(inject('migrationUrl'), (c) =>
       c.query(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
       ),
     );
     expect(tables.rows.map((r: { table_name: string }) => r.table_name)).toEqual([
+      'account',
       'agreement_affirmation',
       'agreement_term',
       'agreement_version',
       'agreement_version_term',
       'pairwise_agreement',
+      'party_account_binding',
       'project',
       'project_party',
       'synthetic_evidence',

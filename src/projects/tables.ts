@@ -13,7 +13,9 @@ import { check, foreignKey, integer, pgTable, text, timestamp, unique, uuid } fr
  * author or proposer, no acceptance status, finality, decline, withdrawal,
  * signature credential or witness (S05 records only per-term affirmation
  * evidence), no youth, guardian or proxy, no posted/direct-send subtype, and
- * no binding from a party to an account, principal, person or identity.
+ * no binding from a party to an account, principal, person or identity
+ * (S06 adds that binding as a separate table in `src/accounts/tables.ts`,
+ * leaving these tables unchanged).
  *
  * Privileges are granted by hand-written SQL in `migrations/`, never here.
  */
@@ -39,8 +41,9 @@ export const project = pgTable('project', {
  * SELECT, INSERT.
  *
  * Deliberately only an identifier scoped to its project. It has no role, no
- * label, and no link to an account, principal or person; how a party is
- * identified and how someone joins is D03, still open.
+ * label, and no link to an account, principal or person. D03 is decided:
+ * S06 binds a party to a sign-in account in a separate append-only table
+ * (`party_account_binding`), so this table's meaning is unchanged.
  */
 export const projectParty = pgTable(
   'project_party',

@@ -4,10 +4,12 @@ import type { Executor } from '../infrastructure/database/client.ts';
 /**
  * The authorization boundary's vocabulary. Deliberately small:
  *
- * - A principal is an opaque identifier. Stage 0 does not decide what a
- *   principal will be (an account, a code holder, a representative); that is
- *   Cory's decision D3. In the Stage 0 production build nothing produces a
- *   principal, so every protected operation is denied.
+ * - A principal is an opaque identifier. D03 has since decided that a
+ *   participant signs in with Google or Apple to an account (S06,
+ *   `src/accounts/`), so an authenticated production principal is intended
+ *   to represent an internal account id. No authentication adapter exists
+ *   yet: in production nothing produces a principal, so every protected
+ *   operation is denied. Synthetic principals remain test- and demo-only.
  * - Every operation declares its access: public (with a stated reason) or
  *   protected (with a loader for the object acted on and a policy over it).
  *   There is no third option and no default.
