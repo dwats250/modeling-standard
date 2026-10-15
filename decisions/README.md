@@ -13,7 +13,12 @@ These are Cory's twelve product decisions, one file each. Cory answers here, in 
 
 Anything marked **[F] lean** is Fable's recommendation to Cory. It is not a default and nothing is built from it.
 
-Direct Cory rulings from the 2026-10-05 reconciliation session are recorded in `2026-10-05-cory-reconciliation.md`. Those current answers supersede conflicting older candidate evidence.
+Direct Cory rulings are recorded in two dated notes:
+
+- [`2026-10-05-cory-reconciliation.md`](2026-10-05-cory-reconciliation.md) — the first reconciliation session, kept as historical evidence.
+- [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md) — the 2026-10-09 and 2026-10-14/15 sessions. **Later; governs where they conflict.** It also holds Cory's cross-cutting doctrine (noise doctrine, recording versus showing, presence, third parties, photo shoots versus fashion shows and others), its supersession ledger, and two reconciliation questions left for Cory (R1, R2).
+
+Both supersede conflicting older candidate evidence. Every decision in this folder covers **photo shoots**; fashion shows are a separate product, not designed by extension.
 
 Provenance tags (**[R]**, **[R-prov]**, **[CA]**, **[F]**) and citations such as `VISION:374` are explained in the root `README.md`.
 
@@ -23,19 +28,38 @@ Provenance tags (**[R]**, **[R-prov]**, **[CA]**, **[F]**) and citations such as
 |---|---|---|---|
 | [D01](D01-first-scenario.md) | First scenario, walked through | Any Stage 1 work | DECIDED |
 | [D12](D12-who-may-act.md) | Who may act, and for whom | Any Stage 1 work | DECIDED |
-| [D02](D02-agreement-topology-lifecycle.md) | Agreement topology and lifecycle | Response and finalization work | OPEN — partial rulings |
-| [D10](D10-what-each-party-sees.md) | What each party sees | Presentation and artifact work | OPEN — partial rulings |
-| [D04](D04-terms-and-affirmation.md) | Terms and affirmation | Terms and signing work | OPEN — affirmation mechanic decided |
-| [D03](D03-participation-credential.md) | Participation credential | Invitation and participation work | OPEN |
-| [D11](D11-adult-assurance.md) | Adult assurance | Participation work; real use | OPEN — verification method decided |
-| [D05](D05-vocabulary.md) | Vocabulary | Anything a person outside the team sees | OPEN |
+| [D02](D02-agreement-topology-lifecycle.md) | Agreement topology and lifecycle | Response and finalization work | OPEN — photo-shoot scope answered except R2 (who may drop a declined term, given no recorded authorship) |
+| [D10](D10-what-each-party-sees.md) | What each party sees | Presentation and artifact work | DECIDED (photo shoots) |
+| [D04](D04-terms-and-affirmation.md) | Terms and affirmation | Terms and signing work | OPEN — no-means-no wording, the visible signing act, R1 |
+| [D03](D03-participation-credential.md) | Participation credential | Invitation and participation work | DECIDED (photo shoots) |
+| [D11](D11-adult-assurance.md) | Adult assurance | Participation work; real use | OPEN — synthetic-demo treatment only; timing decided |
+| [D05](D05-vocabulary.md) | Vocabulary | Anything a person outside the team sees | OPEN — presented version, response, archived states |
 | [D07](D07-initiation-and-paywall.md) | Initiation and the paywall | Before any screen calls creating free or paid; before document design | DECIDED |
-| [D06](D06-real-use-and-launch-shape.md) | Real use and launch shape | Real use | OPEN |
-| [D08](D08-documents.md) | Documents | Real use where a release is triggered; document design | OPEN — photo release confirmed |
-| [D09](D09-preservation-and-evidence-access.md) | Preservation and evidence access | Record access after account changes; real use. Counsel-dependent | OPEN — removal rule decided |
+| [D06](D06-real-use-and-launch-shape.md) | Real use and launch shape | Real use | DECIDED — product authorization only; Gate 2 not open |
+| [D08](D08-documents.md) | Documents | Real use where a release is triggered; document design | OPEN — counsel review of templates; trigger table to draft |
+| [D09](D09-preservation-and-evidence-access.md) | Preservation and evidence access | Record access after account changes; real use. Counsel-dependent | OPEN — counsel-dependent retention and erasure only |
 
 Rows retain the packet's dependency-oriented order. If this table and a file disagree, the file's own `Status:` line is correct.
 
+## Status changes on 2026-10-15
+
+| Decision | Before | After | What made it sufficient |
+|---|---|---|---|
+| D03 | OPEN | DECIDED | Every question answered: account by Google/Apple sign-in at invitation, link is the invitation, no forwarded-link mechanism, archive by reference, re-verification fallback. What remains is technical. |
+| D10 | OPEN | DECIDED (photo shoots) | Every grid row, the organizer question and the final-record contents answered. |
+| D06 | OPEN | DECIDED | Cory authorized pre-launch real use in sequence. Gate 2 remains closed. |
+| D02 | OPEN | OPEN (narrowed) | (a)–(h) answered. R2 is needed before drop-and-resend can serve real participants. |
+| D04 | OPEN | OPEN (narrowed) | Requiredness, deliberate ticks, subject control, tick versus sign, coverage cap, evidence and no-means-no answered. Wording, signing act and R1 remain. |
+| D05, D08, D09, D11 | OPEN | OPEN (narrowed) | Each narrowed to the items in its status line. |
+
 ## Next Cory conversation
 
-D10 is the strongest next product conversation: several visibility rules are already settled, but the grid remains incomplete and blocks presentation and artifact work.
+Only genuinely open Cory-owned items:
+
+1. **No-means-no wording** — Cory writes it (D04).
+2. **The two reconciliation questions** R1 and R2 in [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliation.md#reconciliation-questions-requiring-cory-clarification) — short clarifications, not new design.
+3. **What signing looks like** once everything is green (D04).
+4. **Remaining vocabulary in context** — a presented version, a response, archived states — reacting to drafts on real screens and emails, not generating cold (D05).
+5. **Review of Dustin's document trigger table** and the D01 required-term list, against real briefs, once drafted (D08, D04).
+
+Not Cory homework: counsel questions (D08 template review, D09 retention and erasure); synthetic-demo verification (D11) can wait until a demo needs participants; fashion-show mechanics are deliberately later.
