@@ -37,6 +37,7 @@ const ROW_TABLES = [
   'universal_affirmation',
   'account',
   'party_account_binding',
+  'direct_invitation',
 ] as const;
 
 const STAMP_FUNCTIONS = ['agreement_affirmation_stamp', 'universal_affirmation_stamp'] as const;
@@ -506,7 +507,7 @@ describe('populated migration upgrades', () => {
           expect(after['account']).toEqual([]);
           expect(after['party_account_binding']).toEqual([]);
           expect((await bookkeeping(c)).map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(
-            expectedBookkeeping(journal().entries.findIndex((e) => e.tag === T0016) + 1),
+            expectedBookkeeping(journal().entries.length),
           );
           expect(await catalog(c)).toEqual(await freshCatalog());
         });
@@ -521,6 +522,68 @@ describe('populated migration upgrades', () => {
             [s.projectId, s.pair[0], acct.rows[0]!.id],
           );
           expect(bound.rows).toEqual([{ party_id: s.pair[0] }]);
+        });
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'populated S06 (0016) → current (S07): accounts and bindings unchanged, invitations arrive empty with their grants, rerun is a no-op',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0016);
+        const s = await asRuntime(db, populateS01S02);
+        await asRuntime(db, async (c) => {
+          const acct = await c.query<{ id: string }>(
+            `insert into account (login_provider, provider_subject) values ('apple', 'upgrade-s06-subject') returning id`,
+          );
+          await c.query('insert into party_account_binding (project_id, party_id, account_id) values ($1, $2, $3)', [
+            s.projectId,
+            s.pair[0],
+            acct.rows[0]!.id,
+          ]);
+        });
+        const before = await asOwner(db, async (c) => ({
+          rows: await rowsOf(c),
+          books: await bookkeeping(c),
+          invitationAbsent: (await c.query(`select to_regclass('public.direct_invitation') as r`)).rows[0].r,
+        }));
+        expect(before.invitationAbsent).toBeNull();
+        expect(before.rows['account']).toHaveLength(1);
+        expect(before.rows['party_account_binding']).toHaveLength(1);
+        const boundary = journal().entries.findIndex((e) => e.tag === T0016) + 1;
+        expect(before.books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(boundary));
+
+        await runMigrations(db.migrationUrl);
+
+        await asOwner(db, async (c) => {
+          const after = await rowsOf(c);
+          for (const table of Object.keys(before.rows)) {
+            expect({ table, rows: after[table] }).toEqual({ table, rows: before.rows[table] });
+          }
+          expect(after['direct_invitation']).toEqual([]);
+          expect(await runtimePrivileges(c, 'direct_invitation')).toEqual(['INSERT', 'SELECT']);
+          const books = await bookkeeping(c);
+          expect(books.slice(0, boundary)).toEqual(before.books);
+          expect(books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(journal().entries.length));
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+
+        // A second run applies nothing and changes nothing.
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => {
+          expect((await bookkeeping(c)).length).toBe(journal().entries.length);
+          expect(await rowsOf(c)).toMatchObject(before.rows);
+        });
+
+        // An invitation can be created for a pre-existing party through the runtime role.
+        await asRuntime(db, async (c) => {
+          const res = await c.query(
+            'insert into direct_invitation (project_id, party_id, credential_digest) values ($1, $2, $3) returning party_id',
+            [s.projectId, s.pair[1], Buffer.alloc(32, 1)],
+          );
+          expect(res.rows).toEqual([{ party_id: s.pair[1] }]);
         });
       });
     },
