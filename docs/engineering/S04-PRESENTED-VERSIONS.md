@@ -1,5 +1,7 @@
 # S04: presented versions, as built
 
+> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that a later version may only shrink, that escalation cannot occur, and that a universal safety term can never be left out (2026-10-14/15). Statements below that call these open describe what was built, not current product semantics.
+
 Slice: `docs/slices/S04-presented-versions.md`. The PRD is APPROVED and merged.
 
 Grounds:
