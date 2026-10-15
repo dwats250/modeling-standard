@@ -1,5 +1,7 @@
 # Local synthetic demo
 
+> **Historical implementation visualization (2026-10-15).** The inspector's version view — successive sealed versions, earlier versions kept, per-version tick grids — shows how S03–S05 storage works. It is **not the current product model**: Cory's model has one live brief that cycles before signing, keeps no intermediate states, and makes only the final contract evidence (handoff correction HC1 in `decisions/2026-10-09-15-cory-reconciliation.md`). The demo's open-seams view also still lists **R1 and R2**, which are withdrawn: both rested on handoff errors (HC1, HC2). Demo code is unchanged in this correction pass; the next term-model sprint will replace or retire this presentation.
+
 > **Reconciled with Cory's 2026-10-14/15 rulings** (Sprint 1, Phase 2). The demo no longer claims D03, D10, "on site" or universal omission are undecided, no longer offers a universal-omission or escalating resend, calls S05 rows tick rows rather than signatures, and labels the two-layer storage as a known-stale stand-in. What the demo still shows only because S03–S05 storage has not been rebuilt is listed under "Still stale by construction" below.
 
 A record inspector for showing what is built, with invented records, on a developer machine. Not a product flow, not a credential mechanism, not real-use approval (Gate 2).
@@ -14,7 +16,7 @@ npm run demo:export  # .demo/modeling-standard-demo.html — portable, read-only
 
 The snapshot is one HTML file with the inspector's markup, styles, script and every record it shows inlined. It opens from disk on any device, makes no network request (its CSP is `default-src 'none'`), refuses every write, and says on every screen that it is a read-only synthetic snapshot. It contains only what the inspector shows: synthetic records and fixture labels; no credentials, database location or internal principal (tested).
 
-The inspector's **Open decisions for Cory** view walks through only the current Cory seams: D04 no-means-no wording, D04 signing act, R1, R2 and the remaining D05 vocabulary. For each it shows what is already decided and built, what is still open, what waits on it, and the smallest question. It poses questions only. Below the cards it lists what is **decided but not built** (DECIDED ≠ IMPLEMENTED), and **counsel items**, labelled as not Cory homework. `decisions/README.md` remains the full list.
+The inspector's **Open decisions for Cory** view walks through the Cory seams as they stood after Sprint 1: D04 no-means-no wording, D04 signing act, R1, R2 and the remaining D05 vocabulary. R1 and R2 have since been withdrawn (see the note above), so the view currently over-states the open seams. For each it shows what is already decided and built, what is still open, what waits on it, and the smallest question. It poses questions only. Below the cards it lists what is **decided but not built** (DECIDED ≠ IMPLEMENTED), and **counsel items**, labelled as not Cory homework. `decisions/README.md` remains the full list.
 
 Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 
@@ -38,11 +40,11 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 
 What a later version may do follows Cory's rulings, enforced by the simulator (demo-only; production S04 does not enforce these yet):
 - **No escalation, either layer.** A later version may keep or leave out terms of the version before it, but may not add a term that version did not hold. The UI disables such terms; the server refuses them with `term_added_after_presentation`.
-- **Pairwise:** leaving a term out is the decided drop-and-resend (D02). Who may drop a declined term is open (R2); the operator stands in. Earlier versions stay visible because storage retains them; whether a dropped term persists in retained history is open (R1).
+- **Pairwise:** leaving a term out is the decided drop-and-resend (D02). The UI says who may drop a declined term is open (R2) and that retained history is open (R1); both are withdrawn — there is no proposer-only drop (HC2) and no version history (HC1). Earlier versions stay visible only because current storage retains them.
 - **Universal (shared safety):** a shared safety term can never be left out. After version 1 every shared term is locked in; the server refuses an omission with `universal_term_omitted`.
 
 - Seven demo-only operations under `/demo/sim/` (`src/demo/simulator.ts`), protected, creator-only on the project (directly or through the agreement), strict input; never in the production list.
-- **Assumptions, shown in the UI:** the operator adds and presents terms (who may drop a declined term is R2) and records tick rows naming a party (only the party may, D12, signed in to its own account, D03 — decided, not built). A version needs at least one term: the database requires a positive term count (S04), a current storage restriction rather than a product rule. No repeated term is a simulator input rule.
+- **Assumptions, shown in the UI:** the operator adds and presents terms (the UI still cites R2, now withdrawn) and records tick rows naming a party (only the party may, D12, signed in to its own account, D03 — decided, not built). A version needs at least one term: the database requires a positive term count (S04), a current storage restriction rather than a product rule. No repeated term is a simulator input rule.
 - Everything else is the database's own S03–S05 rules; violations come back as 409s (`version_not_affirmable`, `already_affirmed`, `party_not_in_agreement`, `presented_term_not_found`, `term_not_in_container`, `affirmed_too_soon`).
 - **Reset:** start another simulation for a clean project; `npm run demo:reset` restores the whole demo database. Records are append-only, so nothing is edited or deleted in place.
 - Hidden in the portable snapshot.
@@ -74,6 +76,7 @@ These remain because fixing them belongs to later S03–S05 slices, not to the d
 
 - Terms still sit in two storage layers (project and pairwise). The UI labels the pairwise layer as a storage stand-in; the shared-logistics layer and the call sheet are not built and are not faked.
 - A later version takes no tick rows (S05's temporary single-version guard); carrying ticks forward across a resend is decided but not built.
-- Earlier presented versions remain visible because storage retains them (R1 open).
+- Earlier presented versions remain visible because storage retains them. Cory's model keeps no version history (HC1); R1, which the UI still cites, is withdrawn.
+- The open-seams view and several hints still name R1 and R2 as open Cory questions; both are withdrawn (HC1, HC2).
 - The simulator lets the operator name any project party on a universal row; presence ("on site") is not recorded.
 - Production S04 itself still accepts an escalating or omitting version; only the simulator refuses them.

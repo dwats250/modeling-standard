@@ -1,6 +1,6 @@
 # S04: presented versions, as built
 
-> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that a later version may only shrink, that escalation cannot occur, and that a universal safety term can never be left out (2026-10-14/15). Statements below that call these open describe what was built, not current product semantics.
+> **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that a later version may only shrink, that escalation cannot occur, and that a universal safety term can never be left out (2026-10-14/15). Statements below that call these open describe what was built, not current product semantics. *Corrected 2026-10-15 (HC1): there is no version history in Cory's model — one live brief cycles before signing and only the final contract is evidence — so retained successive versions are a historical implementation of an earlier understood model.*
 
 Slice: `docs/slices/S04-presented-versions.md`. The PRD is APPROVED and merged.
 

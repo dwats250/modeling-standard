@@ -3,6 +3,8 @@
 > **ANSWERED — historical. Do not use this packet as a list of open questions.**
 > Cory answered every question in it (Tiers A, B and C) across his 2026-10-09 and 2026-10-14/15 sessions. His direct answers live in [`decisions/2026-10-09-15-cory-reconciliation.md`](../decisions/2026-10-09-15-cory-reconciliation.md) and in the reconciled decision files, which are the only active answer surface. What is still his to answer is in [`decisions/README.md`](../decisions/README.md#next-cory-conversation).
 >
+> Two statements in the answer handoff were later found to be errors, not Cory rulings: retained version history, and a proposer-only drop. They are corrected as HC1 and HC2 in the reconciliation note, and the follow-up questions R1 and R2 are withdrawn.
+>
 > This packet is kept unchanged below as the question set that produced those answers. Its descriptions of what is "open", "undecided" or "homework", its built-versus-decided table and its summary of rulings reflect the state on 2026-10-08 and are now partly superseded — for example the two-layer model, ruling 6 (escalation and delay), the body/money framing and the optional witness. Several questions were rejected by Cory as posed; the reconciliation note records the replacement rulings. How the rulings bear on what is built is in [`docs/engineering/OCTOBER-SEMANTIC-IMPACT.md`](engineering/OCTOBER-SEMANTIC-IMPACT.md).
 
 > **This document summarizes and routes to the active decision files. It does not itself ratify or amend product semantics.**

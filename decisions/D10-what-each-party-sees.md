@@ -65,8 +65,8 @@ Source: [`2026-10-09-15-cory-reconciliation.md`](2026-10-09-15-cory-reconciliati
 | **Compensation** | **Private. The only private thing.** |
 | **Usage terms** | Shared (they are craft and deliverable terms, no longer private). |
 | **Private notes** | **Do not exist.** No DM channel; all dialogue is term-bound. |
-| **Concerns raised / a "no"** | **Not recorded** (Q10). The final whitelist is the record: if a term is absent from the final contract, it is not agreed. This is not "hidden from participants"; it is not kept. Its interaction with retained versions is reconciliation question R1 (D04). |
-| **Change history** | **Held in the evidentiary record, never shown.** |
+| **Concerns raised / a "no"** | **Not recorded** (Q10). The final contract is the record: if a term is absent from it, it is not agreed. This is not "hidden from participants"; it is not kept. |
+| **Change history** | **There is no change or version history retained** (Correction HC1). The participant-facing and evidentiary models agree: only the final contract exists afterwards. *(2026-10-15: previously "held in the evidentiary record, never shown" — a handoff error, not a Cory ruling.)* |
 | **The final record** | **Everything jointly agreed, plus the person's own payment terms, and nobody else's numbers.** What each person walks away holding is the contract (D05). This decides what each person's record contains; whether it is stored as one record with per-party views or as separate artifacts is a technical choice that must deliver exactly that content. |
 
 The 2026-10-05 line "a client may see commercial numbers where entitled" stays consistent with this: a party sees their own payment terms, never anyone else's.
@@ -75,7 +75,7 @@ The 2026-10-05 line "a client may see commercial numbers where entitled" stays c
 
 **On site.** Physical proximity, not role (D02). Everyone in the room sees and affirms the universal safety terms.
 
-**Noise doctrine.** (Q16, §3.1) People see **what** was agreed, never **how** someone went about agreeing. Not exposed to participants: response times, read receipts, revision counts, edit history, opened-and-didn't-reply, whether someone used a group-check. This is about what data exists for participants at all, not tone. **Recording versus showing** (§3.2): the evidentiary record keeps the invisible metadata Cory requires (D04); participants are shown only what was agreed.
+**Noise doctrine.** (Q16, §3.1) People see **what** was agreed, never **how** someone went about agreeing. Not exposed to participants: response times, read receipts, revision counts, edit history, opened-and-didn't-reply, whether someone used a group-check. This is about what data exists for participants at all, not tone. **Recording versus showing** (§3.2, as corrected by HC1): evidence attaches to the final contract with the metadata Cory requires (D04); participants are shown only what was agreed; no intermediate states are kept in either.
 
 Also governing: over-protection is itself a harm (no manufactured fear); the app's existence does half the protection — users inside are not presumptive suspects (direction, not a security guarantee).
 
@@ -90,3 +90,5 @@ Also governing: over-protection is itself a harm (no manufactured fear); the app
 ## Amendments
 
 2026-10-15 — Records the complete photo-shoot visibility rulings: three layers with money the only private thing (supersedes the private commercial/craft layer); counterparties mutual; contact after commitment; location by initiative; live shared tick state; roster visible; no private notes; a "no" not recorded; change history retained but never shown; final record is everything jointly agreed plus one's own payment. Status OPEN → DECIDED for photo shoots.
+
+2026-10-15 — Corrects a handoff error (not Cory changing his mind): there is no change or version history retained, for participants or as evidence (HC1 in `2026-10-09-15-cory-reconciliation.md`). Status unchanged: DECIDED for photo shoots.
