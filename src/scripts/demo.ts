@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { createApp } from '../app/create-app.ts';
 import { createLogger } from '../app/logger.ts';
 import { ConfigError, loadAppConfig } from '../config/config.ts';
-import { DemoGuardError, assertLoopbackListenHost, demoDatabaseTarget, demoOperatorPrincipal } from '../demo/demo.ts';
+import { DemoGuardError, demoDatabaseTarget, demoListenTarget, demoOperatorPrincipal } from '../demo/demo.ts';
 import { demoOperations } from '../demo/operations.ts';
 import { createDemoServer } from '../demo/server.ts';
 import { openDatabase, type DatabaseTarget } from '../infrastructure/database/client.ts';
@@ -17,9 +17,11 @@ import { openDatabase, type DatabaseTarget } from '../infrastructure/database/cl
 let config;
 let runtime: DatabaseTarget;
 let port: number;
+let listen: ReturnType<typeof demoListenTarget>;
 try {
   config = loadAppConfig(process.env);
-  assertLoopbackListenHost(config.host);
+  const lanMode = process.argv.includes('--lan');
+  listen = demoListenTarget(config.host, lanMode);
   runtime = demoDatabaseTarget(config.databaseUrl);
   port = Number(process.env.DEMO_PORT ?? '3100');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError(['DEMO_PORT: must be an integer between 1 and 65535']);
@@ -47,9 +49,10 @@ const app = createApp({
 });
 await app.ready();
 
-const server = createDemoServer({ app, fixturePath: resolve(process.cwd(), '.demo', 'fixture.json') });
-server.listen(port, config.host, () => {
-  process.stdout.write(`Synthetic demo (not for real people) at http://${config.host}:${port}/\n`);
+const server = createDemoServer({ app, fixturePath: resolve(process.cwd(), '.demo', 'fixture.json'), allowedHosts: listen.allowedHosts });
+server.listen(port, listen.listenHost, () => {
+  process.stdout.write('Synthetic demo (not for real people):\n');
+  for (const host of listen.urls) process.stdout.write(`  http://${host}:${port}/\n`);
 });
 
 const shutdown = (): void => {

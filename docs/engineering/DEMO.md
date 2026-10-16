@@ -8,7 +8,8 @@ A record inspector for showing what is built, with invented records, on a develo
 
 ```
 npm run demo:reset   # drops and recreates modeling_standard_demo, migrates, loads fixtures
-npm run demo         # http://127.0.0.1:3100/ (DEMO_PORT to change)
+npm run demo         # loopback only: http://127.0.0.1:3100/ (DEMO_PORT to change)
+npm run demo:lan     # same-Wi-Fi phone/tablet access; prints this machine's private LAN URL(s)
 npm run demo:export  # .demo/modeling-standard-demo.html — portable, read-only snapshot
 ```
 
@@ -21,10 +22,10 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 ## Boundaries
 
 - **Never in production.** `src/main.ts` and `src/app/operation-list.ts` do not import `src/demo/`; `tsconfig.build.json` excludes it from `dist/`. Tests pin both.
-- **Guards.** Refuses to start unless `HOST` is loopback, the PostgreSQL server is on TCP loopback, and the target database is exactly `modeling_standard_demo`.
+- **Guards.** Ordinary `npm run demo` refuses to start unless `HOST` is loopback. Explicit `npm run demo:lan` is demo-only: it listens on the machine's IPv4 interfaces, discovers the private RFC1918 IPv4 addresses actually assigned to the machine, accepts HTTP only for those exact addresses (plus loopback), and prints the phone/tablet URL(s). In both modes the PostgreSQL server stays on TCP loopback and the target database is exactly `modeling_standard_demo`.
   - The server check uses the pinned `pg` driver's own resolution (`ConnectionParameters`), so `?host=`/`?port=` overrides, a host taken from `PGHOST` and Unix-socket hosts are all judged as the driver would use them. Sockets are refused.
   - The verified target (host, port, database, user, password) is what is handed to the driver; no connection string is reinterpreted later. This covers the runtime, migration, reset-admin and export connections, and every check runs before any client exists.
-- **Host header.** Requests are served only when the `Host` header is exactly `127.0.0.1`, `localhost` or `[::1]` with the server's own port. Userinfo, paths, query, fragment, whitespace and leading zeros are refused with 421 (this also blocks DNS rebinding).
+- **Host header.** Ordinary mode accepts only `127.0.0.1`, `localhost` or `[::1]` with the server's own port. LAN mode additionally accepts only private IPv4 addresses currently assigned to this machine. Arbitrary DNS names and other LAN addresses are refused. Userinfo, paths, query, fragment, whitespace and leading-zero ports are refused with 421.
 - **One principal.** A fixed synthetic `demo-operator`. It stands for nobody, is never a party, and only creates projects (real `project.create`) and reads its own records.
 - **Same boundary.** The two inspector reads (`GET /demo/projects`, `GET /demo/projects/:id/record`) are ordinary protected operations with strict input/output and the S01 creator-only policy, registered through `createApp({ additionalOperations })`.
 - **Front door.** `src/demo/server.ts` serves the static UI and forwards everything else to the app with `app.inject`, passing only `content-type`. Fastify's "every route is an operation" rule is untouched.
@@ -90,7 +91,9 @@ Milestone screenshots (ids masked, transient toast cleared, band pulse finished,
 
 Screenshots go to `test-results/demo/` and are uploaded by CI as `demo-screenshots`. The suite resets `modeling_standard_demo`.
 
-`demo:reset` refuses while a demo server is connected (the migration role cannot end the runtime role's sessions) and says to stop `npm run demo` first.
+`demo:reset` refuses while a demo server is connected (the migration role cannot end the runtime role's sessions) and says to stop the running demo first.
+
+For a phone on the same Wi-Fi, run `npm run demo:lan` on Asher after `npm run demo:reset`, then open one of the printed `http://192.168.x.x:3100/`-style URLs on the phone. No `.env` change is required, and returning to `npm run demo` restores loopback-only serving.
 
 ## Deliberately unavailable
 

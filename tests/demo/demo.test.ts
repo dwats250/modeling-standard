@@ -13,7 +13,7 @@ import { operations } from '../../src/app/operation-list.ts';
 import { DEMO_OPERATOR, DemoGuardError, assertLoopbackListenHost, demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { loadDemoFixtures } from '../../src/demo/fixtures.ts';
 import { demoOperations } from '../../src/demo/operations.ts';
-import { createDemoServer } from '../../src/demo/server.ts';
+import { createDemoServer, isAllowedDemoAuthority } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
 import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
 import { createPairwiseAgreement } from '../../src/projects/agreement.ts';
@@ -21,8 +21,9 @@ import { addProjectParty } from '../../src/projects/party.ts';
 import { LogCapture, PRINCIPAL_HEADER, headerPrincipal } from '../support/app.ts';
 
 /**
- * The local synthetic demo: it never reaches production, it runs only on
- * loopback against the demo database, its operations hold the same boundary
+ * The local synthetic demo: it never reaches production; ordinary mode is
+ * loopback-only and explicit LAN mode is local-network-only. The demo database
+ * remains on loopback, and its operations hold the same boundary
  * as production ones, and its fixtures go through the real create operation.
  */
 
@@ -74,9 +75,19 @@ describe('separation from production', () => {
 });
 
 describe('demo guards', () => {
-  it('serves on loopback only', () => {
+  it('keeps ordinary mode loopback-only', () => {
     for (const host of ['127.0.0.1', '::1', 'localhost']) expect(() => assertLoopbackListenHost(host)).not.toThrow();
     for (const host of ['0.0.0.0', '192.168.1.10', 'example.com', '']) expect(() => assertLoopbackListenHost(host)).toThrow(DemoGuardError);
+  });
+
+  it('accepts a LAN Host header only when that exact local address is explicitly allowed', () => {
+    const allowed = ['127.0.0.1', 'localhost', '::1', '192.168.1.42'];
+    expect(isAllowedDemoAuthority('192.168.1.42:3100', 3100, allowed)).toBe(true);
+    expect(isAllowedDemoAuthority('127.0.0.1:3100', 3100, allowed)).toBe(true);
+    expect(isAllowedDemoAuthority('192.168.1.43:3100', 3100, allowed)).toBe(false);
+    expect(isAllowedDemoAuthority('evil.example.com:3100', 3100, allowed)).toBe(false);
+    expect(isAllowedDemoAuthority('evil@192.168.1.42:3100', 3100, allowed)).toBe(false);
+    expect(isAllowedDemoAuthority('192.168.1.42:03100', 3100, allowed)).toBe(false);
   });
 
   it('points the configured credentials at the demo database, whatever database the URL names', () => {

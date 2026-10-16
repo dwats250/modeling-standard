@@ -31,6 +31,8 @@ export interface DemoServerOptions {
   readonly app: FastifyInstance;
   /** Absolute path of the fixture annotation file written by `demo:reset`, if any. */
   readonly fixturePath: string;
+  /** Host names/IPs accepted in the HTTP Host header. Defaults to loopback only. */
+  readonly allowedHosts?: readonly string[];
 }
 
 async function readBody(request: IncomingMessage): Promise<Buffer | null> {
@@ -51,26 +53,33 @@ function send(response: ServerResponse, status: number, type: string, body: stri
 }
 
 /**
- * The Host header must name loopback and this server's own port. A page on
- * another origin that rebinds its DNS name to 127.0.0.1 sends its own name,
- * so it is refused before anything is read or written.
+ * The Host header must name one explicitly allowed local authority and this
+ * server's own port. This keeps the ordinary demo loopback-only and lets the
+ * explicit LAN mode accept only private addresses actually assigned to the
+ * demo machine. Arbitrary DNS names remain refused before any read or write.
  */
-export function isOwnLoopbackAuthority(header: string | undefined, localPort: number): boolean {
+export function isAllowedDemoAuthority(
+  header: string | undefined,
+  localPort: number,
+  allowedHosts: readonly string[] = ['127.0.0.1', 'localhost', '::1'],
+): boolean {
   if (typeof header !== 'string') return false;
-  // Exactly host[:port]: a loopback name, then the server's own port written
-  // as the server would write it. No userinfo, path, query, fragment,
-  // whitespace or leading zeros. The port may be omitted only on port 80.
-  const match = /^(127\.0\.0\.1|localhost|\[::1\])(?::([1-9][0-9]{0,4}))?$/i.exec(header);
+  // Exactly host[:port]. No userinfo, path, query, fragment, whitespace or
+  // leading-zero port. IPv6 authorities must be bracketed.
+  const match = /^(\[[0-9a-f:.]+\]|[a-z0-9.-]+)(?::([1-9][0-9]{0,4}))?$/i.exec(header);
   if (!match) return false;
+  const rawHost = match[1]!;
+  const host = rawHost.startsWith('[') && rawHost.endsWith(']') ? rawHost.slice(1, -1) : rawHost;
+  if (!allowedHosts.some((allowed) => allowed.toLowerCase() === host.toLowerCase())) return false;
   return match[2] === undefined ? localPort === 80 : Number(match[2]) === localPort;
 }
 
-function hostIsOwnLoopback(request: IncomingMessage): boolean {
-  return isOwnLoopbackAuthority(request.headers.host, request.socket.localPort ?? -1);
+function hostIsAllowed(options: DemoServerOptions, request: IncomingMessage): boolean {
+  return isAllowedDemoAuthority(request.headers.host, request.socket.localPort ?? -1, options.allowedHosts);
 }
 
 async function handle(options: DemoServerOptions, request: IncomingMessage, response: ServerResponse): Promise<void> {
-  if (!hostIsOwnLoopback(request)) {
+  if (!hostIsAllowed(options, request)) {
     send(response, 421, 'application/json; charset=utf-8', '{"error":{"code":"misdirected_request"}}');
     return;
   }

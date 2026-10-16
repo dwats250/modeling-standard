@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { isOwnLoopbackAuthority } from '../../src/demo/server.ts';
+import { isAllowedDemoAuthority } from '../../src/demo/server.ts';
 
-/** Astra B01 (adjacent): the demo server's Host header must be exactly a loopback authority for its own port. */
+/** Astra B01 (adjacent): the demo server accepts only an explicitly allowed local authority for its own port. */
 
-describe('isOwnLoopbackAuthority', () => {
+describe('isAllowedDemoAuthority', () => {
   const port = 3100;
 
   it('accepts the loopback names with the exact port', () => {
     for (const host of ['127.0.0.1:3100', 'localhost:3100', 'LOCALHOST:3100', '[::1]:3100']) {
-      expect({ host, ok: isOwnLoopbackAuthority(host, port) }).toEqual({ host, ok: true });
+      expect({ host, ok: isAllowedDemoAuthority(host, port) }).toEqual({ host, ok: true });
     }
   });
 
@@ -31,14 +31,14 @@ describe('isOwnLoopbackAuthority', () => {
       '127.0.0.1.evil.example.com:3100',
       '',
     ]) {
-      expect({ host, ok: isOwnLoopbackAuthority(host, port) }).toEqual({ host, ok: false });
+      expect({ host, ok: isAllowedDemoAuthority(host, port) }).toEqual({ host, ok: false });
     }
-    expect(isOwnLoopbackAuthority(undefined, port)).toBe(false);
+    expect(isAllowedDemoAuthority(undefined, port)).toBe(false);
   });
 
   it('allows an omitted port only when the server is on port 80', () => {
-    expect(isOwnLoopbackAuthority('127.0.0.1', 80)).toBe(true);
-    expect(isOwnLoopbackAuthority('127.0.0.1:80', 80)).toBe(true);
-    expect(isOwnLoopbackAuthority('127.0.0.1', 3100)).toBe(false);
+    expect(isAllowedDemoAuthority('127.0.0.1', 80)).toBe(true);
+    expect(isAllowedDemoAuthority('127.0.0.1:80', 80)).toBe(true);
+    expect(isAllowedDemoAuthority('127.0.0.1', 3100)).toBe(false);
   });
 });
