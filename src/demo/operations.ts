@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
-import { findLiveBriefForProject, listBriefItems } from '../briefs/brief.ts';
+import { findLiveBriefForProject } from '../briefs/brief.ts';
+import { getBriefGreenState, isReady, listBriefPresence } from '../briefs/live.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
 import { listPairwiseAgreements } from '../projects/agreement.ts';
 import { listProjectParties } from '../projects/party.ts';
@@ -17,9 +18,12 @@ import { simulatorOperations } from './simulator.ts';
  * policy.
  *
  * The inspector shows the stored record as it is: parties, the internal
- * pair-scope records, and the draft live brief (S08). It is not a view any
- * party would get: D10 is decided for photo shoots, but no party view is
- * built. It writes nothing.
+ * pair-scope records, and the live brief (S08, S09) with its phase, presence
+ * facts and each item's current green state, derived (approvers, who ticks
+ * it now, green) — and whether the whole brief is ready to sign. It is not a
+ * view any party would get: D10 is decided for photo shoots, but no party
+ * view is built. It writes nothing, and shows no time or history because
+ * none is stored.
  */
 
 const anyPrincipalMayListOwn: Policy<object> = () => true;
@@ -54,8 +58,9 @@ export const listDemoProjectsOperation = defineOperation({
   },
 });
 
-// A draft brief item exactly as stored (S08). Draft composition only: no
-// phase, tick, requiredness, finality or signature exists to show.
+// A brief item exactly as stored (S08), with its current green state
+// derived (S09). No time, order of acts, author, requiredness, finality or
+// signature exists to show.
 const briefItemDto = z.strictObject({
   id: z.uuid(),
   layer: z.enum(['universal', 'shared', 'money']),
@@ -67,6 +72,9 @@ const briefItemDto = z.strictObject({
   value: z.string().nullable(),
   pending: z.enum(['decide_together', 'subject']).nullable(),
   position: z.number().int().positive(),
+  approverIds: z.array(z.uuid()),
+  tickedBy: z.array(z.uuid()),
+  green: z.boolean(),
 });
 
 export const readDemoProjectRecordOperation = defineOperation({
@@ -78,7 +86,15 @@ export const readDemoProjectRecordOperation = defineOperation({
     project: z.strictObject({ id: z.uuid() }),
     parties: z.array(z.strictObject({ id: z.uuid() })),
     agreements: z.array(z.strictObject({ id: z.uuid(), partyIds: z.tuple([z.uuid(), z.uuid()]) })),
-    brief: z.strictObject({ id: z.uuid(), items: z.array(briefItemDto) }).nullable(),
+    brief: z
+      .strictObject({
+        id: z.uuid(),
+        phase: z.enum(['draft', 'live']),
+        ready: z.boolean(),
+        presence: z.array(z.strictObject({ partyId: z.uuid(), onSite: z.boolean() })),
+        items: z.array(briefItemDto),
+      })
+      .nullable(),
   }),
   access: {
     kind: 'protected',
@@ -88,15 +104,19 @@ export const readDemoProjectRecordOperation = defineOperation({
   run: async (_input, { db, target }) => {
     const parties = await listProjectParties(db, target.id);
     const agreements = await listPairwiseAgreements(db, target.id);
-    const brief = await findLiveBriefForProject(db, target.id);
+    const found = await findLiveBriefForProject(db, target.id);
+    const state = found ? await getBriefGreenState(db, found.id) : null;
     return {
       project: { id: target.id },
       parties: parties.map((p) => ({ id: p.id })),
       agreements: agreements.map((a) => ({ id: a.id, partyIds: [a.partyIds[0], a.partyIds[1]] as [string, string] })),
-      brief: brief
+      brief: state
         ? {
-            id: brief.id,
-            items: (await listBriefItems(db, brief.id)).map((item) => ({
+            id: state.brief.id,
+            phase: state.brief.phase,
+            ready: isReady(state.brief.phase, state.items),
+            presence: await listBriefPresence(db, state.brief.id),
+            items: state.items.map(({ item, approverIds, tickedBy, green }) => ({
               id: item.id,
               layer: item.layer,
               pairwiseAgreementId: item.pairwiseAgreementId,
@@ -107,6 +127,9 @@ export const readDemoProjectRecordOperation = defineOperation({
               value: item.value,
               pending: item.pending,
               position: item.position,
+              approverIds: [...approverIds],
+              tickedBy: [...tickedBy],
+              green,
             })),
           }
         : null,

@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0 and S01, S02 and S06 to S08 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01, S02 and S06 to S09 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -42,7 +42,11 @@ describe('runtime and migration credentials', () => {
       direct_invitation: ['SELECT', 'INSERT'],
       live_brief: ['SELECT', 'INSERT'],
       brief_item: ['SELECT', 'INSERT', 'DELETE'],
+      brief_party_presence: ['SELECT', 'INSERT'],
+      brief_tick: ['SELECT', 'INSERT', 'DELETE'],
     };
+    // Column-level UPDATE only (S08, S09); no table may be updated wholesale.
+    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence']);
     await withClient(inject('runtimeUrl'), async (c) => {
       const tables = await c.query<{ table_name: string }>(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -61,14 +65,14 @@ describe('runtime and migration credentials', () => {
         expect({ table, held }).toEqual({ table, held: expected[table] });
 
         // Column-level grants are separate from table-level ones. None may
-        // allow REFERENCES, and only brief_item's draft columns may be
-        // updated (S08).
+        // allow REFERENCES; only brief_item's draft columns (S08), the brief's
+        // phase and the presence fact (S09) may be updated.
         for (const privilege of ['UPDATE', 'REFERENCES']) {
           const col = await c.query<{ held: boolean }>(
             'select has_any_column_privilege(current_user, $1, $2) as held',
             [`public.${table}`, privilege],
           );
-          const expectedHeld = table === 'brief_item' && privilege === 'UPDATE';
+          const expectedHeld = columnUpdatable.has(table) && privilege === 'UPDATE';
           expect({ table, privilege, held: col.rows[0]?.held }).toEqual({ table, privilege, held: expectedHeld });
         }
       }
@@ -82,6 +86,23 @@ describe('runtime and migration credentials', () => {
            and has_column_privilege(current_user, 'public.brief_item', column_name, 'UPDATE') order by column_name`,
       );
       expect(rows.map((r) => r.column_name)).toEqual(['content', 'pending', 'position', 'value']);
+    });
+  });
+
+  it('runtime role may update exactly live_brief.phase and brief_party_presence.on_site (S09)', async () => {
+    await withClient(inject('runtimeUrl'), async (c) => {
+      for (const [table, columns] of [
+        ['live_brief', ['phase']],
+        ['brief_party_presence', ['on_site']],
+        ['brief_tick', []],
+      ] as const) {
+        const { rows } = await c.query<{ column_name: string }>(
+          `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1
+             and has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE') order by column_name`,
+          [table],
+        );
+        expect({ table, columns: rows.map((r) => r.column_name) }).toEqual({ table, columns: [...columns] });
+      }
     });
   });
 

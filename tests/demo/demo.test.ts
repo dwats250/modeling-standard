@@ -132,7 +132,7 @@ describe('demo inspector operations', () => {
     expect(res.body).not.toMatch(/created|principal|role|payer|signed/i);
   });
 
-  it('read the draft brief with exactly the stored item fields, in display order', async () => {
+  it('read the brief with exactly the stored item fields and their derived green state, in display order', async () => {
     const me = newPrincipal();
     const projectId = await createProjectAs(me);
     const a = await addProjectParty(database.db, projectId);
@@ -144,7 +144,7 @@ describe('demo inspector operations', () => {
 
     const res = await app.inject({ method: 'GET', url: `/demo/projects/${projectId}/record`, headers: as(me) });
     expect(res.statusCode).toBe(200);
-    const { brief: dto } = res.json<{ brief: { id: string; items: unknown[] } }>();
+    const { brief: dto } = res.json<{ brief: unknown }>();
     const fields = (item: typeof shared) => ({
       id: item.id,
       layer: item.layer,
@@ -156,10 +156,13 @@ describe('demo inspector operations', () => {
       value: item.value,
       pending: item.pending,
       position: item.position,
+      approverIds: [a.id, b.id].sort(),
+      tickedBy: [],
+      green: false,
     });
-    expect(dto).toEqual({ id: brief.id, items: [fields(shared), fields(fee)] });
-    // Draft composition only: nothing about time, authorship, ticks, phase or finality.
-    expect(res.body).not.toMatch(/created|updated|_at"|At"|author|proposer|affirm|tick|phase|version|final|required|signed/i);
+    expect(dto).toEqual({ id: brief.id, phase: 'draft', ready: false, presence: [], items: [fields(shared), fields(fee)] });
+    // Current state only: nothing about time, authorship, history, finality or signatures.
+    expect(res.body).not.toMatch(/created|updated|_at"|At"|author|proposer|affirm|version|final|required|signed|declin|history/i);
   });
 
   it('refuse another principal and an unknown project', async () => {
@@ -201,7 +204,7 @@ describe('demo fixtures and server', () => {
 
   it('load three annotated projects through the real create operation', async () => {
     const ids = Object.keys(annotations.projects);
-    expect(ids).toHaveLength(3);
+    expect(ids).toHaveLength(4);
     const res = await demoApp.inject({ method: 'GET', url: '/demo/projects' });
     const listed = new Map(res.json<{ projects: { id: string; partyCount: number; agreementCount: number }[] }>().projects.map((p) => [p.id, p]));
     for (const id of ids) {
@@ -211,7 +214,7 @@ describe('demo fixtures and server', () => {
     }
   });
 
-  it('build a draft brief per fixture project, by layer, with no fake no-means-no item', async () => {
+  it('build a brief per fixture project, by layer, with no fake no-means-no item', async () => {
     type Item = {
       layer: string;
       pairwiseAgreementId: string | null;
@@ -222,7 +225,11 @@ describe('demo fixtures and server', () => {
       value: string | null;
       pending: string | null;
     };
-    type Rec = { parties: { id: string }[]; agreements: { id: string; partyIds: [string, string] }[]; brief: { items: Item[] } | null };
+    type Rec = {
+      parties: { id: string }[];
+      agreements: { id: string; partyIds: [string, string] }[];
+      brief: { phase: string; ready: boolean; items: (Item & { green: boolean })[] } | null;
+    };
     const entries = Object.entries(annotations.projects);
     const recordOf = async (prefix: string): Promise<Rec> => {
       const [id] = entries.find(([, a]) => a.title.startsWith(prefix))!;
@@ -248,9 +255,17 @@ describe('demo fixtures and server', () => {
     expect(fees.every((f) => f.itemKey === 'fee')).toBe(true);
 
     const empty = await recordOf('Fixture 3');
-    expect(empty.brief).toEqual({ id: expect.any(String), items: [] });
+    expect(empty.brief).toEqual({ id: expect.any(String), phase: 'draft', ready: false, presence: [], items: [] });
 
-    const all = [...items, ...topo.brief!.items];
+    // Fixture 4: the walkthrough finished — live, resolved, the request gone, everything green.
+    const done = (await recordOf('Fixture 4')).brief!;
+    expect(done.phase).toBe('live');
+    expect(done.ready).toBe(true);
+    expect(done.items.every((i) => i.green && i.pending === null)).toBe(true);
+    expect(done.items.filter((i) => i.shape === 'request')).toEqual([]);
+    expect(done.items.filter((i) => i.layer === 'money')).toHaveLength(1);
+
+    const all = [...items, ...topo.brief!.items, ...done.items];
     // There is no no-means-no item, and every stored text is marked synthetic.
     expect(all.filter((i) => i.itemKey === 'no_means_no')).toEqual([]);
     for (const text of all.flatMap((i) => [i.content, i.value]).filter((t) => t !== null)) {

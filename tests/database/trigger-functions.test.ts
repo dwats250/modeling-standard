@@ -20,8 +20,13 @@ describe('trigger functions', () => {
       expect(functions.rows.map((r) => r.name)).toEqual([
         'account_stamp',
         'brief_item_check_scope',
+        'brief_item_guard_live',
+        'brief_party_presence_guard',
+        'brief_tick_check',
         'direct_invitation_stamp',
+        'live_brief_check_phase',
         'party_account_binding_stamp',
+        'project_party_guard_roster',
       ]);
       for (const f of functions.rows) {
         expect({ name: f.name, config: f.config, callable: f.callable }).toEqual({

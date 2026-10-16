@@ -63,8 +63,11 @@ describe('portable snapshot', () => {
     }
   });
 
-  it('carries Cory’s rulings and the S08 draft framing, not the superseded wording', () => {
-    expect(html).toContain('Draft composition only. Sharing, green state and signing arrive in S09–S11.');
+  it('carries Cory’s rulings and the S09 live framing, not the superseded wording', () => {
+    expect(html).toContain('READY TO SIGN');
+    expect(html).toContain('Signing arrives in S10–S11');
+    expect(html).toContain('the required-item catalogue does not exist yet, so real use stays gated');
+    expect(html).toContain('needs its own deliberate tick');
     expect(html).toContain('private money only');
     expect(html).toContain('private to this pair');
     expect(html).toContain('On site means physical proximity');
@@ -83,7 +86,9 @@ describe('portable snapshot', () => {
       'Present version',
       'sealed',
       'tick row',
-      'A tick is not a signature',
+      'Draft composition only. Sharing, green state and signing arrive in S09–S11.',
+      'declined by',
+      'changed by',
       'escalation cannot happen',
       'Simulate — demo only',
       "id: 'R1'",

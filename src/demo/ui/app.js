@@ -10,17 +10,37 @@ const state = {
   record: null,
   recordError: null,
   recordLoading: false,
+  // The synthetic party being simulated, per project. Display state only.
+  actors: {},
+  // Labels for scenario projects started in this browser (the database stores
+  // no name or role for a party). Display state only.
+  sessionLabels: loadSessionLabels(),
 };
+
+function loadSessionLabels() {
+  try {
+    return JSON.parse(localStorage.getItem('ms-demo-session-labels') ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSessionLabels() {
+  try {
+    localStorage.setItem('ms-demo-session-labels', JSON.stringify(state.sessionLabels));
+  } catch {
+    // Labels are a convenience; positional labels remain.
+  }
+}
 
 // Actions the product does not have yet. Decided is not implemented: several
 // of these are decided by Cory and simply not built.
 const UNAVAILABLE = [
   ['Add a party', 'Decided (D03): a person joins through the invitation link and signs in with Google or Apple. Not built: account binding (S06) and invitation links (S07) are stored; sign-in and delivery are not.'],
-  ['Compose the brief', 'Not built as a product action. Draft composition has data functions (S08) but no route, and no participant surface exists.'],
-  ['Share the brief', 'Not built (S09).'],
-  ['Green state', 'Not built (S10). Each party acts only for itself (D12), signed in to its own account (D03).'],
-  ['Sign', 'Not built (S11). Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
-  ['View as a party', 'Decided for photo shoots (D10). Not built: a visibility filter exists as a data function (S08), but no party view does.'],
+  ['Compose the brief', 'Not a product action. Draft composition has data functions (S08) but no route, and no participant surface exists.'],
+  ['Share, resolve and tick for real', 'Not a product action. These are data functions (S09); this page only simulates them for synthetic parties.'],
+  ['Sign', 'Not built (S10–S11). Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
+  ['View as a party', 'Decided for photo shoots (D10). Not built: party-visible reads exist as data functions (S08, S09), but no party view does.'],
 ];
 
 function el(tag, options = {}, children = []) {
@@ -151,7 +171,7 @@ function section(title, hint, body) {
 }
 
 function partyLabel(annotation, id) {
-  return annotation?.parties?.[id] ?? state.positional?.[id] ?? 'Party';
+  return annotation?.parties?.[id] ?? state.sessionLabels[state.selectedId]?.[id] ?? state.positional?.[id] ?? 'Party';
 }
 
 /** Display order only: by fixture label, then id. Stored order carries no meaning. */
@@ -252,30 +272,65 @@ function renderDetail() {
 
   root.append(
     head,
-    el('p', { className: 'draft-banner', attrs: { role: 'note' }, text: DRAFT_BANNER }),
+    renderBrief(record, annotation),
     section('Parties', 'Project-local parties (S01). No role or identity. Binding a party to a sign-in account is stored by S06 but not shown here.', partiesBody),
     section(
       'Pairs',
       'Internal pair-scope records: one per pair of parties, per project (S02, S08). Not a product noun and not a contract. A money item or a pair-scoped shared item names the pair it is between.',
       pairsBody,
     ),
-    renderBrief(record, annotation),
     section('Not available as product actions', 'Decided is not implemented: not built yet, or still open.', unavailable),
   );
 }
 
-// ---- The draft live brief (S08) ----
-
-const DRAFT_BANNER = 'Draft composition only. Sharing, green state and signing arrive in S09–S11.';
+// ---- The live brief (S08 topology, S09 share and green state) ----
 
 const LAYERS = [
-  ['universal', 'Universal layer', 'Safety terms for everyone on site (D02: physical proximity). Seen by every party. An item may have a subject (Q7). Presence is not recorded.'],
-  ['shared', 'Shared layer', 'Logistics and craft terms seen by every party (D10). A pair scope says who an item is between, not who sees it.'],
-  ['money', 'Money layer', 'One field: the fee (Q6), at most one per pair. Each fee is private to its pair (D10).'],
+  ['universal', 'Universal', 'Safety for everyone physically on site (Q8). Every party on site must green-light each item. Once shared, nothing here can be removed.'],
+  ['shared', 'Shared', 'Logistics and craft terms, seen by everyone (D10). Project-wide items need every party; a pair-scoped item needs its pair, but everyone still sees it.'],
+  ['money', 'Private money', 'One field: the fee (Q6). Private to the two people it is between (D10), and only they green-light it.'],
 ];
 
 const SHAPE_LABELS = { declaration: 'declaration', request: 'request', open_parameter: 'open parameter' };
-const PENDING_LABELS = { decide_together: 'pending: decide together', subject: 'pending: awaiting its subject' };
+const PENDING_LABELS = { decide_together: 'to decide together', subject: 'awaiting its subject' };
+// Mirrors src/briefs/live.ts: these always need their own tick (Q6).
+const DELIBERATE_TICK_KEYS = ['fee', 'coverage_level', 'physical_contact', 'stop_rule'];
+
+const SIM_ERRORS = {
+  presence_missing: 'Every party needs an explicit on-site answer before the brief can be shared.',
+  wording_not_materialized: 'An item has no stored wording yet, so the brief cannot be shared.',
+  not_draft: 'The brief is already shared; that can only change in a draft.',
+  not_live: 'Only a shared brief can be resolved or ticked.',
+  not_decide_together: 'That item is not waiting to be decided together.',
+  not_open_parameter: 'That value is already set.',
+  not_request: 'Only a request can be declined.',
+  not_subject: 'Only the person the item is about can do that.',
+  universal_kept: 'Universal safety material cannot be removed from a shared brief.',
+  blank_value: 'Enter a value first.',
+  deliberate_tick: 'Fee, coverage level, physical contact and the stop rule each need their own deliberate tick: group-check refuses them.',
+  item_not_in_brief: 'An item is not in this brief.',
+  not_an_approver: 'This party does not green-light that item.',
+  still_pending: 'Settle the item before ticking it.',
+  fixed_once_shared: 'A shared brief is fixed: nothing is added, reworded or reordered.',
+  invalid_input: 'Check the input.',
+};
+
+function simError(error) {
+  const code = String(error.message).split(' ')[0];
+  return SIM_ERRORS[code] ?? `Refused: ${error.message}`;
+}
+
+/** Posts a simulated act, then reloads the selected record if navigation has not moved on. */
+async function simulate(url, body, success) {
+  const projectId = state.record?.project.id ?? null;
+  try {
+    await api('POST', url, body);
+    toast(success);
+  } catch (error) {
+    toast(simError(error), 'error');
+  }
+  if (projectId !== null && state.selectedId === projectId) await loadRecord(projectId, { quiet: true });
+}
 
 function pairLabel(annotation, record, agreementId) {
   const labelled = annotation?.agreements?.[agreementId];
@@ -290,14 +345,45 @@ function tag(text, className = '') {
   return el('span', { className: `tag ${className}`.trim(), text });
 }
 
-function renderItem(item, record, annotation) {
+function button(text, onClick, className = 'secondary') {
+  const node = el('button', { className, text, attrs: { type: 'button' } });
+  node.addEventListener('click', () => {
+    node.disabled = true;
+    void onClick();
+  });
+  return node;
+}
+
+/** The synthetic party the demo operator is simulating, for this project. */
+function actorFor(record, annotation) {
+  const ids = record.parties.map((p) => p.id);
+  const chosen = state.actors[record.project.id];
+  if (chosen && ids.includes(chosen)) return chosen;
+  return [...ids].sort(byLabel(annotation))[0] ?? null;
+}
+
+function valueForm(label, placeholder, onSubmit) {
+  const input = el('input', { attrs: { type: 'text', maxlength: '500', placeholder, 'aria-label': label } });
+  const submit = el('button', { className: 'secondary', text: label, attrs: { type: 'button' } });
+  submit.addEventListener('click', () => {
+    if (!/\S/.test(input.value)) return toast(SIM_ERRORS.blank_value, 'error');
+    submit.disabled = true;
+    void onSubmit(input.value);
+  });
+  return el('div', { className: 'value-form' }, [input, submit]);
+}
+
+function renderItem(item, record, annotation, actor, displayNumber) {
+  const brief = record.brief;
+  const live = brief.phase === 'live';
   const tags = el('div', { className: 'tags' });
   if (item.layer === 'money') tags.append(tag(`private to this pair · ${pairLabel(annotation, record, item.pairwiseAgreementId)}`, 'private'));
   else if (item.pairwiseAgreementId) tags.append(tag(`between · ${pairLabel(annotation, record, item.pairwiseAgreementId)}`));
   else tags.append(tag('project-wide'));
   if (item.subjectPartyId) tags.append(tag(`subject · ${partyLabel(annotation, item.subjectPartyId)}`));
   if (item.shape) tags.append(tag(`shape · ${SHAPE_LABELS[item.shape]}`));
-  if (item.pending) tags.append(tag(PENDING_LABELS[item.pending], 'pending'));
+  if (item.pending) tags.append(tag(`pending: ${PENDING_LABELS[item.pending]}`, 'pending'));
+  if (item.itemKey && DELIBERATE_TICK_KEYS.includes(item.itemKey)) tags.append(tag('deliberate tick', 'deliberate'));
   if (item.itemKey) tags.append(tag(`item key ${item.itemKey}`, 'key'));
 
   // Wording is shown only when it is stored. A keyed item without wording is
@@ -306,35 +392,199 @@ function renderItem(item, record, annotation) {
     item.content === null
       ? el('p', { className: 'instrumentation', text: `item key ${item.itemKey} — wording not materialized (draft)` })
       : el('p', { className: 'wording', text: item.content });
-
   const value =
     item.value === null ? null : el('p', { className: 'value' }, [el('span', { className: 'muted', text: 'value ' }), el('span', { text: item.value })]);
 
-  return el('li', { className: 'brief-item', attrs: { 'data-layer': item.layer } }, [
-    el('span', { className: 'pos', text: String(item.position) }),
-    el('div', { className: 'item-body' }, [wording, value, tags]),
+  // Who must green-light it, and who does now. Current state only.
+  let approvals = null;
+  if (live) {
+    approvals = el('ul', { className: 'approvals', attrs: { 'aria-label': 'Green-light' } });
+    if (item.approverIds.length === 0) approvals.append(el('li', { className: 'muted', text: 'nobody must green-light this' }));
+    for (const id of [...item.approverIds].sort(byLabel(annotation))) {
+      const yes = item.tickedBy.includes(id);
+      approvals.append(el('li', { className: yes ? 'approval yes' : 'approval no', text: `${yes ? '✓' : '○'} ${partyLabel(annotation, id)}` }));
+    }
+  }
+
+  // The acting party's moves on this item.
+  const actions = el('div', { className: 'item-actions' });
+  if (live && !SNAPSHOT && actor) {
+    const name = partyLabel(annotation, actor);
+    if (item.pending === 'decide_together') {
+      actions.append(
+        valueForm('Settle together', '[synthetic] agreed value', (v) => simulate(`/demo/sim/items/${item.id}/settle`, { value: v }, 'Settled. It can now be ticked.')),
+      );
+    } else if (item.pending === 'subject') {
+      if (item.subjectPartyId === actor) {
+        actions.append(
+          valueForm(`Set as ${name}`, '[synthetic] your value', (v) =>
+            simulate(`/demo/sim/items/${item.id}/parameter`, { partyId: actor, value: v }, 'Value set. It can now be ticked.'),
+          ),
+        );
+      } else {
+        actions.append(el('p', { className: 'hint', text: `Waiting for ${partyLabel(annotation, item.subjectPartyId)} to set this.` }));
+      }
+    } else if (item.approverIds.includes(actor)) {
+      const ticked = item.tickedBy.includes(actor);
+      actions.append(
+        ticked
+          ? button(`Untick as ${name}`, () => simulate(`/demo/sim/items/${item.id}/untick`, { partyId: actor }, 'Tick withdrawn.'), 'secondary untick')
+          : button(`Tick as ${name}`, () => simulate(`/demo/sim/items/${item.id}/tick`, { partyId: actor }, 'Ticked.'), 'secondary tick'),
+      );
+    }
+    if (item.shape === 'request' && item.subjectPartyId === actor && item.layer !== 'universal') {
+      actions.append(button(`Decline as ${name}`, () => simulate(`/demo/sim/items/${item.id}/decline`, { partyId: actor }, 'Declined. It is gone.'), 'secondary decline'));
+    }
+  }
+
+  const classes = ['brief-item'];
+  if (live && item.green) classes.push('green');
+  return el('li', { className: classes.join(' '), attrs: { 'data-layer': item.layer, 'data-item': item.id } }, [
+    // Numbered by display order, not stored position: a gap would hint that
+    // something was declined, and a declined request simply disappears.
+    el('span', { className: 'pos', text: live && item.green ? '✓' : String(displayNumber) }),
+    el('div', { className: 'item-body' }, [wording, value, tags, approvals, actions.childElementCount ? actions : null]),
+  ]);
+}
+
+function renderStage(brief) {
+  const live = brief.phase === 'live';
+  const greens = brief.items.filter((i) => i.green).length;
+  const steps = el('ol', { className: 'stage-steps' });
+  const current = brief.ready ? 2 : live ? 1 : 0;
+  ['Draft', 'Live', 'Ready to sign'].forEach((label, i) => {
+    steps.append(el('li', { className: i === current ? 'current' : i < current ? 'done' : '', text: label }));
+  });
+  let headline;
+  let detail;
+  if (brief.ready) {
+    headline = 'READY TO SIGN';
+    detail =
+      'Every current item is green for everyone who must green-light it, and nothing is pending. Signing arrives in S10–S11. ' +
+      'This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated.';
+  } else if (live) {
+    headline = 'LIVE';
+    detail = `Shared: nothing can be added and the wording is fixed. ${greens} of ${brief.items.length} items green.`;
+  } else {
+    headline = 'DRAFT';
+    detail = 'Not shared yet. Say who will be on site, then share the brief.';
+  }
+  return el('div', { className: `stage ${brief.ready ? 'ready' : brief.phase}`, attrs: { role: 'status' } }, [
+    steps,
+    el('p', { className: 'stage-headline', text: headline }),
+    el('p', { className: 'stage-detail', text: detail }),
+  ]);
+}
+
+function renderActorBar(record, annotation, actor) {
+  const bar = el('div', { className: 'actor-bar', attrs: { role: 'group', 'aria-label': 'Simulating as' } }, [
+    el('span', { className: 'actor-label', text: 'Simulating as' }),
+  ]);
+  for (const id of record.parties.map((p) => p.id).sort(byLabel(annotation))) {
+    const chip = el('button', {
+      className: id === actor ? 'actor current' : 'actor',
+      text: partyLabel(annotation, id),
+      attrs: { type: 'button', 'aria-pressed': id === actor ? 'true' : 'false' },
+    });
+    chip.addEventListener('click', () => {
+      state.actors[record.project.id] = id;
+      renderDetail();
+    });
+    bar.append(chip);
+  }
+  bar.append(el('span', { className: 'hint', text: 'Simulation only: in the product each person acts for themselves (D12).' }));
+  return bar;
+}
+
+function renderPresence(record, annotation) {
+  const brief = record.brief;
+  const facts = new Map(brief.presence.map((p) => [p.partyId, p.onSite]));
+  const rows = el('ul', { className: 'presence' });
+  for (const id of record.parties.map((p) => p.id).sort(byLabel(annotation))) {
+    const fact = facts.get(id);
+    const status = fact === undefined ? 'not set' : fact ? 'on site' : 'not on site';
+    const controls = [];
+    if (brief.phase === 'draft' && !SNAPSHOT) {
+      controls.push(
+        button('On site', () => simulate(`/demo/sim/briefs/${brief.id}/presence`, { partyId: id, onSite: true }, 'Presence set.'), fact === true ? 'secondary chosen' : 'secondary'),
+        button('Not on site', () => simulate(`/demo/sim/briefs/${brief.id}/presence`, { partyId: id, onSite: false }, 'Presence set.'), fact === false ? 'secondary chosen' : 'secondary'),
+      );
+    }
+    rows.append(
+      el('li', { attrs: { 'data-party': id } }, [
+        el('span', { className: 'who', text: partyLabel(annotation, id) }),
+        el('span', { className: `presence-status ${fact === undefined ? 'unset' : ''}`.trim(), text: status }),
+        ...controls,
+      ]),
+    );
+  }
+  return el('div', { className: 'presence-block' }, [
+    el('h4', { text: 'On site' }),
+    el('p', { className: 'hint', text: 'Who will physically be there (Q8). Everyone on site green-lights the universal items. Fixed once shared.' }),
+    record.parties.length ? rows : el('p', { className: 'muted', text: 'No parties.' }),
+  ]);
+}
+
+function renderGroupCheck(record, annotation, actor) {
+  const brief = record.brief;
+  const name = partyLabel(annotation, actor);
+  const candidates = brief.items.filter((i) => i.pending === null && i.approverIds.includes(actor) && !i.tickedBy.includes(actor));
+  const list = el('ul', { className: 'group-items' });
+  for (const item of candidates) {
+    const deliberate = item.itemKey !== null && DELIBERATE_TICK_KEYS.includes(item.itemKey);
+    const box = el('input', { attrs: { type: 'checkbox', value: item.id, id: `gc-${item.id}` } });
+    box.checked = !deliberate;
+    if (deliberate) box.disabled = true;
+    list.append(
+      el('li', { className: deliberate ? 'deliberate' : '' }, [
+        box,
+        el('label', { text: item.content ?? `item key ${item.itemKey}`, attrs: { for: `gc-${item.id}` } }),
+        deliberate ? el('span', { className: 'hint', text: 'needs its own deliberate tick' }) : null,
+      ]),
+    );
+  }
+  const run = el('button', { className: 'secondary', text: `Group-check as ${name}`, attrs: { type: 'button' } });
+  run.addEventListener('click', () => {
+    const itemIds = [...list.querySelectorAll('input:checked')].map((b) => b.value);
+    if (itemIds.length === 0) return toast('Choose at least one item.', 'error');
+    run.disabled = true;
+    void simulate(`/demo/sim/briefs/${brief.id}/group-check`, { partyId: actor, itemIds }, `Ticked ${plural(itemIds.length, 'item')}.`);
+  });
+  return el('details', { className: 'group-check' }, [
+    el('summary', { text: `Group-check (${name})` }),
+    el('p', { className: 'hint', text: 'A convenience: it ticks each chosen item individually, exactly like single ticks, and nothing records that it was used. The fee, coverage level, physical contact and the stop rule always need their own tick.' }),
+    candidates.length ? list : el('p', { className: 'muted', text: 'Nothing left for this party to tick.' }),
+    candidates.length ? run : null,
   ]);
 }
 
 function renderBrief(record, annotation) {
-  if (!record.brief) {
-    return section(
-      'Live brief',
-      'Draft composition only.',
-      el('div', { className: 'state empty' }, [el('p', { text: 'No live brief has been opened for this project.' })]),
+  const brief = record.brief;
+  if (!brief) {
+    return section('Live brief', null, el('div', { className: 'state empty' }, [el('p', { text: 'No live brief has been opened for this project.' })]));
+  }
+  const actor = brief.phase === 'live' && !SNAPSHOT ? actorFor(record, annotation) : null;
+  const body = el('div', { className: 'brief' }, [renderStage(brief)]);
+  if (actor) body.append(renderActorBar(record, annotation, actor));
+  body.append(renderPresence(record, annotation));
+  if (brief.phase === 'draft' && !SNAPSHOT && record.parties.length > 0) {
+    body.append(
+      el('div', { className: 'share-row' }, [
+        button('Share the brief', () => simulate(`/demo/sim/briefs/${brief.id}/share`, {}, 'Shared. The brief is live.'), 'share'),
+        el('span', { className: 'hint', text: 'Pending items may stay pending; every item needs its wording, and every party an on-site answer.' }),
+      ]),
     );
   }
-  const body = el('div', { className: 'brief' }, [
-    el('p', { className: 'meta' }, [el('span', { text: 'brief ' }), idCode(record.brief.id)]),
-  ]);
-  if (record.brief.items.length === 0) {
+  if (actor) body.append(renderGroupCheck(record, annotation, actor));
+  if (brief.items.length === 0) {
     body.append(el('div', { className: 'state empty' }, [el('p', { text: 'The draft brief has no items.' })]));
   }
+  const numberOf = new Map(brief.items.map((item, i) => [item.id, i + 1]));
   for (const [layer, title, hint] of LAYERS) {
-    const items = record.brief.items.filter((item) => item.layer === layer);
+    const items = brief.items.filter((item) => item.layer === layer);
     if (items.length === 0) continue;
     const list = el('ol', { className: 'brief-items' });
-    for (const item of items) list.append(renderItem(item, record, annotation));
+    for (const item of items) list.append(renderItem(item, record, annotation, actor, numberOf.get(item.id)));
     body.append(
       el('section', { className: 'layer', attrs: { 'data-layer': layer } }, [
         el('h4', { text: title }),
@@ -344,8 +594,8 @@ function renderBrief(record, annotation) {
     );
   }
   return section(
-    'Live brief — draft',
-    'One mutable workspace per project (S08). Items are shown in display order within each layer. Nothing here records when anything happened or who did it: live state is not evidence (HC1), and there is no proposer (HC2).',
+    'Live brief',
+    'One current brief per project. It shows the state as it is now: no history, no record of a decline, nobody recorded as having proposed anything, and no times (HC1, HC2).',
     body,
   );
 }
@@ -374,7 +624,7 @@ const DECISIONS = [
     file: 'decisions/D04-terms-and-affirmation.md',
     built: [
       'Decided: ticking and signing are separate acts. Everyone ticks until every term is green for everyone; only then does anyone sign.',
-      'Not built: ticking (S10) and signing (S11).',
+      'Built as data functions: ticks, green state and ready to sign (S09). Not built: signing (S10–S11).',
     ],
     open: ['The visible signing act once everything is green.'],
     blocks: ['Building the signing step'],
@@ -404,9 +654,9 @@ const CAPABILITIES = [
 const DECIDED_NOT_BUILT = [
   'D03 participation credential: account by Google or Apple sign-in, the link is the invitation. Account storage exists (S06); sign-in and invitation do not.',
   'D10 what each party sees (photo shoots): decided in full. No party view is built.',
-  'D02 lifecycle: sharing, ticking and signing. Not built (S09–S11).',
+  'D02 lifecycle: share, resolve, decline and green state are data functions (S09), simulated here; signing is not built (S10–S11).',
   'Three layers: universal safety, shared logistics including the call sheet, private money only. Built as draft topology (S08); the call sheet is not built.',
-  'On site means physical proximity. Presence is not recorded.',
+  'On site means physical proximity: an explicit fact per party, fixed once the brief is shared (S09). The roster-addition workflow is not built.',
   'D11 verification at first participation. Not built.',
   'D06 pre-launch real use in sequence. Gate 2 is not open.',
 ];
@@ -525,13 +775,17 @@ function invalidateRecordLoads() {
   state.recordLoading = false;
 }
 
-async function loadRecord(id) {
+async function loadRecord(id, { quiet = false } = {}) {
   recordGeneration += 1;
   const generation = recordGeneration;
-  state.recordLoading = true;
-  state.recordError = null;
-  state.record = null;
-  renderDetail();
+  // A quiet reload (after a simulated act) keeps the current view until the
+  // new record arrives, so the page does not jump.
+  if (!quiet) {
+    state.recordLoading = true;
+    state.recordError = null;
+    state.record = null;
+    renderDetail();
+  }
   let record = null;
   let error = null;
   try {
@@ -571,9 +825,11 @@ async function startScenario(button) {
   button.disabled = true;
   try {
     const project = await api('POST', '/demo/sim/scenarios', {});
+    state.sessionLabels[project.id] = { [project.photographerPartyId]: 'Photographer', [project.modelPartyId]: 'Model' };
+    saveSessionLabels();
     await loadProjects();
     location.hash = `#/projects/${project.id}`;
-    toast('New scenario: one project, two parties, one pair. No live brief is opened.');
+    toast('New walkthrough: a photographer, a model and a draft brief.');
   } catch (error) {
     toast(`Could not start a scenario: ${error.message}`, 'error');
   } finally {

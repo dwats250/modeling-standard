@@ -3,6 +3,18 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type pg from 'pg';
 import { describe, expect, inject, it } from 'vitest';
+import { createLogger } from '../../src/app/logger.ts';
+import { listBriefItems } from '../../src/briefs/brief.ts';
+import {
+  isBriefReadyToSign,
+  setDraftPartyPresence,
+  setOpenParameterBySubject,
+  settleDecideTogetherItem,
+  shareLiveBrief,
+  tickBriefItem,
+  getBriefGreenState,
+} from '../../src/briefs/live.ts';
+import { openDatabase } from '../../src/infrastructure/database/client.ts';
 import { migrationsFolder, runMigrations } from '../../src/infrastructure/database/migrate.ts';
 import { createScratchDatabase, journal, migrateThrough, type ScratchDatabase } from '../support/migration-boundary.ts';
 import { CHECK_VIOLATION, withClient } from '../support/sql.ts';
@@ -23,6 +35,7 @@ const T0013 = '0013_affirmation_read_committed_only';
 const T0014 = '0014_agreement_version_fk_name';
 const T0016 = '0016_account_party_binding_stamps_and_grants';
 const T0018 = '0018_direct_invitation_stamp_and_grants';
+const T0020 = '0020_live_brief_scope_and_grants';
 
 const ROW_TABLES = [
   'project',
@@ -41,6 +54,8 @@ const ROW_TABLES = [
   'direct_invitation',
   'live_brief',
   'brief_item',
+  'brief_party_presence',
+  'brief_tick',
 ] as const;
 
 /** Tables that exist from their slice onward and survive S08. */
@@ -101,7 +116,8 @@ async function rowsOf(c: pg.Client): Promise<Record<string, unknown[]>> {
   for (const table of ROW_TABLES) {
     const exists = await c.query<{ r: string | null }>('select to_regclass($1)::text as r', [`public.${table}`]);
     if (exists.rows[0]!.r === null) continue;
-    const { rows } = await c.query<{ rows: unknown[] | null }>(`select json_agg(t order by t.id) as rows from public.${table} t`);
+    // Ordered by the row's own text: S09's presence and tick rows have no id.
+    const { rows } = await c.query<{ rows: unknown[] | null }>(`select json_agg(t order by t::text) as rows from public.${table} t`);
     out[table] = rows[0]!.rows ?? [];
   }
   return out;
@@ -704,6 +720,113 @@ describe('populated migration upgrades', () => {
           );
           expect(fee.rowCount).toBe(1);
         });
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'populated S08 (0020) → current: S01–S08 rows unchanged, briefs arrive as drafts, presence and ticks empty, and an existing brief can reach ready to sign',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0020);
+        const s = await asRuntime(db, populateS01S02);
+        const ids = await asRuntime(db, async (c) => {
+          const acct = await c.query<{ id: string }>(
+            `insert into account (login_provider, provider_subject) values ('google', 'upgrade-s09-subject') returning id`,
+          );
+          await c.query('insert into party_account_binding (project_id, party_id, account_id) values ($1, $2, $3)', [
+            s.projectId,
+            s.pair[0],
+            acct.rows[0]!.id,
+          ]);
+          await c.query('insert into direct_invitation (project_id, party_id, credential_digest) values ($1, $2, $3)', [
+            s.projectId,
+            s.pair[1],
+            Buffer.alloc(32, 9),
+          ]);
+          const brief = await c.query<{ id: string }>('insert into live_brief (project_id) values ($1) returning id', [s.projectId]);
+          const briefId = brief.rows[0]!.id;
+          const item = async (cols: string, vals: unknown[]): Promise<string> => {
+            const placeholders = vals.map((_, i) => `$${i + 3}`).join(', ');
+            const r = await c.query<{ id: string }>(
+              `insert into brief_item (brief_id, project_id, ${cols}) values ($1, $2, ${placeholders}) returning id`,
+              [briefId, s.projectId, ...vals],
+            );
+            return r.rows[0]!.id;
+          };
+          const universal = await item('layer, content, position', ['universal', '[upgrade] safety', 1]);
+          const together = await item('layer, content, pending, position', ['shared', '[upgrade] date', 'decide_together', 2]);
+          const parameter = await item('layer, subject_party_id, shape, item_key, content, pending, position', [
+            'shared',
+            s.pair[0],
+            'open_parameter',
+            'coverage_level',
+            '[upgrade] level',
+            'subject',
+            3,
+          ]);
+          const fee = await item('layer, pairwise_agreement_id, item_key, content, value, position', [
+            'money',
+            s.agreementId,
+            'fee',
+            '[upgrade] fee',
+            '[upgrade] 100',
+            4,
+          ]);
+          return { briefId, universal, together, parameter, fee };
+        });
+
+        const boundary = journal().entries.findIndex((e) => e.tag === T0020) + 1;
+        const before = await asOwner(db, async (c) => ({ rows: await rowsOf(c), books: await bookkeeping(c) }));
+        for (const table of [...SURVIVING_TABLES, 'live_brief', 'brief_item']) {
+          expect({ table, populated: (before.rows[table] ?? []).length > 0 }).toEqual({ table, populated: true });
+        }
+        expect(before.books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(boundary));
+
+        await runMigrations(db.migrationUrl);
+
+        const s08Tables = [...SURVIVING_TABLES, 'brief_item'];
+        await asOwner(db, async (c) => {
+          const after = await rowsOf(c);
+          for (const table of s08Tables) expect({ table, rows: after[table] }).toEqual({ table, rows: before.rows[table] });
+          // The brief is unchanged but for its new phase, which is draft.
+          expect(after['live_brief']).toEqual((before.rows['live_brief'] as object[]).map((row) => ({ ...row, phase: 'draft' })));
+          expect(after['brief_party_presence']).toEqual([]);
+          expect(after['brief_tick']).toEqual([]);
+          expect(await runtimePrivileges(c, 'brief_party_presence')).toEqual(['INSERT', 'SELECT']);
+          expect(await runtimePrivileges(c, 'brief_tick')).toEqual(['DELETE', 'INSERT', 'SELECT']);
+          const books = await bookkeeping(c);
+          expect(books.slice(0, boundary)).toEqual(before.books);
+          expect(books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(journal().entries.length));
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+
+        // A second run applies nothing and changes nothing.
+        const once = await asOwner(db, rowsOf);
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => {
+          expect((await bookkeeping(c)).length).toBe(journal().entries.length);
+          expect(await rowsOf(c)).toEqual(once);
+        });
+
+        // The pre-existing brief: presence, share, resolve, tick, ready to sign.
+        const handle = openDatabase(db.runtimeUrl, createLogger('silent'));
+        try {
+          const run = handle.db;
+          for (const party of s.partyIds) await setDraftPartyPresence(run, ids.briefId, party, true);
+          expect((await shareLiveBrief(run, ids.briefId)).phase).toBe('live');
+          await settleDecideTogetherItem(run, ids.together, '[upgrade] the 20th');
+          await setOpenParameterBySubject(run, ids.parameter, s.pair[0], '[upgrade] level two');
+          expect(await isBriefReadyToSign(run, ids.briefId)).toBe(false);
+          for (const item of await listBriefItems(run, ids.briefId)) {
+            for (const party of s.partyIds) await tickBriefItem(run, item.id, party);
+          }
+          expect((await getBriefGreenState(run, ids.briefId)).items.every((i) => i.green)).toBe(true);
+          expect(await isBriefReadyToSign(run, ids.briefId)).toBe(true);
+        } finally {
+          await handle.close();
+        }
       });
     },
     UPGRADE_TIMEOUT,

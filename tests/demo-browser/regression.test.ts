@@ -21,9 +21,10 @@ import { requireEnv } from '../support/urls.ts';
 
 /**
  * The whole demo, end to end, in a real browser: reset, fixtures, project
- * creation, the draft live brief by layer (S08), the scenario starter, reset
- * repeatability, the portable snapshot, desktop and mobile rendering, stale
- * navigation, and production isolation. Screenshots go to test-results/demo/.
+ * creation, the S09 walkthrough (draft → share → live → resolve → decline →
+ * tick → group-check → untick → retick → READY TO SIGN), reset repeatability,
+ * the portable snapshot, desktop and mobile rendering, stale navigation, and
+ * production isolation. Screenshots go to test-results/demo/.
  */
 
 const SHOTS = resolve('test-results/demo');
@@ -104,45 +105,64 @@ async function stopServer(): Promise<void> {
 /** The open Cory seams the decisions view names, and nothing else. */
 const CURRENT_SEAMS = ['D04 wording', 'D04 signing', 'D05'] as const;
 
-const DRAFT_BANNER = 'Draft composition only. Sharing, green state and signing arrive in S09–S11.';
+/** Retired with S03–S05 (S08), or history the live brief never shows (S09). */
+const NEVER_IN_PROJECT_VIEWS = [
+  /\bversions?\b/i,
+  /\bR1\b/,
+  /\bR2\b/,
+  /\bsealed\b/i,
+  /affirmation/i,
+  /declined by/i,
+  /changed by/i,
+  /\brevision/i,
+  /activity/i,
+  /audit/i,
+  /read receipt/i,
+  /\btick row/i,
+];
 
-/** Retired with S03–S05 (S08): nothing in a project view may say these. */
-const RETIRED_IN_PROJECT_VIEWS = [/\bversions?\b/i, /\btick/i, /\bR1\b/, /\bR2\b/, /\bsealed\b/i, /affirmation/i, /\bsimulate\b/i];
+/** Clears the transient toast so a screenshot shows state only. */
+async function settle(page: Page): Promise<void> {
+  await page.locator('#toast').evaluate((node) => {
+    (node as unknown as { hidden: boolean }).hidden = true;
+  });
+}
+
+/** Hides what changes run to run (ids), so the milestone screenshot is stable. */
+const masks = (page: Page) => [page.locator('.id'), page.locator('.detail-head .meta code'), page.locator('.project-list .meta code')];
 
 describe('demo regression', () => {
   for (const viewport of ['desktop', 'mobile'] as const) {
-    it(`shows the initial fixtures as draft briefs by layer (${viewport})`, async () => {
+    it(`shows the fixtures: drafts by layer, private money, and one brief ready to sign (${viewport})`, async () => {
       const page = await openPage(viewport);
       const items = page.locator('.project-list a');
-      await expect.poll(() => items.count()).toBe(3);
+      await expect.poll(() => items.count()).toBe(4);
       expect(await items.allInnerTexts()).toEqual([
         expect.stringContaining('Fixture 1'),
         expect.stringContaining('Fixture 2'),
         expect.stringContaining('Fixture 3'),
+        expect.stringContaining('Fixture 4'),
       ]);
 
       await page.getByText(titleOf('Fixture 1'), { exact: true }).first().click();
       await page.locator('h2', { hasText: 'Fixture 1' }).waitFor();
       await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
-      expect(await page.locator('.draft-banner').innerText()).toBe(DRAFT_BANNER);
-      expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal layer', 'shared layer']);
-      // Subject, shape and pending are labels.
-      const tags = (await page.locator('.brief .tag').allInnerTexts()).join(' | ');
+      expect(await page.locator('.stage-headline').innerText()).toBe('DRAFT');
+      expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal', 'shared']);
+      const tags = (await page.locator('.brief .tag').allInnerTexts()).join(' | ').toLowerCase();
       for (const label of ['subject', 'shape', 'declaration', 'request', 'open parameter', 'decide together', 'awaiting its subject', 'project-wide', 'between']) {
-        expect({ label, shown: tags.toLowerCase().includes(label) }).toEqual({ label, shown: true });
+        expect({ label, shown: tags.includes(label) }).toEqual({ label, shown: true });
       }
-      expect(await page.locator('.brief-item[data-layer="money"]').count()).toBe(0);
+      expect(await page.locator('.presence-status.unset').count()).toBe(2);
       await noHorizontalScroll(page);
       await page.screenshot({ path: join(SHOTS, `fixture1-${viewport}.png`), fullPage: true });
 
       await page.getByText(titleOf('Fixture 2'), { exact: true }).first().click();
       await page.locator('h2', { hasText: 'Fixture 2' }).waitFor();
       await expect.poll(() => page.locator('.brief-item').count()).toBe(4);
-      // Money: one fee per pair, each shown as private to its pair, and nothing else is.
       const money = page.locator('.brief-item[data-layer="money"]');
       expect(await money.count()).toBe(2);
       for (const fee of await money.all()) expect(await fee.locator('.tag.private').innerText()).toMatch(/^private to this pair · Pair (A|B)–C$/);
-      expect(await page.locator('.tag.private').count()).toBe(2);
       expect(await page.locator('.brief-item:not([data-layer="money"]) .tag.private').count()).toBe(0);
       await noHorizontalScroll(page);
       await page.screenshot({ path: join(SHOTS, `fixture2-${viewport}.png`), fullPage: true });
@@ -150,6 +170,15 @@ describe('demo regression', () => {
       await page.getByText(titleOf('Fixture 3'), { exact: true }).first().click();
       await page.locator('h2', { hasText: 'Fixture 3' }).waitFor();
       await expect.poll(() => page.getByText('The draft brief has no items.').count()).toBe(1);
+
+      await page.getByText(titleOf('Fixture 4'), { exact: true }).first().click();
+      await page.locator('h2', { hasText: 'Fixture 4' }).waitFor();
+      await expect.poll(() => page.locator('.stage-headline').innerText()).toBe('READY TO SIGN');
+      expect(await page.locator('.brief-item').count()).toBe(7);
+      expect(await page.locator('.brief-item.green').count()).toBe(7);
+      expect(await page.locator('.brief-item[data-layer="money"] .tag.private').innerText()).toBe('private to this pair · Pair: Photographer ↔ Model');
+      await noHorizontalScroll(page);
+      await page.screenshot({ path: join(SHOTS, `fixture4-${viewport}.png`), fullPage: true, mask: masks(page) });
 
       await page.locator('#decisions-link').click();
       await expect.poll(() => page.locator('.decision').count()).toBe(CURRENT_SEAMS.length);
@@ -159,7 +188,7 @@ describe('demo regression', () => {
     });
   }
 
-  it('teaches no superseded or retired semantics, and names only the current Cory seams', async () => {
+  it('teaches no superseded semantics, shows no history, and names only the current Cory seams', async () => {
     const STALE = [
       /is undecided \(D03\)/,
       /Participation credential and invitation are undecided/,
@@ -174,17 +203,18 @@ describe('demo regression', () => {
       /How body and money terms are identified/,
       /drop-and-resend/i,
       /presented version/i,
+      /Presence is not recorded/,
     ];
     const page = await openPage('desktop');
     await page.locator('.project-list a').first().waitFor();
     const texts: string[] = [];
-    for (const fixture of ['Fixture 1', 'Fixture 2', 'Fixture 3']) {
+    for (const fixture of ['Fixture 1', 'Fixture 2', 'Fixture 3', 'Fixture 4']) {
       await page.getByText(titleOf(fixture), { exact: true }).first().click();
       await page.locator('h2', { hasText: fixture }).waitFor();
       const text = await page.locator('#detail').innerText();
       texts.push(text);
-      for (const retired of RETIRED_IN_PROJECT_VIEWS) {
-        expect({ fixture, retired: String(retired), found: retired.test(text) }).toEqual({ fixture, retired: String(retired), found: false });
+      for (const never of NEVER_IN_PROJECT_VIEWS) {
+        expect({ fixture, never: String(never), found: never.test(text) }).toEqual({ fixture, never: String(never), found: false });
       }
       // No product-wording placeholder presented as document text: every
       // wording line is marked synthetic, and no-means-no has none.
@@ -219,24 +249,173 @@ describe('demo regression', () => {
     expect(await page.getByText('No parties in this project.').count()).toBe(1);
     expect(await page.getByText('No pairs.').count()).toBe(1);
     expect(await page.getByText('No live brief has been opened for this project.').count()).toBe(1);
-    await expect.poll(() => page.locator('.project-list a').count()).toBe(4);
+    await expect.poll(() => page.locator('.project-list a').count()).toBe(5);
     await page.close();
   });
 
-  it('starts a scenario, and shows a keyed item without wording only as instrumentation', async () => {
+  it('walks a photographer and a model from draft to READY TO SIGN, and back and forth through green', async () => {
     const page = await openPage('desktop');
     await page.locator('.project-list a').first().waitFor();
-    expect(await page.locator('#start-simulation').innerText()).toBe('Start a scenario');
+    expect(await page.locator('#start-simulation').innerText()).toBe('Start the walkthrough');
+
+    /** Clicks a control the demo server must refuse, and discounts exactly that one logged 409. */
+    async function expectRefusal(click: () => Promise<void>, toastText: string): Promise<void> {
+      const errorsBefore = pageErrors.length;
+      const expectedConsoleError = page.waitForEvent('console', (m) => m.type() === 'error' && m.text().includes('409'));
+      await click();
+      await expect.poll(() => page.locator('#toast').textContent()).toContain(toastText);
+      const controlled = `desktop: ${(await expectedConsoleError).text()}`;
+      await page.waitForTimeout(200);
+      const added = pageErrors.splice(errorsBefore);
+      const own = added.indexOf(controlled);
+      expect(own).toBeGreaterThanOrEqual(0);
+      added.splice(own, 1);
+      pageErrors.push(...added);
+    }
+    const headline = () => page.locator('.stage-headline').innerText();
+    const itemWith = (text: string) => page.locator('.brief-item', { hasText: text });
+    async function actAs(name: 'Photographer' | 'Model'): Promise<void> {
+      await page.locator('.actor-bar button', { hasText: name }).click();
+      await expect.poll(() => page.locator('.actor.current').innerText()).toBe(name);
+    }
+    /** Clicks, then waits for the record to reload with `done` true. */
+    async function act(click: () => Promise<void>, done: () => Promise<boolean>): Promise<void> {
+      await click();
+      await expect.poll(done).toBe(true);
+    }
+
+    // 1–2. Start, and inspect the draft: three layers, private money, pending items.
     await page.locator('#start-simulation').click();
     await page.locator('h2', { hasText: 'Project created in this session' }).waitFor();
-    await expect.poll(() => page.locator('.card').filter({ has: page.locator('h3', { hasText: /^Parties$/ }) }).locator('.rows li').count()).toBe(2);
-    expect(await page.locator('.card').filter({ has: page.locator('h3', { hasText: /^Pairs$/ }) }).locator('.rows li').count()).toBe(1);
-    expect(await page.getByText('No live brief has been opened for this project.').count()).toBe(1);
-    expect(await page.locator('details.sim-panel, button.sim-affirm, .sim-assumptions').count()).toBe(0);
+    await expect.poll(() => page.locator('.brief-item').count()).toBe(8);
+    expect(await headline()).toBe('DRAFT');
+    expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal', 'shared', 'private money']);
+    expect(await page.locator('.brief-item[data-layer="money"] .tag.private').innerText()).toBe('private to this pair · Pair: Model ↔ Photographer');
+    expect(await page.locator('.actor-bar').count()).toBe(0);
+    await settle(page);
+    await page.screenshot({ path: join(SHOTS, 'walkthrough-1-draft-desktop.png'), fullPage: true, mask: masks(page) });
 
-    // Instrumentation only: a keyed item whose wording was never materialized,
-    // written with the data function (no product path exists). The inspector
-    // must not render it as document text.
+    // 3–5. Sharing is refused until both have an on-site answer; then it goes live.
+    await expectRefusal(() => page.locator('button.share').click(), 'on-site answer');
+    expect(await headline()).toBe('DRAFT');
+    for (const who of ['Photographer', 'Model']) {
+      await act(
+        () => page.locator('.presence li', { hasText: who }).locator('button', { hasText: /^On site$/ }).click(),
+        async () => (await page.locator('.presence li', { hasText: who }).locator('.presence-status').innerText()) === 'on site',
+      );
+    }
+    await act(() => page.locator('button.share').click(), async () => (await headline()) === 'LIVE');
+    expect(await page.locator('.presence button').count()).toBe(0);
+    expect(await page.locator('button.share').count()).toBe(0);
+
+    // 6. Resolve: the delivery date together; the coverage level only by the model.
+    await act(
+      async () => {
+        await itemWith('Delivery date').locator('input').fill('[synthetic] Within two weeks');
+        await itemWith('Delivery date').locator('button', { hasText: 'Settle together' }).click();
+      },
+      async () => (await itemWith('Delivery date').locator('.value').count()) === 1,
+    );
+    await actAs('Photographer');
+    expect(await itemWith('Coverage level').locator('.hint').innerText()).toBe('Waiting for Model to set this.');
+    await actAs('Model');
+    await act(
+      async () => {
+        await itemWith('Coverage level').locator('input').fill('[synthetic] Level 2');
+        await itemWith('Coverage level').locator('button', { hasText: 'Set as Model' }).click();
+      },
+      async () => (await itemWith('Coverage level').locator('.value').count()) === 1,
+    );
+    expect(await page.locator('.tag.pending').count()).toBe(0);
+
+    // 7. The model declines the album-cover request: it simply disappears.
+    expect(await itemWith('album cover').locator('button', { hasText: 'Decline as Model' }).count()).toBe(1);
+    await act(() => itemWith('album cover').locator('button', { hasText: 'Decline as Model' }).click(), async () => (await page.locator('.brief-item').count()) === 7);
+    expect(await page.getByText('album cover').count()).toBe(0);
+    // Numbering is display order: no gap betrays the declined request.
+    expect(await page.locator('.brief-item .pos').allInnerTexts()).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+    await settle(page);
+    await page.screenshot({ path: join(SHOTS, 'walkthrough-2-live-desktop.png'), fullPage: true, mask: masks(page) });
+
+    // 8. Individual ticks: the fee, by each of the pair.
+    for (const who of ['Photographer', 'Model'] as const) {
+      await actAs(who);
+      await act(
+        () => itemWith('Fee for the shoot').locator('button', { hasText: `Tick as ${who}` }).click(),
+        async () => (await itemWith('Fee for the shoot').locator('.approval.yes').count()) === (who === 'Photographer' ? 1 : 2),
+      );
+    }
+    await expect.poll(() => itemWith('Fee for the shoot').getAttribute('class')).toContain('green');
+
+    // 9–10. Group-check ordinary material; the deliberate coverage level refuses it.
+    await actAs('Photographer');
+    const panel = page.locator('details.group-check');
+    await panel.locator('summary').click();
+    const coverageBox = panel.locator('li', { hasText: 'Coverage level' }).locator('input');
+    expect(await coverageBox.isDisabled()).toBe(true);
+    expect(await coverageBox.isChecked()).toBe(false);
+    expect(await panel.locator('li.deliberate .hint').allInnerTexts()).toEqual(['needs its own deliberate tick']);
+    await coverageBox.evaluate((node) => {
+      (node as unknown as { disabled: boolean; checked: boolean }).disabled = false;
+      (node as unknown as { disabled: boolean; checked: boolean }).checked = true;
+    });
+    await expectRefusal(() => panel.locator('button', { hasText: 'Group-check as Photographer' }).click(), 'own deliberate tick');
+    expect(await page.locator('.approval.yes', { hasText: 'Photographer' }).count()).toBe(1);
+    for (const who of ['Photographer', 'Model'] as const) {
+      await actAs(who);
+      const open = page.locator('details.group-check');
+      if ((await open.getAttribute('open')) === null) await open.locator('summary').click();
+      await act(
+        () => open.locator('button', { hasText: `Group-check as ${who}` }).click(),
+        async () => (await page.locator('details.group-check li:not(.deliberate)').count()) === 0,
+      );
+    }
+    expect(await headline()).toBe('LIVE');
+
+    // 11. The deliberate coverage level, ticked on its own by each; everything goes green.
+    for (const who of ['Model', 'Photographer'] as const) {
+      await actAs(who);
+      await act(
+        () => itemWith('Coverage level').locator('button', { hasText: `Tick as ${who}` }).click(),
+        async () => (await itemWith('Coverage level').locator(`.approval.yes`, { hasText: who }).count()) === 1,
+      );
+    }
+    await expect.poll(headline).toBe('READY TO SIGN');
+    expect(await page.locator('.brief-item.green').count()).toBe(7);
+
+    // 12–13. An untick loses green and readiness at once; a retick restores both.
+    await act(
+      () => itemWith('Fee for the shoot').locator('button', { hasText: 'Untick as Photographer' }).click(),
+      async () => (await headline()) === 'LIVE',
+    );
+    expect(await itemWith('Fee for the shoot').getAttribute('class')).not.toContain('green');
+    expect(await page.locator('.brief-item.green').count()).toBe(6);
+    await act(
+      () => itemWith('Fee for the shoot').locator('button', { hasText: 'Tick as Photographer' }).click(),
+      async () => (await headline()) === 'READY TO SIGN',
+    );
+
+    // 14. READY TO SIGN: the end of S09. No signing control exists.
+    expect(await page.locator('.brief-item.green').count()).toBe(7);
+    // The only "Sign" control is the disabled not-available entry.
+    expect(await page.locator('button:not([disabled])', { hasText: /\bsign\b/i }).count()).toBe(0);
+    expect(await page.locator('.stage-detail').innerText()).toContain('Signing arrives in S10–S11');
+    const detail = await page.locator('#detail').innerText();
+    for (const never of NEVER_IN_PROJECT_VIEWS) expect({ never: String(never), found: never.test(detail) }).toEqual({ never: String(never), found: false });
+    await settle(page);
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-desktop.png'), fullPage: true, mask: masks(page) });
+
+    await page.setViewportSize(VIEWPORTS.mobile);
+    await noHorizontalScroll(page);
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-mobile.png'), fullPage: true, mask: masks(page) });
+    await page.close();
+  });
+
+  it('shows a keyed item without wording only as instrumentation', async () => {
+    const page = await openPage('desktop');
+    await page.locator('.project-list a').first().waitFor();
+    await page.locator('#create-project').click();
+    await page.locator('h2', { hasText: 'Project created in this session' }).waitFor();
     const projectId = (await page.locator('.detail-head .meta code').textContent())!;
     const brief = await openLiveBrief(database.db, projectId);
     await addBriefItem(database.db, brief.id, { layer: 'universal', itemKey: 'no_means_no' });
@@ -244,12 +423,6 @@ describe('demo regression', () => {
     await page.locator('.brief-item').first().waitFor();
     expect(await page.locator('.instrumentation').allInnerTexts()).toEqual(['item key no_means_no — wording not materialized (draft)']);
     expect(await page.locator('.wording').count()).toBe(0);
-    expect(await page.locator('.draft-banner').innerText()).toBe(DRAFT_BANNER);
-    await page.screenshot({ path: join(SHOTS, 'scenario-desktop.png'), fullPage: true });
-
-    await page.setViewportSize(VIEWPORTS.mobile);
-    await noHorizontalScroll(page);
-    await page.screenshot({ path: join(SHOTS, 'scenario-mobile.png'), fullPage: true });
     await page.close();
   });
 
@@ -264,12 +437,16 @@ describe('demo regression', () => {
     page.on('request', (r) => requests.push(r.url()));
     page.on('pageerror', (e) => pageErrors.push(`snapshot: ${e.message}`));
     await page.goto(pathToFileURL(file).href);
-    await expect.poll(() => page.locator('.project-list a').count()).toBe(5);
+    await expect.poll(() => page.locator('.project-list a').count()).toBe(7);
     expect(await page.locator('#create-project').isDisabled()).toBe(true);
     expect(await page.locator('#start-simulation').isHidden()).toBe(true);
     await page.getByText(titleOf('Fixture 1'), { exact: true }).first().click();
     await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
-    expect(await page.locator('.draft-banner').innerText()).toBe(DRAFT_BANNER);
+    expect(await page.locator('button.share').count()).toBe(0);
+    await page.getByText(titleOf('Fixture 4'), { exact: true }).first().click();
+    await expect.poll(() => page.locator('.stage-headline').innerText()).toBe('READY TO SIGN');
+    // State only: no simulation controls in a read-only snapshot.
+    expect(await page.locator('.actor-bar, details.group-check, .item-actions, .presence button').count()).toBe(0);
     await noHorizontalScroll(page);
     await page.screenshot({ path: join(SHOTS, 'snapshot-mobile.png'), fullPage: true });
     expect(requests.filter((url) => !url.startsWith('file:'))).toEqual([]);
@@ -386,7 +563,7 @@ describe('demo regression', () => {
     expect(Object.values(annotations.projects).map((p) => p.title)).toEqual(before);
 
     const page = await openPage('desktop');
-    await expect.poll(() => page.locator('.project-list a').count()).toBe(3);
+    await expect.poll(() => page.locator('.project-list a').count()).toBe(4);
     await page.getByText(titleOf('Fixture 1'), { exact: true }).first().click();
     await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
     await page.close();

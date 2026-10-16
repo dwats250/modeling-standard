@@ -148,6 +148,20 @@
       "when": 1792116955727,
       "tag": "0020_live_brief_scope_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792119221020,
+      "tag": "0021_live_resolution",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792119264449,
+      "tag": "0022_live_resolution_guards_and_grants",
+      "breakpoints": true
     }
   ]
 }
