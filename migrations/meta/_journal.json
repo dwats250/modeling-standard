@@ -134,6 +134,20 @@
       "when": 1792099710262,
       "tag": "0018_direct_invitation_stamp_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792116939316,
+      "tag": "0019_live_brief_topology",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792116955727,
+      "tag": "0020_live_brief_scope_and_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -1,25 +1,26 @@
 import type { FastifyInstance } from 'fastify';
+import { addBriefItem, openLiveBrief } from '../briefs/brief.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { createPairwiseAgreement } from '../projects/agreement.ts';
-import { affirmAgreementTerm, affirmUniversalTerm } from '../projects/affirmations.ts';
 import { addProjectParty } from '../projects/party.ts';
-import { addAgreementTerm, addUniversalTerm } from '../projects/terms.ts';
-import { presentAgreementVersion, presentUniversalVersion } from '../projects/versions.ts';
 
 /**
  * Repeatable synthetic fixtures for the local demo.
  *
  * Projects are created through the real `project.create` operation, as the
- * demo operator. Parties, agreements, terms, presented versions and
- * affirmation rows are then written with the S01 to S05 data functions
- * directly, because no product path for any of them is built: a person
- * reaches a party by signing in (D03, decided, not built; D12: nobody ticks
- * for another), and who may drop a declined term is open (R2).
+ * demo operator. Parties, pair-scope records and draft brief items are then
+ * written with the S01, S02 and S08 data functions directly, because no
+ * product path for any of them is built: a person reaches a party by
+ * invitation and sign-in (D03; S06 and S07 store the binding and the
+ * invitation, sign-in is not built), and who may compose a draft is the
+ * participant surface's question.
  *
- * Term text is synthetic sample wording, marked as such. Term text is opaque
- * to the product; nothing here is a clause catalog or a minimum term set.
- * Writing them here is fixture construction, the same thing the test suites
- * do. It says nothing about who may do this in the product.
+ * Every text is synthetic sample wording, marked `[synthetic]`. Nothing here
+ * is a clause catalogue or a minimum term set, and there is deliberately no
+ * no-means-no item: its wording is Cory's to write (D04), and a placeholder
+ * would read as document text. Writing items here is fixture construction,
+ * the same thing the test suites do; it says nothing about who may do this in
+ * the product.
  *
  * The labels below are demo annotations. They are returned to the caller for
  * the inspector to display and are never written to the product database,
@@ -49,60 +50,65 @@ async function createProjectThroughOperation(app: FastifyInstance): Promise<stri
 export async function loadDemoFixtures(app: FastifyInstance, db: Database): Promise<FixtureAnnotations> {
   const projects: Record<string, FixtureAnnotations['projects'][string]> = {};
 
-  // 1. The D01 first scenario, walked through: two adults who know each other.
+  // 1. The D01 first scenario: two adults who know each other, no money.
   {
     const projectId = await createProjectThroughOperation(app);
-    const first = await addProjectParty(db, projectId);
-    const second = await addProjectParty(db, projectId);
-    const agreement = await createPairwiseAgreement(db, projectId, [first.id, second.id]);
+    const model = await addProjectParty(db, projectId);
+    const photographer = await addProjectParty(db, projectId);
+    const pair = await createPairwiseAgreement(db, projectId, [model.id, photographer.id]);
+    const brief = await openLiveBrief(db, projectId);
 
-    // Universal layer: safety and consent terms for everyone on site
-    // (physical proximity, D02). The current storage has no term subject or
-    // fixed deliberate-tick identity (D04, decided, not built), so this layer
-    // holds neutral placeholders only.
-    const universal = [
-      await addUniversalTerm(db, projectId, '[synthetic] A shared on-site safety term.'),
-      await addUniversalTerm(db, projectId, '[synthetic] A second shared on-site safety term.'),
-    ];
-    const universalV1 = await presentUniversalVersion(db, projectId, universal.map((t) => t.id));
-
-    // Pairwise storage (S03). Cory has since ruled that only money is private;
-    // deliverable and usage terms belong to the shared layer, which is not
-    // built. These sit here as a storage stand-in. D01: no money; the photographer shot, edited and delivered files; a
-    // possible album-cover use by the model was discussed.
-    const pairwise = [
-      await addAgreementTerm(db, agreement.id, '[synthetic] Edited files are delivered after the shoot.'),
-      await addAgreementTerm(db, agreement.id, '[synthetic] Selected images may be used as an album cover.'),
-    ];
-    const agreementV1 = await presentAgreementVersion(db, agreement.id, pairwise.map((t) => t.id));
-
-    // Each party's own per-term tick rows. In the product only the party
-    // itself could tick (D12), signed in to its own account (D03). Here they
-    // are fixture rows, not signatures.
-    for (const party of [first, second]) {
-      for (const term of universalV1.terms) await affirmUniversalTerm(db, term.id, party.id);
-      for (const term of agreementV1.terms) await affirmAgreementTerm(db, term.id, party.id);
-    }
+    // A universal item with a subject: a declaration by one party (Q7).
+    await addBriefItem(db, brief.id, {
+      layer: 'universal',
+      subjectPartyId: model.id,
+      shape: 'declaration',
+      content: '[synthetic] A safety declaration this party makes to everyone on site.',
+    });
+    // A shared, project-wide item.
+    await addBriefItem(db, brief.id, { layer: 'shared', content: '[synthetic] Edited files are delivered after the shoot.' });
+    // A pair-scoped shared request with a subject. Shared items are seen by
+    // every party (D10); the pair scope says who it is between, not who sees it.
+    await addBriefItem(db, brief.id, {
+      layer: 'shared',
+      pairwiseAgreementId: pair.id,
+      subjectPartyId: model.id,
+      shape: 'request',
+      content: '[synthetic] Selected images may be used as an album cover.',
+    });
+    // An open parameter awaiting its subject.
+    await addBriefItem(db, brief.id, {
+      layer: 'shared',
+      subjectPartyId: model.id,
+      shape: 'open_parameter',
+      itemKey: 'coverage_level',
+      content: '[synthetic] The coverage level this party sets.',
+      pending: 'subject',
+    });
+    // A decide-together item: not yet supplied (A3).
+    await addBriefItem(db, brief.id, {
+      layer: 'shared',
+      content: '[synthetic] The delivery date for edited files.',
+      pending: 'decide_together',
+    });
 
     projects[projectId] = {
       title: 'Fixture 1 — D01 first scenario',
-      source: 'D01; D04 per-term ruling; S03 storage (two layers, now known to be stale)',
+      source: 'D01; D02 and D10 layers; Q7 subject and shape; S08 draft brief',
       note:
         'Two adults who already know each other. In the walk-through the model created the project and sent it ' +
-        'to a photographer she knew. The labels below come from that walk-through only; the stored parties carry ' +
-        'no role, and the demo operator who created this project is not either party. Coverage, touch and ' +
-        'wardrobe-adjustment expectations were discussed in D01; the terms below are neutral placeholders. ' +
-        'The delivery and usage terms sit in pairwise storage, but Cory has ruled that only money is private: ' +
-        'they belong to the shared layer, which is not built.',
+        'to a photographer she knew; no money changed hands, so this brief has no fee. The labels below come from ' +
+        'that walk-through only; the stored parties carry no role, and the demo operator who created this project ' +
+        'is not either party. The draft holds one item of each draft shape the S08 topology admits, in synthetic wording.',
       parties: {
-        [first.id]: 'Party (walk-through: the model)',
-        [second.id]: 'Party (walk-through: the photographer)',
+        [model.id]: 'Party (walk-through: the model)',
+        [photographer.id]: 'Party (walk-through: the photographer)',
       },
-      agreements: { [agreement.id]: 'Pairwise agreement between the two parties (storage stand-in)' },
+      agreements: { [pair.id]: 'Pair: the model ↔ the photographer' },
     };
   }
 
-  // 2. Topology with three parties: each pairwise agreement relates exactly two.
+  // 2. Three parties, two pairs: money is private to each pair.
   {
     const projectId = await createProjectThroughOperation(app);
     const a = await addProjectParty(db, projectId);
@@ -110,49 +116,46 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     const c = await addProjectParty(db, projectId);
     const ac = await createPairwiseAgreement(db, projectId, [a.id, c.id]);
     const bc = await createPairwiseAgreement(db, projectId, [b.id, c.id]);
+    const brief = await openLiveBrief(db, projectId);
 
-    // Universal: one presented safety term; A and C have rows, B has none.
-    // Then a term is stored but never presented.
-    const safety = await addUniversalTerm(db, projectId, '[synthetic] A shared on-site safety term.');
-    const universalV1 = await presentUniversalVersion(db, projectId, [safety.id]);
-    for (const party of [a, c]) await affirmUniversalTerm(db, universalV1.terms[0]!.id, party.id);
-    await addUniversalTerm(db, projectId, '[synthetic] A stored term that has not been presented.');
-
-    // A–C: version 1 with three terms; A records a row for the first term;
-    // then the third term is dropped and the rest resent as version 2 (D02).
-    const acTerms = [
-      await addAgreementTerm(db, ac.id, '[synthetic] Term one between A and C.'),
-      await addAgreementTerm(db, ac.id, '[synthetic] Term two between A and C.'),
-      await addAgreementTerm(db, ac.id, '[synthetic] Term three, later dropped.'),
-    ];
-    const acV1 = await presentAgreementVersion(db, ac.id, acTerms.map((t) => t.id));
-    await affirmAgreementTerm(db, acV1.terms[0]!.id, a.id);
-    await presentAgreementVersion(db, ac.id, [acTerms[0]!.id, acTerms[1]!.id]);
-
-    // B–C: one presented term, no rows yet.
-    const bcTerm = await addAgreementTerm(db, bc.id, '[synthetic] A term between B and C.');
-    await presentAgreementVersion(db, bc.id, [bcTerm.id]);
+    await addBriefItem(db, brief.id, { layer: 'universal', content: '[synthetic] A shared on-site safety term.' });
+    await addBriefItem(db, brief.id, { layer: 'shared', content: '[synthetic] Call time and location for everyone.' });
+    // A fee per pair (Q6: money is one field, the fee).
+    await addBriefItem(db, brief.id, {
+      layer: 'money',
+      pairwiseAgreementId: ac.id,
+      itemKey: 'fee',
+      content: '[synthetic] Fee.',
+      value: '[synthetic] 300',
+    });
+    await addBriefItem(db, brief.id, {
+      layer: 'money',
+      pairwiseAgreementId: bc.id,
+      itemKey: 'fee',
+      content: '[synthetic] Fee.',
+      pending: 'decide_together',
+    });
 
     projects[projectId] = {
-      title: 'Fixture 2 — three parties, two pairwise agreements',
-      source: 'D02 pairwise topology and drop-and-resend; D04 per-term ruling',
+      title: 'Fixture 2 — three parties, two pairs',
+      source: 'D02 pairwise topology; D10 money privacy; Q6 one fee per pair; S08 draft brief',
       note:
-        'Parties A and B each have their own pairwise agreement with C; neither agreement relates A and B. ' +
-        'A–C shows drop-and-resend: version 2 leaves term three out, adds nothing, and version 1 is unchanged. ' +
-        'Only money is private (D10, decided); terms held on these agreements are a storage stand-in. ' +
-        'This inspector is not a party view.',
+        'Parties A and B each have a pair with C; there is no A–B pair. Each pair has its own fee: A–C has a value, ' +
+        'B–C is to be decided together. Each fee is private to its pair (D10); the universal and shared items are ' +
+        'seen by everyone. This inspector shows the whole record and is not a party view.',
       parties: { [a.id]: 'Party A', [b.id]: 'Party B', [c.id]: 'Party C' },
-      agreements: { [ac.id]: 'Agreement A–C', [bc.id]: 'Agreement B–C' },
+      agreements: { [ac.id]: 'Pair A–C', [bc.id]: 'Pair B–C' },
     };
   }
 
-  // 3. An empty project, to show the empty states.
+  // 3. An empty project, with an empty draft brief, to show the empty states.
   {
     const projectId = await createProjectThroughOperation(app);
+    await openLiveBrief(db, projectId);
     projects[projectId] = {
       title: 'Fixture 3 — empty project',
-      source: 'S01',
-      note: 'A project with no parties yet. D03 is decided, but no product path adds a party until invitation and sign-in are built.',
+      source: 'S01; S08',
+      note: 'A project with no parties yet and an empty draft brief. D03 is decided, but no product path adds a party until invitation and sign-in are built.',
       parties: {},
       agreements: {},
     };

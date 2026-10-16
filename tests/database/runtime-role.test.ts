@@ -4,7 +4,7 @@ import { INSUFFICIENT_PRIVILEGE, sqlErrorCode, withClient } from '../support/sql
 
 /**
  * The runtime credential is distinct from the migration credential and holds
- * exactly the privileges Stage 0 and S01 to S07 need. Checked as the runtime role, in SQL.
+ * exactly the privileges Stage 0 and S01, S02 and S06 to S08 need. Checked as the runtime role, in SQL.
  */
 
 describe('runtime and migration credentials', () => {
@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0 and S01 to S07 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01, S02 and S06 to S08 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -37,17 +37,11 @@ describe('runtime and migration credentials', () => {
       project: ['SELECT', 'INSERT'],
       project_party: ['SELECT', 'INSERT'],
       pairwise_agreement: ['SELECT', 'INSERT'],
-      universal_term: ['SELECT', 'INSERT'],
-      agreement_term: ['SELECT', 'INSERT'],
-      agreement_version: ['SELECT', 'INSERT'],
-      agreement_version_term: ['SELECT', 'INSERT'],
-      universal_version: ['SELECT', 'INSERT'],
-      universal_version_term: ['SELECT', 'INSERT'],
-      agreement_affirmation: ['SELECT', 'INSERT'],
-      universal_affirmation: ['SELECT', 'INSERT'],
       account: ['SELECT', 'INSERT'],
       party_account_binding: ['SELECT', 'INSERT'],
       direct_invitation: ['SELECT', 'INSERT'],
+      live_brief: ['SELECT', 'INSERT'],
+      brief_item: ['SELECT', 'INSERT', 'DELETE'],
     };
     await withClient(inject('runtimeUrl'), async (c) => {
       const tables = await c.query<{ table_name: string }>(
@@ -66,15 +60,28 @@ describe('runtime and migration credentials', () => {
         }
         expect({ table, held }).toEqual({ table, held: expected[table] });
 
-        // Column-level grants are separate from table-level ones; none may allow writes.
+        // Column-level grants are separate from table-level ones. None may
+        // allow REFERENCES, and only brief_item's draft columns may be
+        // updated (S08).
         for (const privilege of ['UPDATE', 'REFERENCES']) {
           const col = await c.query<{ held: boolean }>(
             'select has_any_column_privilege(current_user, $1, $2) as held',
             [`public.${table}`, privilege],
           );
-          expect({ table, privilege, held: col.rows[0]?.held }).toEqual({ table, privilege, held: false });
+          const expectedHeld = table === 'brief_item' && privilege === 'UPDATE';
+          expect({ table, privilege, held: col.rows[0]?.held }).toEqual({ table, privilege, held: expectedHeld });
         }
       }
+    });
+  });
+
+  it('runtime role may update exactly brief_item content, value, pending and position (S08)', async () => {
+    await withClient(inject('runtimeUrl'), async (c) => {
+      const { rows } = await c.query<{ column_name: string }>(
+        `select column_name from information_schema.columns where table_schema = 'public' and table_name = 'brief_item'
+           and has_column_privilege(current_user, 'public.brief_item', column_name, 'UPDATE') order by column_name`,
+      );
+      expect(rows.map((r) => r.column_name)).toEqual(['content', 'pending', 'position', 'value']);
     });
   });
 

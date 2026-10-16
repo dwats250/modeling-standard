@@ -9,6 +9,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
+import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
 import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../../src/demo/export.ts';
 import type { FixtureAnnotations } from '../../src/demo/fixtures.ts';
@@ -20,9 +21,9 @@ import { requireEnv } from '../support/urls.ts';
 
 /**
  * The whole demo, end to end, in a real browser: reset, fixtures, project
- * creation, version history, drop-and-resend, affirmation evidence, the
- * simulator, reset repeatability, the portable snapshot, desktop and mobile
- * rendering, and production isolation. Screenshots go to test-results/demo/.
+ * creation, the draft live brief by layer (S08), the scenario starter, reset
+ * repeatability, the portable snapshot, desktop and mobile rendering, stale
+ * navigation, and production isolation. Screenshots go to test-results/demo/.
  */
 
 const SHOTS = resolve('test-results/demo');
@@ -101,11 +102,16 @@ async function stopServer(): Promise<void> {
 }
 
 /** The open Cory seams the decisions view names, and nothing else. */
-const CURRENT_SEAMS = ['D04 wording', 'D04 signing', 'R1', 'R2', 'D05'] as const;
+const CURRENT_SEAMS = ['D04 wording', 'D04 signing', 'D05'] as const;
+
+const DRAFT_BANNER = 'Draft composition only. Sharing, green state and signing arrive in S09–S11.';
+
+/** Retired with S03–S05 (S08): nothing in a project view may say these. */
+const RETIRED_IN_PROJECT_VIEWS = [/\bversions?\b/i, /\btick/i, /\bR1\b/, /\bR2\b/, /\bsealed\b/i, /affirmation/i, /\bsimulate\b/i];
 
 describe('demo regression', () => {
   for (const viewport of ['desktop', 'mobile'] as const) {
-    it(`shows the initial fixtures with their evidence (${viewport})`, async () => {
+    it(`shows the initial fixtures as draft briefs by layer (${viewport})`, async () => {
       const page = await openPage(viewport);
       const items = page.locator('.project-list a');
       await expect.poll(() => items.count()).toBe(3);
@@ -117,21 +123,33 @@ describe('demo regression', () => {
 
       await page.getByText(titleOf('Fixture 1'), { exact: true }).first().click();
       await page.locator('h2', { hasText: 'Fixture 1' }).waitFor();
-      // Universal v1: 2 terms × 2 parties; pairwise v1: 2 terms × 2 parties.
-      await expect.poll(() => page.locator('.cell.yes').count()).toBe(8);
-      expect(await page.locator('.version').count()).toBe(2);
+      await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
+      expect(await page.locator('.draft-banner').innerText()).toBe(DRAFT_BANNER);
+      expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal layer', 'shared layer']);
+      // Subject, shape and pending are labels.
+      const tags = (await page.locator('.brief .tag').allInnerTexts()).join(' | ');
+      for (const label of ['subject', 'shape', 'declaration', 'request', 'open parameter', 'decide together', 'awaiting its subject', 'project-wide', 'between']) {
+        expect({ label, shown: tags.toLowerCase().includes(label) }).toEqual({ label, shown: true });
+      }
+      expect(await page.locator('.brief-item[data-layer="money"]').count()).toBe(0);
       await noHorizontalScroll(page);
       await page.screenshot({ path: join(SHOTS, `fixture1-${viewport}.png`), fullPage: true });
 
       await page.getByText(titleOf('Fixture 2'), { exact: true }).first().click();
       await page.locator('h2', { hasText: 'Fixture 2' }).waitFor();
-      await expect.poll(() => page.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('Term three, later dropped.')]);
-      expect(await page.locator('.badge', { hasText: 'Version 2' }).count()).toBe(1);
-      // Universal: A and C have rows; A–C v1: one row; B–C: none.
-      expect(await page.locator('.cell.yes').count()).toBe(3);
-      expect(await page.locator('.drafts').count()).toBe(1);
+      await expect.poll(() => page.locator('.brief-item').count()).toBe(4);
+      // Money: one fee per pair, each shown as private to its pair, and nothing else is.
+      const money = page.locator('.brief-item[data-layer="money"]');
+      expect(await money.count()).toBe(2);
+      for (const fee of await money.all()) expect(await fee.locator('.tag.private').innerText()).toMatch(/^private to this pair · Pair (A|B)–C$/);
+      expect(await page.locator('.tag.private').count()).toBe(2);
+      expect(await page.locator('.brief-item:not([data-layer="money"]) .tag.private').count()).toBe(0);
       await noHorizontalScroll(page);
       await page.screenshot({ path: join(SHOTS, `fixture2-${viewport}.png`), fullPage: true });
+
+      await page.getByText(titleOf('Fixture 3'), { exact: true }).first().click();
+      await page.locator('h2', { hasText: 'Fixture 3' }).waitFor();
+      await expect.poll(() => page.getByText('The draft brief has no items.').count()).toBe(1);
 
       await page.locator('#decisions-link').click();
       await expect.poll(() => page.locator('.decision').count()).toBe(CURRENT_SEAMS.length);
@@ -141,7 +159,7 @@ describe('demo regression', () => {
     });
   }
 
-  it('teaches no superseded semantics, and names only the current Cory seams', async () => {
+  it('teaches no superseded or retired semantics, and names only the current Cory seams', async () => {
     const STALE = [
       /is undecided \(D03\)/,
       /Participation credential and invitation are undecided/,
@@ -154,6 +172,8 @@ describe('demo regression', () => {
       /affirmation row/i,
       /Four open decisions/,
       /How body and money terms are identified/,
+      /drop-and-resend/i,
+      /presented version/i,
     ];
     const page = await openPage('desktop');
     await page.locator('.project-list a').first().waitFor();
@@ -161,15 +181,16 @@ describe('demo regression', () => {
     for (const fixture of ['Fixture 1', 'Fixture 2', 'Fixture 3']) {
       await page.getByText(titleOf(fixture), { exact: true }).first().click();
       await page.locator('h2', { hasText: fixture }).waitFor();
-      texts.push(await page.locator('body').innerText());
-      // Tick rows are not labelled signatures.
-      for (const cell of await page.locator('.cell.yes').all()) {
-        expect(`${await cell.innerText()} ${(await cell.getAttribute('title')) ?? ''}`).not.toMatch(/sign/i);
+      const text = await page.locator('#detail').innerText();
+      texts.push(text);
+      for (const retired of RETIRED_IN_PROJECT_VIEWS) {
+        expect({ fixture, retired: String(retired), found: retired.test(text) }).toEqual({ fixture, retired: String(retired), found: false });
       }
+      // No product-wording placeholder presented as document text: every
+      // wording line is marked synthetic, and no-means-no has none.
+      for (const wording of await page.locator('.wording').allInnerTexts()) expect(wording).toMatch(/^\[synthetic\] /);
+      expect(text).not.toMatch(/no[ -]means[ -]no/i);
     }
-    const legend = (await page.locator('.legend').first().innerText()) ?? '';
-    expect(legend).toContain('A tick is not a signature');
-    expect(legend).toContain('Signing is not built');
 
     await page.locator('#decisions-link').click();
     await expect.poll(() => page.locator('.decision').count()).toBe(CURRENT_SEAMS.length);
@@ -178,9 +199,11 @@ describe('demo regression', () => {
     texts.push(decisions);
     expect(decisions).toContain('Decided, not built');
     expect(decisions).toContain('For counsel, not Cory homework.');
-    for (const id of ['D03', 'D10']) {
+    for (const id of ['D03', 'D10', 'R1', 'R2']) {
       expect(await page.locator('.decision .badge', { hasText: id }).count()).toBe(0);
     }
+    expect(decisions).not.toMatch(/\bversions?\b/i);
+    expect(decisions).not.toMatch(/\bR[12]\b/);
 
     for (const text of texts) {
       for (const stale of STALE) expect({ stale: String(stale), found: stale.test(text) }).toEqual({ stale: String(stale), found: false });
@@ -194,132 +217,39 @@ describe('demo regression', () => {
     await page.locator('#create-project').click();
     await page.locator('h2', { hasText: 'Project created in this session' }).waitFor();
     expect(await page.getByText('No parties in this project.').count()).toBe(1);
-    expect(await page.getByText('No pairwise agreements.').count()).toBe(1);
+    expect(await page.getByText('No pairs.').count()).toBe(1);
+    expect(await page.getByText('No live brief has been opened for this project.').count()).toBe(1);
     await expect.poll(() => page.locator('.project-list a').count()).toBe(4);
     await page.close();
   });
 
-  it('simulates present, tick, drop-and-resend without escalation, and offers no universal omission', async () => {
+  it('starts a scenario, and shows a keyed item without wording only as instrumentation', async () => {
     const page = await openPage('desktop');
     await page.locator('.project-list a').first().waitFor();
+    expect(await page.locator('#start-simulation').innerText()).toBe('Start a scenario');
     await page.locator('#start-simulation').click();
     await page.locator('h2', { hasText: 'Project created in this session' }).waitFor();
-    await expect.poll(() => page.locator('details.sim-panel').count()).toBe(2);
+    await expect.poll(() => page.locator('.card').filter({ has: page.locator('h3', { hasText: /^Parties$/ }) }).locator('.rows li').count()).toBe(2);
+    expect(await page.locator('.card').filter({ has: page.locator('h3', { hasText: /^Pairs$/ }) }).locator('.rows li').count()).toBe(1);
+    expect(await page.getByText('No live brief has been opened for this project.').count()).toBe(1);
+    expect(await page.locator('details.sim-panel, button.sim-affirm, .sim-assumptions').count()).toBe(0);
 
-    const panel = (i: number) => page.locator('details.sim-panel').nth(i);
-    async function open(i: number): Promise<void> {
-      if ((await panel(i).getAttribute('open')) === null) await panel(i).locator('summary').click();
-    }
-    async function addTerm(i: number, text: string): Promise<void> {
-      await open(i);
-      await panel(i).locator('input[type=text]').fill(text);
-      const before = await page.locator('.sim-terms li').count();
-      await panel(i).locator('button', { hasText: 'Add term' }).click();
-      await expect.poll(() => page.locator('.sim-terms li').count()).toBe(before + 1);
-    }
-    async function present(i: number, label: string, uncheck: number[] = []): Promise<void> {
-      await open(i);
-      for (const index of uncheck) await panel(i).locator('.sim-terms input').nth(index).uncheck();
-      const before = await page.locator('.version').count();
-      await panel(i).locator('button', { hasText: label }).click();
-      await expect.poll(() => page.locator('.version').count()).toBe(before + 1);
-    }
-    const box = (i: number, text: string) => panel(i).locator('.sim-terms li', { hasText: text }).locator('input');
-    type Box = { disabled: boolean; checked: boolean };
-    /** Clicks a control the demo server must refuse, and discounts exactly that one logged 409. */
-    async function expectRefusal(click: () => Promise<void>, toastText: string): Promise<void> {
-      const errorsBefore = pageErrors.length;
-      const expectedConsoleError = page.waitForEvent('console', (m) => m.type() === 'error' && m.text().includes('409'));
-      await click();
-      await expect.poll(() => page.locator('#toast').textContent()).toContain(toastText);
-      const controlled = `desktop: ${(await expectedConsoleError).text()}`;
-      await page.waitForTimeout(200);
-      const added = pageErrors.splice(errorsBefore);
-      const own = added.indexOf(controlled);
-      expect(own).toBeGreaterThanOrEqual(0);
-      added.splice(own, 1);
-      pageErrors.push(...added);
-    }
-
-    await addTerm(1, '[synthetic] pairwise one');
-    await addTerm(1, '[synthetic] pairwise two');
-    await addTerm(1, '[synthetic] three, to drop');
-    await present(1, 'Present version 1');
-
-    const block = page.locator('.agreement-block');
-    for (let i = 0; i < 2; i += 1) {
-      const before = await block.locator('.cell.yes').count();
-      await block.locator('button.sim-affirm').first().click();
-      await expect.poll(() => block.locator('.cell.yes').count()).toBe(before + 1);
-    }
-
-    // A term stored after version 1 cannot be added to the resend: escalation cannot happen.
-    await addTerm(1, '[synthetic] four, added later');
-    await open(1);
-    expect(await box(1, 'four, added later').isDisabled()).toBe(true);
-    expect(await box(1, 'four, added later').isChecked()).toBe(false);
-    expect(await box(1, 'three, to drop').isDisabled()).toBe(false);
-    expect(await panel(1).locator('.sim-locked').allTextContents()).toEqual([expect.stringContaining('no escalation')]);
-
-    // Forcing the disabled box on is refused by the demo server, and nothing is presented.
-    await box(1, 'four, added later').evaluate((node) => {
-      (node as unknown as Box).disabled = false;
-      (node as unknown as Box).checked = true;
-    });
-    const versionsBefore = await page.locator('.version').count();
-    await expectRefusal(() => panel(1).locator('button', { hasText: 'Present version 2' }).click(), 'escalation cannot happen');
-    expect(await page.locator('.version').count()).toBe(versionsBefore);
-
-    // Dropping a term is the decided drop-and-resend.
-    await present(1, 'Present version 2', [2]);
-    await expect.poll(() => block.locator('.dropped').allInnerTexts()).toEqual([expect.stringContaining('three, to drop')]);
-    // Version 1 keeps its two tick rows; nothing is offered on either version now (S05 guard).
-    expect(await block.locator('.cell.yes').count()).toBe(2);
-    expect(await block.locator('button.sim-affirm').count()).toBe(0);
-
-    // Universal layer: once version 1 is presented, every shared term is locked
-    // in, and a term stored later cannot be added. No omission path is offered.
-    await addTerm(0, '[synthetic] shared one');
-    await addTerm(0, '[synthetic] shared two');
-    await present(0, 'Present version 1');
-    await addTerm(0, '[synthetic] shared three');
-    await open(0);
-    for (const text of ['shared one', 'shared two']) {
-      expect({ text, disabled: await box(0, text).isDisabled(), checked: await box(0, text).isChecked() }).toEqual({
-        text,
-        disabled: true,
-        checked: true,
-      });
-    }
-    expect(await box(0, 'shared three').isDisabled()).toBe(true);
-    expect(await box(0, 'shared three').isChecked()).toBe(false);
-    const shared = page.locator('section.card', { hasText: 'Shared terms — universal layer' });
-
-    // Forcing a shared term off is refused by the demo server.
-    await box(0, 'shared two').evaluate((node) => {
-      (node as unknown as Box).disabled = false;
-      (node as unknown as Box).checked = false;
-    });
-    const sharedBefore = await shared.locator('.version').count();
-    await expectRefusal(() => panel(0).locator('button', { hasText: 'Present version 2' }).click(), 'can never be left out');
-    expect(await shared.locator('.version').count()).toBe(sharedBefore);
-    expect(await shared.locator('.dropped').count()).toBe(0);
-
-    const universalHint = (await shared.locator('.sim-present-hint').textContent()) ?? '';
-    const pairwiseHint = (await block.locator('.sim-present-hint').textContent()) ?? '';
-    const pairwiseNotes = (await block.locator('.version p').allTextContents()).join(' ');
-    expect(pairwiseHint).toContain('dropped and resent (D02)');
-    expect(pairwiseHint).toContain('escalation cannot happen');
-    expect(pairwiseNotes).toContain('Dropped since version 1');
-    expect(pairwiseNotes).toContain('R1');
-    expect(universalHint).toContain('A shared safety term can never be dropped');
-    for (const text of [universalHint, pairwiseHint]) expect(text).not.toMatch(/undecided/);
-    expect(await page.locator('.sim-assumptions').count()).toBe(1);
-    await page.screenshot({ path: join(SHOTS, 'simulator-desktop.png'), fullPage: true });
+    // Instrumentation only: a keyed item whose wording was never materialized,
+    // written with the data function (no product path exists). The inspector
+    // must not render it as document text.
+    const projectId = (await page.locator('.detail-head .meta code').textContent())!;
+    const brief = await openLiveBrief(database.db, projectId);
+    await addBriefItem(database.db, brief.id, { layer: 'universal', itemKey: 'no_means_no' });
+    await page.reload();
+    await page.locator('.brief-item').first().waitFor();
+    expect(await page.locator('.instrumentation').allInnerTexts()).toEqual(['item key no_means_no — wording not materialized (draft)']);
+    expect(await page.locator('.wording').count()).toBe(0);
+    expect(await page.locator('.draft-banner').innerText()).toBe(DRAFT_BANNER);
+    await page.screenshot({ path: join(SHOTS, 'scenario-desktop.png'), fullPage: true });
 
     await page.setViewportSize(VIEWPORTS.mobile);
     await noHorizontalScroll(page);
-    await page.screenshot({ path: join(SHOTS, 'simulator-mobile.png'), fullPage: true });
+    await page.screenshot({ path: join(SHOTS, 'scenario-mobile.png'), fullPage: true });
     await page.close();
   });
 
@@ -338,8 +268,8 @@ describe('demo regression', () => {
     expect(await page.locator('#create-project').isDisabled()).toBe(true);
     expect(await page.locator('#start-simulation').isHidden()).toBe(true);
     await page.getByText(titleOf('Fixture 1'), { exact: true }).first().click();
-    await expect.poll(() => page.locator('.cell.yes').count()).toBe(8);
-    expect(await page.locator('details.sim-panel').count()).toBe(0);
+    await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
+    expect(await page.locator('.draft-banner').innerText()).toBe(DRAFT_BANNER);
     await noHorizontalScroll(page);
     await page.screenshot({ path: join(SHOTS, 'snapshot-mobile.png'), fullPage: true });
     expect(requests.filter((url) => !url.startsWith('file:'))).toEqual([]);
@@ -374,7 +304,7 @@ describe('demo regression', () => {
       return page.locator('.detail-head .meta code').textContent({ timeout: 2000 }).catch(() => null);
     }
 
-    it('A then B, B resolves first, A last: B stays displayed and the simulator targets B', async () => {
+    it('A then B, B resolves first, A last: B stays displayed with its own brief', async () => {
       const a = idOf('Fixture 1');
       const b = idOf('Fixture 3');
       const page = await openPage('desktop');
@@ -389,20 +319,9 @@ describe('demo regression', () => {
       await page.waitForTimeout(300);
       expect(await page.locator('h2', { hasText: 'Fixture 1' }).count()).toBe(0);
       expect(await displayedProjectId(page)).toBe(b);
-
-      // The simulator acts on B, the displayed and selected project. The write is
-      // intercepted and answered here, so it never reaches the server and no
-      // data changes.
-      const writes: string[] = [];
-      await page.route('**/demo/sim/**', async (route) => {
-        writes.push(new URL(route.request().url()).pathname);
-        await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000' }) });
-      });
-      const panel = page.locator('details.sim-panel').first();
-      await panel.locator('summary').click();
-      await panel.locator('input[type=text]').fill('[synthetic] intercepted');
-      await panel.locator('button', { hasText: 'Add term' }).click();
-      await expect.poll(() => writes).toEqual([`/demo/sim/projects/${b}/terms`]);
+      // B's empty draft, not A's items.
+      expect(await page.getByText('The draft brief has no items.').count()).toBe(1);
+      expect(await page.locator('.brief-item').count()).toBe(0);
       await page.close();
     });
 
@@ -469,7 +388,7 @@ describe('demo regression', () => {
     const page = await openPage('desktop');
     await expect.poll(() => page.locator('.project-list a').count()).toBe(3);
     await page.getByText(titleOf('Fixture 1'), { exact: true }).first().click();
-    await expect.poll(() => page.locator('.cell.yes').count()).toBe(8);
+    await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
     await page.close();
   });
 

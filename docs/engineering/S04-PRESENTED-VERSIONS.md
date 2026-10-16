@@ -1,5 +1,7 @@
 # S04: presented versions, as built
 
+> **Retired in S08 (2026-10-15).** This slice's presented versions (`agreement_version`, `universal_version` and their `_term` tables), their trigger functions and data functions were dropped by `migrations/0019_live_brief_topology.sql` and `0020_live_brief_scope_and_grants.sql`, replaced by the draft live brief ([`S08-LIVE-BRIEF-TOPOLOGY.md`](S08-LIVE-BRIEF-TOPOLOGY.md)). Its migrations remain as history and still run on a fresh database. Nothing below describes the current schema.
+
 > **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that a later version may only shrink, that escalation cannot occur, and that a universal safety term can never be left out (2026-10-14/15). Statements below that call these open describe what was built, not current product semantics. *Corrected 2026-10-15 (HC1): there is no version history in Cory's model — one live brief cycles before signing and only the final contract is evidence — so retained successive versions are a historical implementation of an earlier understood model.*
 
 Slice: `docs/slices/S04-presented-versions.md`. The PRD is APPROVED and merged.

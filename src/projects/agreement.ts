@@ -3,19 +3,19 @@ import type { Executor } from '../infrastructure/database/client.ts';
 import { pairwiseAgreement } from './tables.ts';
 
 /**
- * Pairwise agreement topology (slice S02; D02 structure ruling: commercial
- * and craft agreements are private and pairwise under the project).
+ * Pairwise agreements (slice S02; one per pair since S08).
  *
- * Data functions only, with no HTTP route. They record which two
- * project-local parties of one project an agreement relates, and nothing
- * else: no terms, status, finality, proposer, direction, visibility,
- * signature or authority. Who may create an agreement is not decided, so
+ * An internal pair-scope record: which two project-local parties of one
+ * project a pair-scoped brief item (money, or a shared item scoped to a pair)
+ * is between. Since S08 there is at most one per pair per project. It holds
+ * no terms, status, finality, proposer, direction, visibility, signature or
+ * authority, and is not a product noun. Who may create one is not decided, so
  * nothing here checks or records an actor. Relating two parties gives no
- * principal (including the project's creator) authority to act for either
- * of them (D12).
+ * principal (including the project's creator) authority to act for either of
+ * them (D12).
  *
  * The database enforces the topology itself: two distinct parties, both
- * existing parties of the agreement's project.
+ * existing parties of the agreement's project, one row per pair.
  */
 
 export interface PairwiseAgreementRecord {

@@ -1,5 +1,7 @@
 # S05: per-term affirmation evidence, as built
 
+> **Retired in S08 (2026-10-15).** This slice's per-term affirmation rows (`agreement_affirmation`, `universal_affirmation`), their trigger functions and data functions were dropped by `migrations/0019_live_brief_topology.sql` and `0020_live_brief_scope_and_grants.sql`, replaced by the draft live brief ([`S08-LIVE-BRIEF-TOPOLOGY.md`](S08-LIVE-BRIEF-TOPOLOGY.md)). Its migrations remain as history and still run on a fresh database. Nothing below describes the current schema.
+
 > **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since ruled that ticking and signing are separate acts, that approvals carry forward across a shrink-only resend, and that escalation cannot occur (2026-10-14/15). These rows are tick evidence, not signatures; the single-version guard below is now a replaceable temporary guard. *Corrected 2026-10-15 (HC1): there is no carry-forward across retained versions, because Cory's model retains no versions; ticks are live-brief state and evidence attaches to the final contract. The "approvals carry forward" wording above came from a handoff error.*
 
 Slice: `docs/slices/S05-term-affirmation.md`. The PRD is APPROVED and merged.

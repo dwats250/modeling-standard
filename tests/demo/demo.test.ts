@@ -15,6 +15,7 @@ import { loadDemoFixtures } from '../../src/demo/fixtures.ts';
 import { demoOperations } from '../../src/demo/operations.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
+import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
 import { createPairwiseAgreement } from '../../src/projects/agreement.ts';
 import { addProjectParty } from '../../src/projects/party.ts';
 import { LogCapture, PRINCIPAL_HEADER, headerPrincipal } from '../support/app.ts';
@@ -122,12 +123,43 @@ describe('demo inspector operations', () => {
 
     const res = await app.inject({ method: 'GET', url: `/demo/projects/${projectId}/record`, headers: as(me) });
     expect(res.statusCode).toBe(200);
-    const body = res.json<{ project: unknown; parties: { id: string }[]; agreements: unknown; universal: unknown }>();
-    expect(Object.keys(body).sort()).toEqual(['agreements', 'parties', 'project', 'universal']);
+    const body = res.json<{ project: unknown; parties: { id: string }[]; agreements: unknown; brief: unknown }>();
+    expect(Object.keys(body).sort()).toEqual(['agreements', 'brief', 'parties', 'project']);
     expect(body.project).toEqual({ id: projectId });
     expect(body.parties.map((p) => p.id).sort()).toEqual([a.id, b.id, c.id].sort());
-    expect(body.agreements).toEqual([{ id: ac.id, partyIds: [...ac.partyIds], terms: [], versions: [] }]);
+    expect(body.agreements).toEqual([{ id: ac.id, partyIds: [...ac.partyIds] }]);
+    expect(body.brief).toBeNull();
     expect(res.body).not.toMatch(/created|principal|role|payer|signed/i);
+  });
+
+  it('read the draft brief with exactly the stored item fields, in display order', async () => {
+    const me = newPrincipal();
+    const projectId = await createProjectAs(me);
+    const a = await addProjectParty(database.db, projectId);
+    const b = await addProjectParty(database.db, projectId);
+    const pair = await createPairwiseAgreement(database.db, projectId, [a.id, b.id]);
+    const brief = await openLiveBrief(database.db, projectId);
+    const shared = await addBriefItem(database.db, brief.id, { layer: 'shared', content: '[synthetic] shared' });
+    const fee = await addBriefItem(database.db, brief.id, { layer: 'money', pairwiseAgreementId: pair.id, itemKey: 'fee', value: '[synthetic] 1' });
+
+    const res = await app.inject({ method: 'GET', url: `/demo/projects/${projectId}/record`, headers: as(me) });
+    expect(res.statusCode).toBe(200);
+    const { brief: dto } = res.json<{ brief: { id: string; items: unknown[] } }>();
+    const fields = (item: typeof shared) => ({
+      id: item.id,
+      layer: item.layer,
+      pairwiseAgreementId: item.pairwiseAgreementId,
+      subjectPartyId: item.subjectPartyId,
+      shape: item.shape,
+      itemKey: item.itemKey,
+      content: item.content,
+      value: item.value,
+      pending: item.pending,
+      position: item.position,
+    });
+    expect(dto).toEqual({ id: brief.id, items: [fields(shared), fields(fee)] });
+    // Draft composition only: nothing about time, authorship, ticks, phase or finality.
+    expect(res.body).not.toMatch(/created|updated|_at"|At"|author|proposer|affirm|tick|phase|version|final|required|signed/i);
   });
 
   it('refuse another principal and an unknown project', async () => {
@@ -179,40 +211,51 @@ describe('demo fixtures and server', () => {
     }
   });
 
-  it('show terms, sealed versions, drop-and-resend and affirmation rows exactly as stored', async () => {
-    type Version = { sequence: number; terms: { id: string; sourceTermId: string; content: string }[]; affirmations: { presentedTermId: string; partyId: string }[] };
-    type Record = {
-      parties: { id: string }[];
-      universal: { terms: { id: string }[]; versions: Version[] };
-      agreements: { id: string; partyIds: [string, string]; terms: { id: string }[]; versions: Version[] }[];
+  it('build a draft brief per fixture project, by layer, with no fake no-means-no item', async () => {
+    type Item = {
+      layer: string;
+      pairwiseAgreementId: string | null;
+      subjectPartyId: string | null;
+      shape: string | null;
+      itemKey: string | null;
+      content: string | null;
+      value: string | null;
+      pending: string | null;
     };
+    type Rec = { parties: { id: string }[]; agreements: { id: string; partyIds: [string, string] }[]; brief: { items: Item[] } | null };
     const entries = Object.entries(annotations.projects);
-    const [d01Id] = entries.find(([, a]) => a.title.startsWith('Fixture 1'))!;
-    const [topoId] = entries.find(([, a]) => a.title.startsWith('Fixture 2'))!;
+    const recordOf = async (prefix: string): Promise<Rec> => {
+      const [id] = entries.find(([, a]) => a.title.startsWith(prefix))!;
+      return (await demoApp.inject({ method: 'GET', url: `/demo/projects/${id}/record` })).json<Rec>();
+    };
 
-    const d01 = (await demoApp.inject({ method: 'GET', url: `/demo/projects/${d01Id}/record` })).json<Record>();
-    expect(d01.universal.versions).toHaveLength(1);
-    const uv = d01.universal.versions[0]!;
-    expect(uv.terms).toHaveLength(2);
-    expect(uv.affirmations).toHaveLength(2 * d01.parties.length);
-    const av = d01.agreements[0]!.versions[0]!;
-    expect(av.affirmations.every((a) => d01.agreements[0]!.partyIds.includes(a.partyId))).toBe(true);
-    expect(av.affirmations).toHaveLength(av.terms.length * 2);
+    const d01 = await recordOf('Fixture 1');
+    const items = d01.brief!.items;
+    // A shared project-wide item; a universal item with a subject; a
+    // pair-scoped shared request with a subject; an open parameter awaiting
+    // its subject; a decide-together item. D01 had no money, so no fee.
+    expect(items.some((i) => i.layer === 'shared' && !i.pairwiseAgreementId && !i.subjectPartyId && !i.pending)).toBe(true);
+    expect(items.some((i) => i.layer === 'universal' && i.subjectPartyId && i.shape === 'declaration')).toBe(true);
+    expect(items.some((i) => i.layer === 'shared' && i.pairwiseAgreementId && i.subjectPartyId && i.shape === 'request')).toBe(true);
+    expect(items.some((i) => i.shape === 'open_parameter' && i.pending === 'subject' && i.value === null)).toBe(true);
+    expect(items.some((i) => i.pending === 'decide_together' && i.value === null)).toBe(true);
+    expect(items.filter((i) => i.layer === 'money')).toEqual([]);
 
-    const topo = (await demoApp.inject({ method: 'GET', url: `/demo/projects/${topoId}/record` })).json<Record>();
-    expect(topo.universal.terms).toHaveLength(2);
-    expect(topo.universal.versions[0]!.terms).toHaveLength(1);
-    expect(topo.universal.versions[0]!.affirmations).toHaveLength(2);
-    const resent = topo.agreements.find((a) => a.versions.length === 2)!;
-    const [v1, v2] = resent.versions;
-    expect(v1!.terms.map((t) => t.content)).toHaveLength(3);
-    expect(v2!.terms.map((t) => t.sourceTermId)).toEqual(v1!.terms.slice(0, 2).map((t) => t.sourceTermId));
-    expect(v1!.affirmations).toHaveLength(1);
-    expect(v2!.affirmations).toHaveLength(0);
+    const topo = await recordOf('Fixture 2');
+    const fees = topo.brief!.items.filter((i) => i.layer === 'money');
+    // One fee per pair, each private to its pair.
+    expect(fees.map((f) => f.pairwiseAgreementId).sort()).toEqual(topo.agreements.map((a) => a.id).sort());
+    expect(fees.every((f) => f.itemKey === 'fee')).toBe(true);
 
-    // No decided-looking state leaks out: no finality, requiredness or status fields.
-    const raw = JSON.stringify([d01, topo]);
-    expect(raw).not.toMatch(/"(final|finalized|required|status|pending|declined|signed|outstanding)"/i);
+    const empty = await recordOf('Fixture 3');
+    expect(empty.brief).toEqual({ id: expect.any(String), items: [] });
+
+    const all = [...items, ...topo.brief!.items];
+    // There is no no-means-no item, and every stored text is marked synthetic.
+    expect(all.filter((i) => i.itemKey === 'no_means_no')).toEqual([]);
+    for (const text of all.flatMap((i) => [i.content, i.value]).filter((t) => t !== null)) {
+      expect(text).toMatch(/^\[synthetic\] /);
+    }
   });
 
   it('serve the inspector with restrictive headers', async () => {
@@ -230,7 +273,7 @@ describe('demo fixtures and server', () => {
     const { id } = (await created.json()) as { id: string };
     const record = await fetch(`${base}/demo/projects/${id}/record`);
     expect(record.status).toBe(200);
-    expect(await record.json()).toEqual({ project: { id }, parties: [], universal: { terms: [], versions: [] }, agreements: [] });
+    expect(await record.json()).toEqual({ project: { id }, parties: [], agreements: [], brief: null });
   });
 
   it('refuse a Host header that is not this loopback server (DNS rebinding)', async () => {

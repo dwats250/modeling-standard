@@ -1,5 +1,7 @@
 # S03: term units, as built
 
+> **Retired in S08 (2026-10-15).** This slice's term units (`agreement_term`, `universal_term`), their trigger functions and data functions were dropped by `migrations/0019_live_brief_topology.sql` and `0020_live_brief_scope_and_grants.sql`, replaced by the draft live brief ([`S08-LIVE-BRIEF-TOPOLOGY.md`](S08-LIVE-BRIEF-TOPOLOGY.md)). Its migrations remain as history and still run on a fresh database. Nothing below describes the current schema.
+
 > **As-built history; see [`OCTOBER-SEMANTIC-IMPACT.md`](OCTOBER-SEMANTIC-IMPACT.md).** Cory has since replaced the two-layer model with three layers (universal safety, shared logistics, private money), rejected the body/money framing in favour of a fixed deliberate-tick list, and ruled that the subject of a term controls it (2026-10-14/15). The layer and body/money statements below describe what was built, not current product semantics.
 
 Slice: `docs/slices/S03-term-units.md`. The PRD is APPROVED and merged.
