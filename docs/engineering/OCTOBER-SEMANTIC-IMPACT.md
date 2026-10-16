@@ -1,5 +1,6 @@
 # October semantic impact on S01–S05
 
+> **Replacement plan (2026-10-15):** the proposed rebuild of S03–S05 as a live brief is in [`LIVE-BRIEF-REBUILD.md`](LIVE-BRIEF-REBUILD.md), with the first slice in [`docs/slices/S08-live-brief-topology.md`](../slices/S08-live-brief-topology.md) (PROPOSED).
 Status: READ-ONLY ANALYSIS, 2026-10-15. No code, schema, migration, test or demo behaviour was changed to produce it.
 
 This maps Cory's 2026-10-09 and 2026-10-14/15 rulings ([`decisions/2026-10-09-15-cory-reconciliation.md`](../../decisions/2026-10-09-15-cory-reconciliation.md)) onto what is merged on `main` at `1ef4b1a`. It says where S01–S05 still match Cory, where they are neutral substrate, and where they are now semantically stale.
