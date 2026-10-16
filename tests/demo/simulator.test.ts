@@ -11,9 +11,10 @@ import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/data
 import { LogCapture, PRINCIPAL_HEADER, headerPrincipal } from '../support/app.ts';
 
 /**
- * The demo scenario simulator: demo-only, creator-scoped, and since S08 one
- * operation, starting a scenario. The S03–S05 term, version and tick
- * operations are gone.
+ * The demo scenario simulator: demo-only, creator-scoped, and since S09 the
+ * synthetic photographer-and-model walkthrough over the S09 data functions,
+ * whose refusals come back as 409s with stable codes. The S03–S05 term,
+ * version and tick operations stay gone.
  */
 
 let database: DatabaseHandle;
@@ -32,6 +33,44 @@ afterAll(async () => {
 
 const as = (principal: string): Record<string, string> => ({ [PRINCIPAL_HEADER]: principal });
 
+interface Item {
+  id: string;
+  layer: string;
+  shape: string | null;
+  itemKey: string | null;
+  pending: string | null;
+  subjectPartyId: string | null;
+  approverIds: string[];
+  tickedBy: string[];
+  green: boolean;
+}
+interface Rec {
+  parties: { id: string }[];
+  agreements: { id: string; partyIds: [string, string] }[];
+  brief: { id: string; phase: string; ready: boolean; presence: { partyId: string; onSite: boolean }[]; items: Item[] } | null;
+}
+
+async function post(principal: string, url: string, payload: unknown): Promise<{ status: number; code?: string }> {
+  const res = await app.inject({ method: 'POST', url, headers: as(principal), payload: payload as object });
+  const body = res.json<{ error?: { code: string } }>();
+  return body.error ? { status: res.statusCode, code: body.error.code } : { status: res.statusCode };
+}
+
+async function record(principal: string, projectId: string): Promise<Rec> {
+  const res = await app.inject({ method: 'GET', url: `/demo/projects/${projectId}/record`, headers: as(principal) });
+  expect(res.statusCode).toBe(200);
+  return res.json<Rec>();
+}
+
+async function walkthrough(principal: string) {
+  const res = await app.inject({ method: 'POST', url: '/demo/sim/scenarios', headers: as(principal), payload: {} });
+  expect(res.statusCode).toBe(201);
+  const started = res.json<{ id: string; photographerPartyId: string; modelPartyId: string }>();
+  return { ...started, rec: await record(principal, started.id) };
+}
+
+const conflict = (code: string) => ({ status: 409, code });
+
 describe('simulator separation', () => {
   it('is demo-only and protected', () => {
     const production = new Set(operations.map((op) => op.name));
@@ -42,13 +81,25 @@ describe('simulator separation', () => {
     }
   });
 
-  it('has exactly one operation: start a scenario', () => {
-    expect(simulatorOperations.map((op) => op.name)).toEqual(['demo.sim.scenario.start']);
+  it('has exactly the walkthrough operations', () => {
+    expect(simulatorOperations.map((op) => op.name)).toEqual([
+      'demo.sim.scenario.start',
+      'demo.sim.brief.presence',
+      'demo.sim.brief.share',
+      'demo.sim.item.settle',
+      'demo.sim.item.parameter',
+      'demo.sim.item.decline',
+      'demo.sim.item.tick',
+      'demo.sim.item.untick',
+      'demo.sim.brief.group-check',
+    ]);
   });
 
   it('rejects a missing principal before reading the body', async () => {
-    const res = await app.inject({ method: 'POST', url: '/demo/sim/scenarios', payload: {} });
-    expect(res.statusCode).toBe(401);
+    for (const op of simulatorOperations) {
+      const res = await app.inject({ method: 'POST', url: op.path.replace(':id', randomUUID()), payload: {} });
+      expect({ op: op.name, status: res.statusCode }).toEqual({ op: op.name, status: 401 });
+    }
   });
 
   it('no longer serves the retired S03–S05 operations', async () => {
@@ -67,30 +118,100 @@ describe('simulator separation', () => {
   });
 });
 
-describe('a simulated scenario', () => {
-  it('starts with two parties and one pair between them, and no live brief', async () => {
-    const me = `sim-${randomUUID()}`;
-    const started = await app.inject({ method: 'POST', url: '/demo/sim/scenarios', headers: as(me), payload: {} });
-    expect(started.statusCode).toBe(201);
-    const { id } = started.json<{ id: string }>();
-    const res = await app.inject({ method: 'GET', url: `/demo/projects/${id}/record`, headers: as(me) });
-    const rec = res.json<{ parties: { id: string }[]; agreements: { partyIds: [string, string] }[]; brief: unknown }>();
-    expect(rec.parties).toHaveLength(2);
-    expect(rec.agreements).toHaveLength(1);
-    expect([...rec.agreements[0]!.partyIds].sort()).toEqual(rec.parties.map((p) => p.id).sort());
-    expect(rec.brief).toBeNull();
+describe('the walkthrough', () => {
+  it('starts as a draft with a photographer, a model, their pair and every layer, and no no-means-no item', async () => {
+    const w = await walkthrough(`sim-${randomUUID()}`);
+    expect(w.rec.parties.map((p) => p.id).sort()).toEqual([w.photographerPartyId, w.modelPartyId].sort());
+    expect(w.rec.agreements).toHaveLength(1);
+    expect(w.rec.brief!.phase).toBe('draft');
+    expect(w.rec.brief!.presence).toEqual([]);
+    expect(new Set(w.rec.brief!.items.map((i) => i.layer))).toEqual(new Set(['universal', 'shared', 'money']));
+    expect(w.rec.brief!.items.filter((i) => i.itemKey === 'no_means_no')).toEqual([]);
+    expect(w.rec.brief!.items.map((i) => i.pending).filter(Boolean).sort()).toEqual(['decide_together', 'subject']);
   });
 
-  it('rejects undeclared fields', async () => {
-    const res = await app.inject({ method: 'POST', url: '/demo/sim/scenarios', headers: as(`sim-${randomUUID()}`), payload: { parties: 3 } });
-    expect(res.statusCode).toBe(400);
+  it('goes draft → share → resolve → decline → tick → group-check → untick → retick → ready to sign', async () => {
+    const me = `sim-${randomUUID()}`;
+    const w = await walkthrough(me);
+    const briefId = w.rec.brief!.id;
+    const [p, m] = [w.photographerPartyId, w.modelPartyId];
+    const find = (rec: Rec, test: (i: Item) => boolean) => rec.brief!.items.find(test)!;
+
+    // Sharing needs every party's presence.
+    expect(await post(me, `/demo/sim/briefs/${briefId}/share`, {})).toEqual(conflict('presence_missing'));
+    for (const partyId of [p, m]) expect((await post(me, `/demo/sim/briefs/${briefId}/presence`, { partyId, onSite: true })).status).toBe(200);
+    expect((await post(me, `/demo/sim/briefs/${briefId}/share`, {})).status).toBe(200);
+    let rec = await record(me, w.id);
+    expect(rec.brief!.phase).toBe('live');
+    expect(await post(me, `/demo/sim/briefs/${briefId}/presence`, { partyId: p, onSite: false })).toEqual(conflict('not_draft'));
+
+    // Resolve: decide together, and the open parameter by its subject only.
+    const together = find(rec, (i) => i.pending === 'decide_together');
+    const parameter = find(rec, (i) => i.pending === 'subject');
+    expect(await post(me, `/demo/sim/items/${together.id}/tick`, { partyId: p })).toEqual(conflict('still_pending'));
+    expect((await post(me, `/demo/sim/items/${together.id}/settle`, { value: '[synthetic] the 20th' })).status).toBe(200);
+    expect(await post(me, `/demo/sim/items/${parameter.id}/parameter`, { partyId: p, value: '[synthetic] 3' })).toEqual(conflict('not_subject'));
+    expect((await post(me, `/demo/sim/items/${parameter.id}/parameter`, { partyId: m, value: '[synthetic] 2' })).status).toBe(200);
+
+    // Decline: only the subject; the request disappears.
+    const request = find(rec, (i) => i.shape === 'request');
+    const declaration = find(rec, (i) => i.shape === 'declaration');
+    expect(await post(me, `/demo/sim/items/${request.id}/decline`, { partyId: p })).toEqual(conflict('not_subject'));
+    expect(await post(me, `/demo/sim/items/${declaration.id}/decline`, { partyId: m })).toEqual(conflict('not_request'));
+    expect((await post(me, `/demo/sim/items/${request.id}/decline`, { partyId: m })).status).toBe(200);
+    rec = await record(me, w.id);
+    expect(rec.brief!.items.map((i) => i.id)).not.toContain(request.id);
+
+    // Group-check refuses deliberate items; ordinary ones tick individually.
+    const deliberate = rec.brief!.items.filter((i) => i.itemKey === 'fee' || i.itemKey === 'coverage_level');
+    const ordinary = rec.brief!.items.filter((i) => !deliberate.includes(i));
+    expect(deliberate).toHaveLength(2);
+    expect(await post(me, `/demo/sim/briefs/${briefId}/group-check`, { partyId: p, itemIds: rec.brief!.items.map((i) => i.id) })).toEqual(
+      conflict('deliberate_tick'),
+    );
+    for (const partyId of [p, m]) {
+      expect((await post(me, `/demo/sim/briefs/${briefId}/group-check`, { partyId, itemIds: ordinary.map((i) => i.id) })).status).toBe(200);
+    }
+    rec = await record(me, w.id);
+    expect(rec.brief!.ready).toBe(false);
+    for (const item of deliberate) for (const partyId of [p, m]) expect((await post(me, `/demo/sim/items/${item.id}/tick`, { partyId })).status).toBe(200);
+    rec = await record(me, w.id);
+    expect(rec.brief!.items.every((i) => i.green)).toBe(true);
+    expect(rec.brief!.ready).toBe(true);
+
+    // Untick loses readiness; retick restores it.
+    const fee = deliberate.find((i) => i.itemKey === 'fee')!;
+    expect((await post(me, `/demo/sim/items/${fee.id}/untick`, { partyId: m })).status).toBe(200);
+    expect((await record(me, w.id)).brief!.ready).toBe(false);
+    expect((await post(me, `/demo/sim/items/${fee.id}/tick`, { partyId: m })).status).toBe(200);
+    expect((await record(me, w.id)).brief!.ready).toBe(true);
+  });
+
+  it('rejects undeclared fields and blank values', async () => {
+    const me = `sim-${randomUUID()}`;
+    const w = await walkthrough(me);
+    const briefId = w.rec.brief!.id;
+    const itemId = w.rec.brief!.items[0]!.id;
+    for (const [url, payload] of [
+      ['/demo/sim/scenarios', { parties: 3 }],
+      [`/demo/sim/briefs/${briefId}/presence`, { partyId: w.modelPartyId, onSite: true, reason: 'x' }],
+      [`/demo/sim/briefs/${briefId}/share`, { force: true }],
+      [`/demo/sim/items/${itemId}/settle`, { value: '   ' }],
+      [`/demo/sim/items/${itemId}/tick`, { partyId: w.modelPartyId, at: 'now' }],
+      [`/demo/sim/briefs/${briefId}/group-check`, { partyId: w.modelPartyId, itemIds: [] }],
+    ] as const) {
+      expect({ url, status: (await post(me, url, payload)).status }).toEqual({ url, status: 400 });
+    }
   });
 
   it('is scoped to the operator who created the project', async () => {
     const owner = `sim-${randomUUID()}`;
-    const started = await app.inject({ method: 'POST', url: '/demo/sim/scenarios', headers: as(owner), payload: {} });
-    const { id } = started.json<{ id: string }>();
-    const res = await app.inject({ method: 'GET', url: `/demo/projects/${id}/record`, headers: as(`sim-${randomUUID()}`) });
-    expect(res.statusCode).toBe(403);
+    const w = await walkthrough(owner);
+    const intruder = `sim-${randomUUID()}`;
+    expect((await post(intruder, `/demo/sim/briefs/${w.rec.brief!.id}/share`, {})).status).toBe(403);
+    expect((await post(intruder, `/demo/sim/items/${w.rec.brief!.items[0]!.id}/tick`, { partyId: w.modelPartyId })).status).toBe(403);
+    expect((await post(intruder, `/demo/sim/items/${randomUUID()}/tick`, { partyId: w.modelPartyId })).status).toBe(404);
+    expect((await post(intruder, `/demo/sim/briefs/${randomUUID()}/share`, {})).status).toBe(404);
+    expect((await record(owner, w.id)).brief!.phase).toBe('draft');
   });
 });

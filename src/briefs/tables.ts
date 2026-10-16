@@ -1,25 +1,30 @@
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, integer, pgTable, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, foreignKey, integer, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { pairwiseAgreement, project, projectParty } from '../projects/tables.ts';
 
 /**
- * Slice S08: the draft live brief (D02, D04, D10; HC1, HC2).
+ * Slices S08 and S09: the live brief (D02, D04, D10; HC1, HC2).
  *
- * One mutable workspace per project, holding brief items. This is draft
- * composition only: there is no phase, and nothing here enforces a rule whose
- * meaning begins at sharing (S09). Live state is not evidence (HC1), so these
- * tables carry no timestamp, author, proposer, revision, history,
- * requiredness or tick column, and the runtime role may delete draft items.
+ * One mutable workspace per project, holding brief items. S08 is draft
+ * composition; S09 adds the phase (draft, then live), the on-site presence
+ * fact and current ticks. Live state is not evidence (HC1), so these tables
+ * carry no timestamp, author, proposer, revision, history, requiredness,
+ * decline or group-check column, and live rows are updated and deleted in
+ * place.
  *
- * Privileges and the pair-subject trigger are hand-written SQL in
- * `migrations/`, never here.
+ * Privileges and every trigger (pair-subject scope; the S09 phase, live-item,
+ * presence, roster and tick guards) are hand-written SQL in `migrations/`,
+ * never here.
  */
 
 /**
- * The live brief: one per project. Runtime role: SELECT, INSERT.
+ * The live brief: one per project. Runtime role: SELECT, INSERT, UPDATE of
+ * phase only.
  *
- * S08 columns only; S09 adds the phase. No timestamps: when people act is
- * noise (D10, noise doctrine).
+ * `phase` is `draft` or `live` (S09). Only draft → live is allowed, and only
+ * when every item has stored wording and every party an explicit presence
+ * fact; a database trigger enforces both. S10 extends the phase model. No
+ * timestamps: when people act is noise (D10, noise doctrine).
  */
 export const liveBrief = pgTable(
   'live_brief',
@@ -28,8 +33,10 @@ export const liveBrief = pgTable(
     projectId: uuid('project_id')
       .notNull()
       .references(() => project.id),
+    phase: text('phase').notNull().default('draft'),
   },
   (table) => [
+    check('live_brief_phase_known', sql`${table.phase} in ('draft', 'live')`),
     unique('live_brief_one_per_project').on(table.projectId),
     // Containment target for brief items. `id` alone is already unique.
     unique('live_brief_id_project_unique').on(table.id, table.projectId),
@@ -137,9 +144,71 @@ export const briefItem = pgTable(
       sql`${table.shape} IS DISTINCT FROM 'open_parameter' OR (${table.pending} IS NOT DISTINCT FROM 'subject' AND ${table.value} IS NULL) OR (${table.pending} IS NULL AND ${table.value} IS NOT NULL)`,
     ),
     check('brief_item_position_positive', sql`${table.position} >= 1`),
+    // Containment target for ticks (S09). `id` alone is already unique.
+    unique('brief_item_id_project_unique').on(table.id, table.projectId),
     // One fee per pair (Q6: one field).
     uniqueIndex('brief_item_one_fee_per_pair')
       .on(table.pairwiseAgreementId)
       .where(sql`${table.itemKey} = 'fee'`),
+  ],
+);
+
+/**
+ * Whether a party will physically be on site (S09; Q8: on site means
+ * physical proximity). One explicit fact per party per brief; a missing fact
+ * is never read as false, and sharing requires one for every party. Universal
+ * items are approved by the parties on site. Runtime role: SELECT, INSERT,
+ * UPDATE of on_site only, and only while the brief is a draft. No timestamp,
+ * role, reason, author or history.
+ */
+export const briefPartyPresence = pgTable(
+  'brief_party_presence',
+  {
+    briefId: uuid('brief_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    partyId: uuid('party_id').notNull(),
+    onSite: boolean('on_site').notNull(),
+  },
+  (table) => [
+    primaryKey({ name: 'brief_party_presence_pk', columns: [table.briefId, table.partyId] }),
+    foreignKey({
+      name: 'brief_party_presence_in_brief_fk',
+      columns: [table.briefId, table.projectId],
+      foreignColumns: [liveBrief.id, liveBrief.projectId],
+    }),
+    foreignKey({
+      name: 'brief_party_presence_party_in_project_fk',
+      columns: [table.projectId, table.partyId],
+      foreignColumns: [projectParty.projectId, projectParty.id],
+    }),
+  ],
+);
+
+/**
+ * A current tick: this party green-lights this item now (S09). Current green
+ * state, not evidence: an untick deletes the row, and a declined item takes
+ * its ticks with it (the only cascading foreign key in the brief). Runtime
+ * role: SELECT, INSERT, DELETE. No time, order, source, group-check flag,
+ * device, credential or version.
+ */
+export const briefTick = pgTable(
+  'brief_tick',
+  {
+    briefItemId: uuid('brief_item_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    partyId: uuid('party_id').notNull(),
+  },
+  (table) => [
+    primaryKey({ name: 'brief_tick_pk', columns: [table.briefItemId, table.partyId] }),
+    foreignKey({
+      name: 'brief_tick_item_fk',
+      columns: [table.briefItemId, table.projectId],
+      foreignColumns: [briefItem.id, briefItem.projectId],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'brief_tick_party_in_project_fk',
+      columns: [table.projectId, table.partyId],
+      foreignColumns: [projectParty.projectId, projectParty.id],
+    }),
   ],
 );

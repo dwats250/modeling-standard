@@ -28,18 +28,18 @@ import { CHECK_VIOLATION, INSUFFICIENT_PRIVILEGE, sqlErrorCode, withClient } fro
  * S08 draft live brief against real PostgreSQL, migrated by the production
  * migration path and used as the runtime role.
  *
- * Draft composition only: one mutable brief per project; items with a layer,
+ * Draft composition: one mutable brief per project; items with a layer,
  * optional pair scope, optional subject and shape, optional item key, exact
- * current wording and value, a pending state and a position. No phase, no
- * ticks, no requiredness, no post-share rule. Every draft item can be edited
- * and removed.
+ * current wording and value, a pending state and a position. While the brief
+ * is a draft every item can be edited and removed. Sharing, ticks and the
+ * post-share rules are S09 (`live-briefs.test.ts`).
  */
 
 const FOREIGN_KEY_VIOLATION = '23503';
 const UNIQUE_VIOLATION = '23505';
 
-/** Names that would mean history, evidence or later-slice semantics on live state. */
-const EXCLUDED_COLUMN_WORDS = ['time', '_at', 'author', 'propos', 'status', 'version', 'revision', 'history', 'declin', 'sign', 'tick', 'requir', 'phase'];
+/** Names that would mean history, evidence or later-slice semantics on live state. The phase arrived in S09. */
+const EXCLUDED_COLUMN_WORDS = ['time', '_at', 'author', 'propos', 'status', 'version', 'revision', 'history', 'declin', 'sign', 'tick', 'requir'];
 
 let database: DatabaseHandle;
 beforeAll(() => {
@@ -94,7 +94,7 @@ describe('the live brief', () => {
   it('is opened for a project, and re-opening returns the same brief', async () => {
     const project = await insertProject(database.db, { createdByPrincipalId: `s08-${randomUUID()}` });
     const first = await openLiveBrief(database.db, project.id);
-    expect(first).toEqual({ id: expect.any(String), projectId: project.id });
+    expect(first).toEqual({ id: expect.any(String), projectId: project.id, phase: 'draft' });
     expect(await openLiveBrief(database.db, project.id)).toEqual(first);
   });
 
@@ -376,10 +376,11 @@ describe('what the S08 tables hold', () => {
       )
     ).rows;
 
-  it('live_brief holds only an id and its project', async () => {
+  it('live_brief holds only an id, its project and (S09) its phase', async () => {
     expect(await columnsOf('live_brief')).toEqual([
       { column_name: 'id', data_type: 'uuid', is_nullable: 'NO' },
       { column_name: 'project_id', data_type: 'uuid', is_nullable: 'NO' },
+      { column_name: 'phase', data_type: 'text', is_nullable: 'NO' },
     ]);
   });
 
@@ -412,6 +413,7 @@ describe('what the S08 tables hold', () => {
       'brief_item.brief_item_decide_together_has_no_value:c',
       'brief_item.brief_item_drafter_item_has_wording:c',
       'brief_item.brief_item_fee_is_money:c',
+      'brief_item.brief_item_id_project_unique:u',
       'brief_item.brief_item_in_brief_fk:f',
       'brief_item.brief_item_item_key_known:c',
       'brief_item.brief_item_layer_known:c',
@@ -431,6 +433,7 @@ describe('what the S08 tables hold', () => {
       'brief_item.brief_item_value_nonblank:c',
       'live_brief.live_brief_id_project_unique:u',
       'live_brief.live_brief_one_per_project:u',
+      'live_brief.live_brief_phase_known:c',
       'live_brief.live_brief_pkey:p',
       'live_brief.live_brief_project_id_project_id_fk:f',
     ]);
@@ -445,7 +448,7 @@ describe('what the S08 tables hold', () => {
     ]);
   });
 
-  it('names no timestamp, author, proposer, status, history, revision, decline, signature, tick, requiredness or phase', async () => {
+  it('names no timestamp, author, proposer, status, history, revision, decline, signature, tick or requiredness', async () => {
     const names = await withClient(inject('runtimeUrl'), (c) =>
       c.query<{ name: string }>(
         `select column_name as name from information_schema.columns where table_schema = 'public' and table_name in ('live_brief', 'brief_item')`,

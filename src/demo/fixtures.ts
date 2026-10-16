@@ -1,16 +1,26 @@
 import type { FastifyInstance } from 'fastify';
-import { addBriefItem, openLiveBrief } from '../briefs/brief.ts';
+import { addBriefItem, listBriefItems, openLiveBrief } from '../briefs/brief.ts';
+import {
+  declineBriefRequest,
+  setDraftPartyPresence,
+  setOpenParameterBySubject,
+  settleDecideTogetherItem,
+  shareLiveBrief,
+  tickBriefItem,
+} from '../briefs/live.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { createPairwiseAgreement } from '../projects/agreement.ts';
 import { addProjectParty } from '../projects/party.ts';
+import { buildWalkthroughDraft } from './walkthrough.ts';
 
 /**
  * Repeatable synthetic fixtures for the local demo.
  *
  * Projects are created through the real `project.create` operation, as the
- * demo operator. Parties, pair-scope records and draft brief items are then
- * written with the S01, S02 and S08 data functions directly, because no
- * product path for any of them is built: a person reaches a party by
+ * demo operator. Parties, pair-scope records, brief items, presence facts,
+ * sharing, settlement, a decline and ticks are then written with the S01,
+ * S02, S08 and S09 data functions directly, because no product path for any
+ * of them is built: a person reaches a party by
  * invitation and sign-in (D03; S06 and S07 store the binding and the
  * invitation, sign-in is not built), and who may compose a draft is the
  * participant surface's question.
@@ -158,6 +168,32 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
       note: 'A project with no parties yet and an empty draft brief. D03 is decided, but no product path adds a party until invitation and sign-in are built.',
       parties: {},
       agreements: {},
+    };
+  }
+
+  // 4. The walkthrough, finished: shared, resolved, all green, ready to sign.
+  {
+    const projectId = await createProjectThroughOperation(app);
+    const w = await buildWalkthroughDraft(db, projectId);
+    for (const party of [w.photographerPartyId, w.modelPartyId]) await setDraftPartyPresence(db, w.briefId, party, true);
+    await shareLiveBrief(db, w.briefId);
+    await settleDecideTogetherItem(db, w.items.decideTogether, '[synthetic] Within two weeks of the shoot');
+    await setOpenParameterBySubject(db, w.items.openParameter, w.modelPartyId, '[synthetic] Level 2');
+    await declineBriefRequest(db, w.items.request, w.modelPartyId);
+    // Each party's own ticks. In the product only the party itself ticks
+    // (D12); here they are fixture rows, and not signatures.
+    for (const item of await listBriefItems(db, w.briefId)) {
+      for (const party of [w.photographerPartyId, w.modelPartyId]) await tickBriefItem(db, item.id, party);
+    }
+    projects[projectId] = {
+      title: 'Fixture 4 — walkthrough, ready to sign',
+      source: 'D02 and D10 layers; D04 per-term ticks; Q7 subject control; Q8 on site; S09 live brief',
+      note:
+        'The two-person walkthrough taken to its end: both on site, shared, every pending value settled, and every item ' +
+        'green for everyone who must green-light it. Start the walkthrough to do this step by step, including declining ' +
+        'a request, which simply disappears. Signing arrives in S10–S11.',
+      parties: { [w.photographerPartyId]: 'Photographer', [w.modelPartyId]: 'Model' },
+      agreements: { [w.pairId]: 'Pair: Photographer ↔ Model' },
     };
   }
 

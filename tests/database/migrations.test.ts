@@ -43,7 +43,7 @@ describe('migrations', () => {
     });
   });
 
-  it('produce exactly the Stage 0 synthetic tables and the S01, S02, S06, S07 and S08 tables (S03–S05 retired)', async () => {
+  it('produce exactly the Stage 0 synthetic tables and the S01, S02, S06 to S09 tables (S03–S05 retired)', async () => {
     const tables = await withClient(inject('migrationUrl'), (c) =>
       c.query(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -52,6 +52,8 @@ describe('migrations', () => {
     expect(tables.rows.map((r: { table_name: string }) => r.table_name)).toEqual([
       'account',
       'brief_item',
+      'brief_party_presence',
+      'brief_tick',
       'direct_invitation',
       'live_brief',
       'pairwise_agreement',
