@@ -1,6 +1,6 @@
 # Local synthetic demo
 
-> **S09 walkthrough (2026-10-15).** The demo now walks a synthetic **Photographer** and **Model** from a draft brief to **READY TO SIGN**: say who is on site, share, settle what was left to decide, let the model set her open parameter and decline a request (it simply disappears), tick as each party, group-check ordinary material (the deliberate items refuse it), watch items go green, untick to lose readiness, and retick. It stops at READY TO SIGN; signing arrives in S10–S11. The S03–S05 presentation (versions, tick grids, R1, R2) was retired in S08.
+> **S09 walkthrough (2026-10-15; presentation pass 2026-10-15).** The demo now walks a synthetic **Photographer** and **Model** from a draft brief to **READY TO SIGN**: say who is on site, share, settle what was left to decide, let the model set her open parameter and decline a request (it simply disappears), tick as each party, group-check ordinary material (the deliberate items refuse it), watch items go green, untick to lose readiness, and retick. It stops at READY TO SIGN; signing arrives in S10–S11. The S03–S05 presentation (versions, tick grids, R1, R2) was retired in S08.
 
 A record inspector for showing what is built, with invented records, on a developer machine. Not a product flow, not a credential mechanism, not real-use approval (Gate 2).
 
@@ -35,7 +35,14 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
   - **Fixture 4:** the walkthrough finished — Photographer and Model on site, shared, every pending value settled, every item green, **READY TO SIGN**. It is what the portable snapshot shows as the S09 end state.
   - **No no-means-no item.** Its wording is Cory's to write (D04); no placeholder is created. A keyed item without wording, if one exists, is shown only as instrumentation — "item key `no_means_no` — wording not materialized (draft)" — never as document text.
 - **The record.** `GET /demo/projects/:id/record` returns the project, its parties, its pair-scope records (`agreements`: id and the two parties) and the live brief, or `null`: its `phase` (`draft` or `live`), `ready` (derived), `presence` (each party's on-site fact) and its items — the stored fields plus each item's derived `approverIds`, `tickedBy` and `green`. No time, author, proposer, revision, decline, requiredness or finality field exists to show.
-- **The inspector.** A stage strip (Draft → Live → Ready to sign) with the current headline: DRAFT, LIVE ("n of m items green") or READY TO SIGN. Items are grouped in three visually distinct layers — Universal, Shared, Private money — and numbered by display order (no gap ever betrays a declined item). Money is labelled "private to this pair"; a pair-scoped shared item is labelled "between", since pair scope does not restrict who sees it (D10). Subject, shape, pending state, deliberate tick and item key are labels. Each live item shows who must green-light it, ✓ or ○ per approver, and turns green when all have ticked. Wording is shown only when stored; a keyed item without wording is shown only as instrumentation. Current state only: no activity feed, timestamps, revision count, "declined by", version number, read receipt or audit trail.
+- **The inspector.** Product story first, engineering second:
+  - **Orientation band** (sticky, so it stays in view while acting): the cast, the stage headline — DRAFT, LIVE ("n of m green · k still open") or READY TO SIGN — and, once live, the **Acting as** switch. A stage change seen after an act (now live; ready to sign; no longer ready) pulses the band once with a one-line note that is gone on the next render. On a phone the band is compact and the selected brief comes before the project list.
+  - **Milestone panel** at the top of the brief says the stage in words. READY TO SIGN reads: everything currently in the brief is resolved and green-lit; signing is the next step and is not built in this demo yet.
+  - **Three layers**, each with its colour and audience: Universal (everyone on site sees these), Shared (everyone in the collaboration sees these), Private money (only the pair it belongs to). Items are numbered by display order (no gap ever betrays a declined item).
+  - **Plain-language labels** derived from stored fields, nothing stored changes: "Model sets this", "Request · only Model can decline it", "Declaration by Model", "Waiting for Model", "Decide together · still open", "Needs its own tick", "Private · only Model & Photographer see this", "Between Model & Photographer · everyone can see it". Pending reads as neutral waiting, not as an error.
+  - **Green state.** Each live item shows ✓ or ○ per approver and turns green when all have ticked. Tick is the primary action; once ticked, Untick is a small secondary link.
+  - **Engineering notes** (banner toggle, off by default, remembered per browser) reveal decision and slice references, project and record ids, the Parties and Pairs records, and the schema labels (`project-wide`, `subject ·`, `shape ·`, `pending:`, `private to this pair · Pair: …`, `between · Pair: …`, `item key …`), plus the caveat that READY TO SIGN is the structural all-green rule, not real-use completeness (Gate 2).
+  - Wording is shown only when stored; a keyed item without wording is shown only as instrumentation. Current state only: no activity feed, timestamps, revision count, "declined by", version number, read receipt or audit trail.
 - **Not a party view.** The inspector shows the whole stored record. D10 is decided for photo shoots; party-visible reads exist as data functions (S08, S09), but no party view is built.
 
 ## The walkthrough (live demo only)
@@ -44,8 +51,8 @@ Uses the same `.env` credentials, pointed at `modeling_standard_demo`.
 
 On the brief:
 - **Draft:** On site / Not on site per party, then **Share the brief**. Sharing is refused until every party has an answer.
-- **Live:** a "Simulating as" switch chooses the synthetic party. Per item, that party can: **Settle together** (decide-together), **Set as Model** (only the subject sets an open parameter; others see "Waiting for Model"), **Decline as Model** (only the subject, only a non-universal request; it disappears), **Tick** / **Untick**. **Group-check** ticks each chosen ordinary item individually; the fee and coverage level are shown disabled ("needs its own deliberate tick") and the server refuses them if forced.
-- **Ready to sign** appears when nothing is pending and everything is green, and goes away on any untick.
+- **Live:** the band's "Acting as" switch chooses the synthetic party. Per item, that party can: **Settle together** (decide-together), **Set as Model** (only the subject sets an open parameter; others see "Waiting for Model"), **Decline as Model** (only the subject, only a non-universal request; it disappears, with a transient "Request removed." toast), **Tick** / **Untick**. **Group-check** is a shortcut that ticks each chosen ordinary item individually; the fee and coverage level are shown disabled ("Needs its own tick") and the server refuses them if forced.
+- **Ready to sign** appears when nothing is pending and everything is green — in the band and as the milestone panel — and goes away on any untick, with a "No longer ready to sign" note in the band.
 
 Demo-only operations under `/demo/sim/` (`src/demo/simulator.ts`), protected and creator-only through the brief or item; never in the production list:
 
@@ -70,10 +77,16 @@ Every act is a simulation: in the product each person acts only for themselves (
 - no version, R1, R2, sealed, affirmation, "declined by", "changed by", revision, activity, audit or read-receipt text in any project view, and no version or R1/R2 text on the decisions view, which names only the current seams;
 - no superseded wording; no product-wording placeholder presented as document text, and a keyed item without wording rendered as instrumentation only;
 - project creation and its empty states; stale navigation; the portable snapshot from `file://` with zero network requests and no controls; reset repeatability;
+- presentation: cast and stage in the band, engineering notes collapsed by default and revealed by the toggle, plain-language labels beside the schema labels, neutral waiting labels, the band's transition notes, the READY TO SIGN milestone copy, the band still on screen after the final tick, and on a phone the band in the first half-screen and stuck to the top while scrolling;
 - desktop (1280) and mobile (390) rendering with no horizontal scroll and no browser errors;
 - every demo route returning 404 from the production application.
 
-Milestone screenshots: `ready-to-sign-desktop.png` and `ready-to-sign-mobile.png` (ids masked, transient toast cleared, so they are stable run to run), plus `walkthrough-1-draft-desktop.png`, `walkthrough-2-live-desktop.png` and per-fixture shots. They are milestone evidence, not design approval.
+Milestone screenshots (ids masked, transient toast cleared, band pulse finished, so they are stable run to run), each stage at desktop (full page) and mobile (`-mobile-top` is the first screen, `-mobile` the full page):
+- `walkthrough-1-draft-*`;
+- `walkthrough-2-live-open-*` (just shared, items still open);
+- `walkthrough-3-live-resolved-*` (settled, set and declined, nothing ticked);
+- `ready-to-sign-desktop.png`, `-desktop-top.png`, `-desktop-after-tick.png` (what is on screen right after the final tick), `ready-to-sign-mobile.png`, `-mobile-top.png`, `-mobile-scrolled.png` (band stuck to the top);
+- per-fixture shots. They are milestone evidence, not design approval.
 
 Screenshots go to `test-results/demo/` and are uploaded by CI as `demo-screenshots`. The suite resets `modeling_standard_demo`.
 

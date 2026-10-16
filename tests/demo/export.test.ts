@@ -67,7 +67,7 @@ describe('portable snapshot', () => {
     expect(html).toContain('READY TO SIGN');
     expect(html).toContain('Signing arrives in S10–S11');
     expect(html).toContain('the required-item catalogue does not exist yet, so real use stays gated');
-    expect(html).toContain('needs its own deliberate tick');
+    expect(html).toContain('Needs its own tick');
     expect(html).toContain('private money only');
     expect(html).toContain('private to this pair');
     expect(html).toContain('On site means physical proximity');
