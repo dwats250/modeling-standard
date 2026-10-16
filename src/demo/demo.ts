@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { networkInterfaces } from 'node:os';
 import type { ResolvePrincipal, SyntheticPrincipal } from '../authorization/access.ts';
 import type { ExplicitDatabaseTarget } from '../infrastructure/database/client.ts';
 
@@ -23,6 +24,24 @@ export const demoOperatorPrincipal: ResolvePrincipal = () => DEMO_OPERATOR;
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 
+function isPrivateIpv4(host: string): boolean {
+  const parts = host.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const [a, b] = parts;
+  return a === 10 || (a === 172 && b !== undefined && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
+/** Private IPv4 addresses currently assigned to this machine. */
+export function demoLanAddresses(): string[] {
+  const found = new Set<string>();
+  for (const addresses of Object.values(networkInterfaces())) {
+    for (const address of addresses ?? []) {
+      if (address.family === 'IPv4' && !address.internal && isPrivateIpv4(address.address)) found.add(address.address);
+    }
+  }
+  return [...found].sort();
+}
+
 export class DemoGuardError extends Error {
   constructor(message: string) {
     super(message);
@@ -35,11 +54,31 @@ export function isLoopbackHost(host: string): boolean {
   return LOOPBACK_HOSTS.has(host.replace(/^\[(.*)\]$/, '$1'));
 }
 
-/** Refuses to serve the demo anywhere but loopback. */
+/** Refuses the ordinary demo anywhere but loopback. LAN mode is explicit and demo-only. */
 export function assertLoopbackListenHost(host: string): void {
   if (!isLoopbackHost(host)) {
     throw new DemoGuardError('The synthetic demo listens on loopback only (127.0.0.1, ::1 or localhost).');
   }
+}
+
+/**
+ * Resolve the demo listener and Host-header allow-list. Ordinary mode stays
+ * loopback-only. LAN mode binds all IPv4 interfaces but accepts requests only
+ * for loopback names or private IPv4 addresses actually assigned to this
+ * machine. PostgreSQL remains independently restricted to TCP loopback.
+ */
+export function demoListenTarget(configuredHost: string, lanMode: boolean): { listenHost: string; allowedHosts: string[]; urls: string[] } {
+  if (!lanMode) {
+    assertLoopbackListenHost(configuredHost);
+    return { listenHost: configuredHost, allowedHosts: ['127.0.0.1', 'localhost', '::1'], urls: [configuredHost] };
+  }
+  const lan = demoLanAddresses();
+  if (lan.length === 0) throw new DemoGuardError('LAN demo mode found no private IPv4 address on this machine.');
+  return {
+    listenHost: '0.0.0.0',
+    allowedHosts: ['127.0.0.1', 'localhost', '::1', ...lan],
+    urls: lan,
+  };
 }
 
 // The pinned driver's own resolution of a connection string: the same code
