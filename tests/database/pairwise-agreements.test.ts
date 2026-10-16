@@ -19,6 +19,14 @@ import { CHECK_VIOLATION, INSUFFICIENT_PRIVILEGE, sqlErrorCode, withClient } fro
  */
 
 const FOREIGN_KEY_VIOLATION = '23503';
+const UNIQUE_VIOLATION = '23505';
+
+function failureCodeOf(error: unknown): string | null {
+  const e = error as { code?: unknown; cause?: { code?: unknown } } | undefined;
+  if (!e) return null;
+  const code = typeof e.code === 'string' ? e.code : e.cause?.code;
+  return typeof code === 'string' ? code : 'unknown';
+}
 
 /**
  * Words naming semantics S02 excludes: roles, payment or obligation
@@ -84,10 +92,42 @@ describe('a pairwise agreement', () => {
   });
 
   it('treats its two parties as an unordered pair: the order supplied changes nothing', async () => {
+    const forwardProject = await projectWithTwoParties();
+    const reverseProject = await projectWithTwoParties();
+    const forward = await createPairwiseAgreement(database.db, forwardProject.projectId, [forwardProject.partyIds[0], forwardProject.partyIds[1]]);
+    const reverse = await createPairwiseAgreement(database.db, reverseProject.projectId, [reverseProject.partyIds[1], reverseProject.partyIds[0]]);
+    expect(forward.partyIds).toEqual(sorted(forwardProject.partyIds));
+    expect(reverse.partyIds).toEqual(sorted(reverseProject.partyIds));
+  });
+
+  it('exists at most once per pair per project, whichever order is supplied (S08; Q5)', async () => {
     const f = await projectWithTwoParties();
-    const forward = await createPairwiseAgreement(database.db, f.projectId, [f.partyIds[0], f.partyIds[1]]);
-    const reverse = await createPairwiseAgreement(database.db, f.projectId, [f.partyIds[1], f.partyIds[0]]);
-    expect(reverse.partyIds).toEqual(forward.partyIds);
+    await createPairwiseAgreement(database.db, f.projectId, [f.partyIds[0], f.partyIds[1]]);
+    for (const order of [[f.partyIds[0], f.partyIds[1]], [f.partyIds[1], f.partyIds[0]]] as const) {
+      const err = await createPairwiseAgreement(database.db, f.projectId, order).then(
+        () => null,
+        (e: { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } }) => ({
+          code: e.code ?? e.cause?.code,
+          constraint: e.constraint ?? e.cause?.constraint,
+        }),
+      );
+      expect(err).toEqual({ code: UNIQUE_VIOLATION, constraint: 'pairwise_agreement_one_per_pair' });
+    }
+  });
+
+  it('is created once when the same pair is created concurrently', async () => {
+    const f = await projectWithTwoParties();
+    const outcomes = await Promise.allSettled([
+      createPairwiseAgreement(database.db, f.projectId, [f.partyIds[0], f.partyIds[1]]),
+      createPairwiseAgreement(database.db, f.projectId, [f.partyIds[1], f.partyIds[0]]),
+    ]);
+    expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
+    const rejected = outcomes.find((o): o is PromiseRejectedResult => o.status === 'rejected');
+    expect(failureCodeOf(rejected?.reason)).toBe(UNIQUE_VIOLATION);
+    const rows = await withClient(inject('runtimeUrl'), (c) =>
+      c.query<{ n: number }>('select count(*)::int as n from pairwise_agreement where project_id = $1', [f.projectId]),
+    );
+    expect(rows.rows[0]!.n).toBe(1);
   });
 
   it('cannot be stored with its sides in a second order, so neither side can carry precedence', async () => {

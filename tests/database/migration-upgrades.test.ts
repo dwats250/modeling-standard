@@ -22,6 +22,7 @@ const T0012 = '0012_term_affirmation_rules_and_grants';
 const T0013 = '0013_affirmation_read_committed_only';
 const T0014 = '0014_agreement_version_fk_name';
 const T0016 = '0016_account_party_binding_stamps_and_grants';
+const T0018 = '0018_direct_invitation_stamp_and_grants';
 
 const ROW_TABLES = [
   'project',
@@ -38,7 +39,42 @@ const ROW_TABLES = [
   'account',
   'party_account_binding',
   'direct_invitation',
+  'live_brief',
+  'brief_item',
 ] as const;
+
+/** Tables that exist from their slice onward and survive S08. */
+const SURVIVING_TABLES = ['project', 'project_party', 'pairwise_agreement', 'account', 'party_account_binding', 'direct_invitation'] as const;
+/** The S03–S05 tables S08 retires. */
+const RETIRED_TABLES = [
+  'agreement_term',
+  'universal_term',
+  'agreement_version',
+  'agreement_version_term',
+  'universal_version',
+  'universal_version_term',
+  'agreement_affirmation',
+  'universal_affirmation',
+] as const;
+const RETIRED_FUNCTIONS = [
+  'agreement_affirmation_stamp',
+  'universal_affirmation_stamp',
+  'agreement_version_term_check_copy',
+  'universal_version_term_check_copy',
+  'agreement_version_check_sealed',
+  'universal_version_check_sealed',
+  'agreement_version_stamp',
+  'universal_version_stamp',
+] as const;
+
+/** Only the rows of tables that survive S08, optionally only those present in `reference`. */
+function surviving(rows: Record<string, unknown[]>, reference?: Record<string, unknown[]>): Record<string, unknown[]> {
+  return Object.fromEntries(
+    Object.entries(rows).filter(
+      ([table]) => (SURVIVING_TABLES as readonly string[]).includes(table) && (reference === undefined || table in reference),
+    ),
+  );
+}
 
 const STAMP_FUNCTIONS = ['agreement_affirmation_stamp', 'universal_affirmation_stamp'] as const;
 const PINNED_SEARCH_PATH = ['search_path=pg_catalog, public, pg_temp'];
@@ -259,7 +295,7 @@ async function failure(c: pg.Client, [text, params]: [string, unknown[]], isolat
 
 describe('populated migration upgrades', () => {
   it(
-    'pre-S03 (0006) → current: S01/S02 rows survive unchanged, S03–S05 arrive, grants match a fresh database',
+    'pre-S03 (0006) → current: S01/S02 rows survive unchanged through S03–S05 and their retirement, grants match a fresh database',
     async () => {
       await inScratch(async (db) => {
         await migrateThrough(db.migrationUrl, T0006);
@@ -287,7 +323,10 @@ describe('populated migration upgrades', () => {
           ]);
           expect(s.pair[0] < s.pair[1]).toBe(true);
           expect([...s.pair].sort()).toEqual([...s.partyIds].sort());
-          for (const table of ROW_TABLES) expect({ table, present: table in after }).toEqual({ table, present: true });
+          for (const table of ROW_TABLES) {
+            const retired = (RETIRED_TABLES as readonly string[]).includes(table);
+            expect({ table, present: table in after }).toEqual({ table, present: !retired });
+          }
 
           // Bookkeeping: the first seven entries untouched, the rest appended once each, nothing replayed.
           const books = await bookkeeping(c);
@@ -301,7 +340,7 @@ describe('populated migration upgrades', () => {
         await runMigrations(db.migrationUrl);
         await asOwner(db, async (c) => {
           expect((await bookkeeping(c)).length).toBe(journal().entries.length);
-          expect(await rowsOf(c)).toMatchObject(before);
+          expect(surviving(await rowsOf(c), before)).toEqual(surviving(before));
         });
       });
     },
@@ -471,12 +510,13 @@ describe('populated migration upgrades', () => {
         });
 
         // The normal path then applies whatever later migrations exist and
-        // reaches exactly the freshly migrated schema, rows unchanged.
+        // reaches exactly the freshly migrated schema.
         await runMigrations(db.migrationUrl);
         await asOwner(db, async (c) => {
           const all = journal().entries.length;
           expect((await bookkeeping(c)).map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(all));
-          expect(await rowsOf(c)).toMatchObject(before.rows);
+          // S08 retires the S03–S05 rows; everything that survives is unchanged.
+          expect(surviving(await rowsOf(c), before.rows)).toEqual(surviving(before.rows));
           expect(await catalog(c)).toEqual(await freshCatalog());
         });
       });
@@ -485,7 +525,7 @@ describe('populated migration upgrades', () => {
   );
 
   it(
-    'populated 0014 → current (S06): S01–S05 rows unchanged, account tables arrive empty, existing parties can be bound',
+    'populated 0014 → 0016 (S06): S01–S05 rows unchanged and account tables arrive empty; then → current, survivors unchanged and existing parties can be bound',
     async () => {
       await inScratch(async (db) => {
         await migrateThrough(db.migrationUrl, T0014);
@@ -497,8 +537,8 @@ describe('populated migration upgrades', () => {
         }));
         expect(before.accountAbsent).toBeNull();
 
-        await runMigrations(db.migrationUrl);
-
+        // At its own seam: every S01–S05 row unchanged, account tables empty.
+        await migrateThrough(db.migrationUrl, T0016);
         await asOwner(db, async (c) => {
           const after = await rowsOf(c);
           for (const table of Object.keys(before.rows)) {
@@ -506,6 +546,12 @@ describe('populated migration upgrades', () => {
           }
           expect(after['account']).toEqual([]);
           expect(after['party_account_binding']).toEqual([]);
+        });
+
+        // Then to current: S08 retires S03–S05; survivors are unchanged.
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => {
+          expect(surviving(await rowsOf(c), before.rows)).toEqual(surviving(before.rows));
           expect((await bookkeeping(c)).map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(
             expectedBookkeeping(journal().entries.length),
           );
@@ -559,7 +605,7 @@ describe('populated migration upgrades', () => {
 
         await asOwner(db, async (c) => {
           const after = await rowsOf(c);
-          for (const table of Object.keys(before.rows)) {
+          for (const table of Object.keys(surviving(before.rows))) {
             expect({ table, rows: after[table] }).toEqual({ table, rows: before.rows[table] });
           }
           expect(after['direct_invitation']).toEqual([]);
@@ -574,7 +620,7 @@ describe('populated migration upgrades', () => {
         await runMigrations(db.migrationUrl);
         await asOwner(db, async (c) => {
           expect((await bookkeeping(c)).length).toBe(journal().entries.length);
-          expect(await rowsOf(c)).toMatchObject(before.rows);
+          expect(surviving(await rowsOf(c), before.rows)).toEqual(surviving(before.rows));
         });
 
         // An invitation can be created for a pre-existing party through the runtime role.
@@ -584,6 +630,109 @@ describe('populated migration upgrades', () => {
             [s.projectId, s.pair[1], Buffer.alloc(32, 1)],
           );
           expect(res.rows).toEqual([{ party_id: s.pair[1] }]);
+        });
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'populated pre-S08 (0018) → current: S01/S02/S06/S07 rows unchanged, S03–S05 retired, live brief arrives, rerun is a no-op',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0018);
+        const s = await asRuntime(db, populateThroughS04);
+        await asRuntime(db, async (c) => {
+          await c.query(...agreementAffirmationSql(s, s.agreementPresentedTermIds[0]!, s.pair[0]));
+          await c.query(...universalAffirmationSql(s, s.universalPresentedTermIds[0]!, s.partyIds[0]));
+          const acct = await c.query<{ id: string }>(
+            `insert into account (login_provider, provider_subject) values ('google', 'upgrade-s08-subject') returning id`,
+          );
+          await c.query('insert into party_account_binding (project_id, party_id, account_id) values ($1, $2, $3)', [
+            s.projectId,
+            s.pair[0],
+            acct.rows[0]!.id,
+          ]);
+          await c.query('insert into direct_invitation (project_id, party_id, credential_digest) values ($1, $2, $3)', [
+            s.projectId,
+            s.pair[1],
+            Buffer.alloc(32, 8),
+          ]);
+        });
+        const boundary = journal().entries.findIndex((e) => e.tag === T0018) + 1;
+        const before = await asOwner(db, async (c) => ({ rows: await rowsOf(c), books: await bookkeeping(c) }));
+        for (const table of [...SURVIVING_TABLES, ...RETIRED_TABLES]) {
+          expect({ table, populated: (before.rows[table] ?? []).length > 0 }).toEqual({ table, populated: true });
+        }
+        expect(before.books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(boundary));
+
+        await runMigrations(db.migrationUrl);
+
+        await asOwner(db, async (c) => {
+          const after = await rowsOf(c);
+          expect(surviving(after, before.rows)).toEqual(surviving(before.rows));
+          for (const table of RETIRED_TABLES) expect({ table, present: table in after }).toEqual({ table, present: false });
+          const fns = await c.query<{ n: number }>(
+            `select count(*)::int as n from pg_proc where pronamespace = 'public'::regnamespace and proname = any($1)`,
+            [RETIRED_FUNCTIONS],
+          );
+          expect(fns.rows[0]!.n).toBe(0);
+          expect(after['live_brief']).toEqual([]);
+          expect(after['brief_item']).toEqual([]);
+          expect(await runtimePrivileges(c, 'live_brief')).toEqual(['INSERT', 'SELECT']);
+          expect(await runtimePrivileges(c, 'brief_item')).toEqual(['DELETE', 'INSERT', 'SELECT']);
+          const books = await bookkeeping(c);
+          expect(books.slice(0, boundary)).toEqual(before.books);
+          expect(books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(journal().entries.length));
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+
+        // A second run applies nothing and changes nothing.
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => {
+          expect((await bookkeeping(c)).length).toBe(journal().entries.length);
+          expect(surviving(await rowsOf(c), before.rows)).toEqual(surviving(before.rows));
+        });
+
+        // A pre-existing project can open a brief, and its pre-existing pair can carry a fee.
+        await asRuntime(db, async (c) => {
+          const brief = await c.query<{ id: string }>('insert into live_brief (project_id) values ($1) returning id', [s.projectId]);
+          const fee = await c.query(
+            `insert into brief_item (brief_id, project_id, layer, pairwise_agreement_id, item_key, value, position)
+             values ($1, $2, 'money', $3, 'fee', '[upgrade] 100', 1) returning id`,
+            [brief.rows[0]!.id, s.projectId, s.agreementId],
+          );
+          expect(fee.rowCount).toBe(1);
+        });
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'duplicate pairs at 0018: the S08 upgrade fails loudly and leaves the database exactly as it was',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0018);
+        const s = await asRuntime(db, populateS01S02);
+        await asRuntime(db, (c) =>
+          c.query('insert into pairwise_agreement (project_id, party_one_id, party_two_id) values ($1, $2, $3)', [
+            s.projectId,
+            s.pair[0],
+            s.pair[1],
+          ]),
+        );
+        const before = await asOwner(db, async (c) => ({ rows: await rowsOf(c), books: await bookkeeping(c), catalog: await catalog(c) }));
+        expect(before.rows['pairwise_agreement']).toHaveLength(2);
+
+        await expect(runMigrations(db.migrationUrl)).rejects.toThrow(/duplicate pairwise agreements exist/);
+
+        await asOwner(db, async (c) => {
+          expect(await rowsOf(c)).toEqual(before.rows);
+          expect(await bookkeeping(c)).toEqual(before.books);
+          expect(await catalog(c)).toEqual(before.catalog);
+          expect((await c.query(`select to_regclass('public.agreement_term') as r`)).rows[0].r).not.toBeNull();
+          expect((await c.query(`select to_regclass('public.live_brief') as r`)).rows[0].r).toBeNull();
         });
       });
     },

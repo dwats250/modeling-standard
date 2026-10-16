@@ -15,13 +15,12 @@ const state = {
 // Actions the product does not have yet. Decided is not implemented: several
 // of these are decided by Cory and simply not built.
 const UNAVAILABLE = [
-  ['Add a party', 'Decided (D03): a person joins through the invitation link and signs in with Google or Apple. Not built: account storage exists (S06), sign-in and invitation do not.'],
-  ['Create a pairwise agreement', 'Not built. One agreement per pair, per project is decided (D02); the current storage does not enforce it yet.'],
-  ['Add or present terms', 'Not built. Who may drop a declined term is open (R2).'],
-  ['Tick a term', 'Not built. Only the party itself ticks (D12), signed in to its own account (D03).'],
-  ['Sign', 'Not built. Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
-  ['Send or invite', 'Decided (D03): the link is the invitation. Not built.'],
-  ['View as a party', 'Decided for photo shoots (D10). Not built: no party view exists yet.'],
+  ['Add a party', 'Decided (D03): a person joins through the invitation link and signs in with Google or Apple. Not built: account binding (S06) and invitation links (S07) are stored; sign-in and delivery are not.'],
+  ['Compose the brief', 'Not built as a product action. Draft composition has data functions (S08) but no route, and no participant surface exists.'],
+  ['Share the brief', 'Not built (S09).'],
+  ['Green state', 'Not built (S10). Each party acts only for itself (D12), signed in to its own account (D03).'],
+  ['Sign', 'Not built (S11). Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
+  ['View as a party', 'Decided for photo shoots (D10). Not built: a visibility filter exists as a data function (S08), but no party view does.'],
 ];
 
 function el(tag, options = {}, children = []) {
@@ -127,7 +126,7 @@ function renderList() {
       el('span', { className: 'title', text: annotation?.title ?? 'Project (created in this session)' }),
       el('span', { className: 'meta' }, [
         idCode(project.id),
-        el('span', { text: ` · ${plural(project.partyCount, 'party').replace('partys', 'parties')} · ${plural(project.agreementCount, 'agreement')}` }),
+        el('span', { text: ` · ${plural(project.partyCount, 'party').replace('partys', 'parties')} · ${plural(project.agreementCount, 'pair')}` }),
       ]),
     ]);
     if (project.id === state.selectedId) link.setAttribute('aria-current', 'page');
@@ -190,8 +189,8 @@ function renderDetail() {
     return;
   }
   const record = state.record;
-  // Only ever render the selected project's record, so the inspector and its
-  // simulator controls always act on what navigation shows.
+  // Only ever render the selected project's record, so the inspector always
+  // shows what navigation selected.
   if (!record || record.project.id !== state.selectedId) return;
   const annotation = annotationFor(record.project.id);
   // Projects without fixture labels get positional labels by id order.
@@ -228,25 +227,15 @@ function renderDetail() {
     }
   }
 
-  // Agreements
-  let agreementsBody;
+  // Pair-scope records
+  let pairsBody;
   if (record.agreements.length === 0) {
-    agreementsBody = el('div', { className: 'state empty' }, [el('p', { text: 'No pairwise agreements.' })]);
+    pairsBody = el('div', { className: 'state empty' }, [el('p', { text: 'No pairs.' })]);
   } else {
-    agreementsBody = el('div', { className: 'agreements' });
+    pairsBody = el('ul', { className: 'rows' });
     for (const agreement of record.agreements) {
-      const [one, two] = [...agreement.partyIds].sort(byLabel(annotation));
-      agreementsBody.append(
-        el('article', { className: 'agreement-block' }, [
-          el('header', { className: 'agreement-head' }, [
-            el('div', {}, [
-              el('strong', { text: annotation?.agreements?.[agreement.id] ?? 'Pairwise agreement' }),
-              el('p', { className: 'pair', text: `${partyLabel(annotation, one)}  ↔  ${partyLabel(annotation, two)}` }),
-            ]),
-            idCode(agreement.id),
-          ]),
-          renderLayer(agreement.terms, agreement.versions, [one, two], annotation, { layer: 'pairwise', base: `/demo/sim/agreements/${agreement.id}` }),
-        ]),
+      pairsBody.append(
+        el('li', {}, [el('span', { text: pairLabel(annotation, record, agreement.id) }), idCode(agreement.id)]),
       );
     }
   }
@@ -263,162 +252,103 @@ function renderDetail() {
 
   root.append(
     head,
+    el('p', { className: 'draft-banner', attrs: { role: 'note' }, text: DRAFT_BANNER }),
     section('Parties', 'Project-local parties (S01). No role or identity. Binding a party to a sign-in account is stored by S06 but not shown here.', partiesBody),
     section(
-      'Shared terms — universal layer',
-      'Safety and consent terms held on the project. On site means physical proximity (D02, decided): everyone in the room ticks these. The current data model does not record who is present.',
-      renderLayer(record.universal.terms, record.universal.versions, record.parties.map((p) => p.id).sort(byLabel(annotation)), annotation, { layer: 'universal', base: `/demo/sim/projects/${record.project.id}` }),
+      'Pairs',
+      'Internal pair-scope records: one per pair of parties, per project (S02, S08). Not a product noun and not a contract. A money item or a pair-scoped shared item names the pair it is between.',
+      pairsBody,
     ),
-    section(
-      'Pairwise agreements',
-      'Current S03 storage: terms held on an agreement relating exactly two parties (S02). This is not the product’s privacy model. Cory has ruled three layers — universal safety, shared logistics including the call sheet (not built), and private money only — so craft terms here are a storage stand-in, known to be stale.',
-      agreementsBody,
-    ),
-    legend(),
-    SNAPSHOT ? null : simAssumptions(),
-    section('Not available as product actions', SNAPSHOT ? 'Decided is not implemented: not built yet, or still open.' : 'Decided is not implemented: not built yet, or still open. The simulator stands in for some of them, labelled as simulation.', unavailable),
+    renderBrief(record, annotation),
+    section('Not available as product actions', 'Decided is not implemented: not built yet, or still open.', unavailable),
   );
 }
 
+// ---- The draft live brief (S08) ----
 
-// ---- Terms, presented versions and affirmation rows (S03–S05) ----
+const DRAFT_BANNER = 'Draft composition only. Sharing, green state and signing arrive in S09–S11.';
 
-function formatTime(iso) {
-  const date = new Date(iso);
-  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
+const LAYERS = [
+  ['universal', 'Universal layer', 'Safety terms for everyone on site (D02: physical proximity). Seen by every party. An item may have a subject (Q7). Presence is not recorded.'],
+  ['shared', 'Shared layer', 'Logistics and craft terms seen by every party (D10). A pair scope says who an item is between, not who sees it.'],
+  ['money', 'Money layer', 'One field: the fee (Q6), at most one per pair. Each fee is private to its pair (D10).'],
+];
+
+const SHAPE_LABELS = { declaration: 'declaration', request: 'request', open_parameter: 'open parameter' };
+const PENDING_LABELS = { decide_together: 'pending: decide together', subject: 'pending: awaiting its subject' };
+
+function pairLabel(annotation, record, agreementId) {
+  const labelled = annotation?.agreements?.[agreementId];
+  if (labelled) return labelled;
+  const agreement = record.agreements.find((a) => a.id === agreementId);
+  if (!agreement) return 'Pair';
+  const [one, two] = [...agreement.partyIds].sort(byLabel(annotation));
+  return `Pair: ${partyLabel(annotation, one)} ↔ ${partyLabel(annotation, two)}`;
 }
 
-function legend() {
-  return el('aside', { className: 'legend' }, [
-    el('p', {}, [
-      el('strong', { text: 'Reading the grids. ' }),
-      el('span', {
-        text:
-          'A ✓ cell is a stored tick row (S05 term affirmation evidence): that party, that exact frozen wording, a database time. ' +
-          'A tick is not a signature. Everyone ticks until every term is green for everyone; only then does anyone sign (D04). ' +
-          'Signing is not built, and what the signing act looks like is still open. ' +
-          'An empty cell means no row is stored — nothing more. It is not "pending" or "declined", and nothing is shown as final.',
-      }),
-    ]),
+function tag(text, className = '') {
+  return el('span', { className: `tag ${className}`.trim(), text });
+}
+
+function renderItem(item, record, annotation) {
+  const tags = el('div', { className: 'tags' });
+  if (item.layer === 'money') tags.append(tag(`private to this pair · ${pairLabel(annotation, record, item.pairwiseAgreementId)}`, 'private'));
+  else if (item.pairwiseAgreementId) tags.append(tag(`between · ${pairLabel(annotation, record, item.pairwiseAgreementId)}`));
+  else tags.append(tag('project-wide'));
+  if (item.subjectPartyId) tags.append(tag(`subject · ${partyLabel(annotation, item.subjectPartyId)}`));
+  if (item.shape) tags.append(tag(`shape · ${SHAPE_LABELS[item.shape]}`));
+  if (item.pending) tags.append(tag(PENDING_LABELS[item.pending], 'pending'));
+  if (item.itemKey) tags.append(tag(`item key ${item.itemKey}`, 'key'));
+
+  // Wording is shown only when it is stored. A keyed item without wording is
+  // instrumentation, never text that looks like part of a document.
+  const wording =
+    item.content === null
+      ? el('p', { className: 'instrumentation', text: `item key ${item.itemKey} — wording not materialized (draft)` })
+      : el('p', { className: 'wording', text: item.content });
+
+  const value =
+    item.value === null ? null : el('p', { className: 'value' }, [el('span', { className: 'muted', text: 'value ' }), el('span', { text: item.value })]);
+
+  return el('li', { className: 'brief-item', attrs: { 'data-layer': item.layer } }, [
+    el('span', { className: 'pos', text: String(item.position) }),
+    el('div', { className: 'item-body' }, [wording, value, tags]),
   ]);
 }
 
-// What a later version may do, per Cory's 2026-10-14/15 rulings. A resend may
-// only shrink: nothing is ever added (no escalation, D02). A shared safety
-// term can never be left out (D02, D04). The simulator enforces both for the
-// demo; production S04 does not yet.
-const LATER_ROWS =
-  'No rows can be recorded against a later version in the current storage: S05’s single-version guard predates Cory’s ruling that already-ticked terms stay ticked across a resend. That carry-forward is not built.';
-const LAYER_COPY = {
-  pairwise: {
-    presentHint:
-      'Choose the terms to present. A later version may keep or leave out terms of the version before it — leaving one out is how a declined term is dropped and resent (D02) — but may not add one: escalation cannot happen. Who may drop a term is open (R2); the demo operator stands in.',
-    newTermNote: 'Not in the previous version, so it cannot be added to a resend (no escalation).',
-    notInLater: (sequence, content) => `Dropped since version ${sequence}: “${content}”`,
-    notInLaterNote: null,
-    laterVersion: LATER_ROWS,
-  },
-  universal: {
-    presentHint:
-      'A shared safety term can never be dropped (D02, D04, decided). Once version 1 is presented, a later version must keep every term, and nothing may be added.',
-    newTermNote: 'Not in the presented version, so it cannot be added to a later one.',
-    notInLater: (sequence, content) => `Not in this version, though in version ${sequence}: “${content}”`,
-    notInLaterNote: 'Stored before Cory ruled that a shared safety term can never be left out (2026-10-14/15). The demo no longer allows this.',
-    laterVersion: LATER_ROWS,
-  },
-};
-
-function renderLayer(terms, versions, partyIds, annotation, ctx) {
-  const wrap = el('div', { className: 'layer' });
-  if (terms.length === 0 && versions.length === 0) {
-    wrap.append(el('div', { className: 'state empty' }, [el('p', { text: 'No terms stored.' })]));
-    if (!SNAPSHOT && ctx) wrap.append(simPanel(terms, versions, ctx));
-    return wrap;
+function renderBrief(record, annotation) {
+  if (!record.brief) {
+    return section(
+      'Live brief',
+      'Draft composition only.',
+      el('div', { className: 'state empty' }, [el('p', { text: 'No live brief has been opened for this project.' })]),
+    );
   }
-
-  const presentedSources = new Set(versions.flatMap((v) => v.terms.map((t) => t.sourceTermId)));
-  const neverPresented = terms.filter((t) => !presentedSources.has(t.id));
-
-  if (versions.length === 0) {
-    wrap.append(el('p', { className: 'hint', text: 'Terms are stored but no version has been presented.' }));
+  const body = el('div', { className: 'brief' }, [
+    el('p', { className: 'meta' }, [el('span', { text: 'brief ' }), idCode(record.brief.id)]),
+  ]);
+  if (record.brief.items.length === 0) {
+    body.append(el('div', { className: 'state empty' }, [el('p', { text: 'The draft brief has no items.' })]));
   }
-
-  versions.forEach((version, index) => {
-    const previous = index > 0 ? versions[index - 1] : null;
-    wrap.append(renderVersion(version, previous, versions.length, partyIds, annotation, ctx));
-  });
-
-  if (neverPresented.length > 0) {
-    const list = el('ol', { className: 'draft-terms' });
-    for (const term of neverPresented) list.append(el('li', { text: term.content }));
-    wrap.append(
-      el('div', { className: 'drafts' }, [
-        el('p', { className: 'hint', text: 'Stored, never presented (S03). Not part of any version.' }),
+  for (const [layer, title, hint] of LAYERS) {
+    const items = record.brief.items.filter((item) => item.layer === layer);
+    if (items.length === 0) continue;
+    const list = el('ol', { className: 'brief-items' });
+    for (const item of items) list.append(renderItem(item, record, annotation));
+    body.append(
+      el('section', { className: 'layer', attrs: { 'data-layer': layer } }, [
+        el('h4', { text: title }),
+        el('p', { className: 'hint', text: hint }),
         list,
       ]),
     );
   }
-  if (!SNAPSHOT && ctx) wrap.append(simPanel(terms, versions, ctx));
-  return wrap;
+  return section(
+    'Live brief — draft',
+    'One mutable workspace per project (S08). Items are shown in display order within each layer. Nothing here records when anything happened or who did it: live state is not evidence (HC1), and there is no proposer (HC2).',
+    body,
+  );
 }
-
-function renderVersion(version, previous, versionCount, partyIds, annotation, ctx) {
-  const rows = new Map(version.affirmations.map((a) => [`${a.presentedTermId}|${a.partyId}`, a]));
-
-  const head = el('header', { className: 'version-head' }, [
-    el('span', { className: 'badge', text: `Version ${version.sequence}` }),
-    el('span', { className: 'sealed', text: 'sealed' }),
-    el('span', { className: 'meta', text: `presented ${formatTime(version.presentedAt)}` }),
-  ]);
-
-  const copy = LAYER_COPY[ctx.layer];
-  const notes = [];
-  if (previous) {
-    const kept = new Set(version.terms.map((t) => t.sourceTermId));
-    const dropped = previous.terms.filter((t) => !kept.has(t.sourceTermId));
-    for (const term of dropped) {
-      notes.push(el('p', { className: 'dropped', text: copy.notInLater(previous.sequence, term.content) }));
-    }
-    if (dropped.length > 0 && copy.notInLaterNote) notes.push(el('p', { className: 'hint', text: copy.notInLaterNote }));
-  }
-  if (versionCount > 1) {
-    notes.push(
-      el('p', {
-        className: 'hint',
-        text:
-          version.sequence === 1
-            ? 'Unchanged by the later version, and kept here because that is how storage retains versions. Whether a dropped term persists in retained history is an open question for Cory (R1). Once a later version exists, no new rows can be recorded here (S05 guard).'
-            : copy.laterVersion,
-      }),
-    );
-  }
-
-  const table = el('table', { className: 'grid-table' });
-  const headRow = el('tr', {}, [el('th', { text: '#', attrs: { scope: 'col' } }), el('th', { text: 'Frozen wording', attrs: { scope: 'col' } })]);
-  for (const partyId of partyIds) headRow.append(el('th', { text: partyLabel(annotation, partyId), attrs: { scope: 'col' } }));
-  table.append(el('thead', {}, [headRow]));
-
-  const body = el('tbody');
-  for (const term of version.terms) {
-    const tr = el('tr', {}, [el('td', { className: 'pos', text: String(term.position) }), el('td', { text: term.content })]);
-    for (const partyId of partyIds) {
-      const row = rows.get(`${term.id}|${partyId}`);
-      tr.append(
-        row
-          ? el('td', { className: 'cell yes', attrs: { title: `Row stored ${formatTime(row.affirmedAt)}` } }, [
-              el('span', { text: '✓ ' }),
-              el('span', { className: 'meta', text: new Date(row.affirmedAt).toLocaleTimeString() }),
-            ])
-          : emptyCell(version, versionCount, term, partyId, annotation, ctx),
-      );
-    }
-    body.append(tr);
-  }
-  table.append(body);
-
-  return el('section', { className: 'version' }, [head, ...notes, el('div', { className: 'table-scroll' }, [table])]);
-}
-
 
 // ---- Remaining Cory seams, and what is decided but not built ----
 // Wording follows decisions/*.md and the 2026-10-09–15 reconciliation note.
@@ -432,7 +362,7 @@ const DECISIONS = [
     built: [
       'Decided: a safety term every person ticks individually, with a signed acknowledgment on every brief.',
       'Decided: one term, two faces — for the person protected, the tools she has; for the people bound by it, the obligation.',
-      'Not built: no term content or presentation exists for it.',
+      'Not built: the brief can hold an item keyed no_means_no (S08), but no wording exists for it.',
     ],
     open: ['The exact wording. Cory writes it.'],
     blocks: ['Presenting the no-means-no term to anyone'],
@@ -444,38 +374,11 @@ const DECISIONS = [
     file: 'decisions/D04-terms-and-affirmation.md',
     built: [
       'Decided: ticking and signing are separate acts. Everyone ticks until every term is green for everyone; only then does anyone sign.',
-      'Built: per-term tick rows (S05). They are not signatures.',
-      'Not built: any signing step.',
+      'Not built: ticking (S10) and signing (S11).',
     ],
     open: ['The visible signing act once everything is green.'],
     blocks: ['Building the signing step'],
     question: 'Once every term is green for everyone, what does each person do to sign?',
-  },
-  {
-    id: 'R1',
-    title: 'A declined term versus retained versions',
-    file: 'decisions/2026-10-09-15-cory-reconciliation.md',
-    built: [
-      'Decided: a “no” is not recorded; the final contract is the record (Q10).',
-      'Decided: every version is retained invisibly as evidence (Q17).',
-      'Built: storage keeps every presented version, including one holding a term later dropped (this inspector shows them).',
-    ],
-    open: ['Whether a dropped term stays in the evidentiary version history.'],
-    blocks: ['Designing evidence retention for resends'],
-    question: 'When a declined term is dropped and the rest resent, should the earlier version that held it stay in the evidence record?',
-  },
-  {
-    id: 'R2',
-    title: 'Who may drop a declined term',
-    file: 'decisions/2026-10-09-15-cory-reconciliation.md',
-    built: [
-      'Decided: authorship of a term is not recorded (Q9).',
-      'Decided: only whoever proposed a declined term may drop it (Q9).',
-      'Not built: no presenter or proposer is stored; the demo operator stands in.',
-    ],
-    open: ['How “only the proposer may drop” is enforced without recording who proposed.'],
-    blocks: ['Authorizing drop-and-resend for real people'],
-    question: 'Should who proposed a term be not stored at all, stored only as invisible evidence, or stored but never shown?',
   },
   {
     id: 'D05',
@@ -485,17 +388,15 @@ const DECISIONS = [
       'Decided: “brief” before signing, “contract” after; each person walks away with the contract.',
       'Every demo screen still uses internal code names, not product words.',
     ],
-    open: ['The words for a presented version, a response, and the archived states — to be drafted in context, on real screens, for Cory to react to.'],
+    open: ['The remaining words D05 lists as open — to be drafted in context, on real screens, for Cory to react to.'],
     blocks: ['Any screen, email or document a person outside the team reads'],
-    question: 'Seeing a draft screen and email, what should a presented version, a response and an archived state be called?',
+    question: 'Seeing a draft screen and email, what should the remaining open terms in D05 be called?',
   },
 ];
 
 const CAPABILITIES = [
   ['Present the no-means-no term', ['D04 wording']],
   ['Sign once every term is green', ['D04 signing']],
-  ['Keep evidence across a resend', ['R1']],
-  ['Let a real person drop a declined term', ['R2']],
   ['Show any product words to a person', ['D05']],
 ];
 
@@ -503,8 +404,8 @@ const CAPABILITIES = [
 const DECIDED_NOT_BUILT = [
   'D03 participation credential: account by Google or Apple sign-in, the link is the invitation. Account storage exists (S06); sign-in and invitation do not.',
   'D10 what each party sees (photo shoots): decided in full. No party view is built.',
-  'D02 lifecycle: answered except R2 — one agreement per pair, shrink-only resends, no organizer confirmation. Mostly not built.',
-  'Three layers: universal safety, shared logistics including the call sheet, private money only. The current storage still has the older two layers.',
+  'D02 lifecycle: sharing, ticking and signing. Not built (S09–S11).',
+  'Three layers: universal safety, shared logistics including the call sheet, private money only. Built as draft topology (S08); the call sheet is not built.',
   'On site means physical proximity. Presence is not recorded.',
   'D11 verification at first participation. Not built.',
   'D06 pre-launch real use in sequence. Gate 2 is not open.',
@@ -588,121 +489,6 @@ function renderDecisions() {
 }
 
 
-// ---- Simulator (live demo only; never in the snapshot) ----
-
-const SIM_ERRORS = {
-  version_not_affirmable: 'Only a sole version 1 can take rows in current storage (S05 guard). Carrying ticks forward across a resend is decided but not built.',
-  term_added_after_presentation: 'A later version cannot add a term the previous version did not hold: escalation cannot happen (D02).',
-  universal_term_omitted: 'A shared safety term can never be left out of a later version (D02, D04).',
-  already_affirmed: 'That party already has a row for this term.',
-  party_not_in_agreement: 'That party is not one of this agreement’s two parties.',
-  term_not_in_container: 'A chosen term is not stored in this container.',
-  presented_term_not_found: 'That presented term is not in this container.',
-  affirmed_too_soon: 'The version was presented in the same transaction; try again.',
-  invalid_input: 'Check the input: a term needs some text, and a version needs at least one term.',
-};
-
-function simError(error) {
-  const code = String(error.message).split(' ')[0];
-  return SIM_ERRORS[code] ?? `Rejected: ${error.message}`;
-}
-
-async function simulate(url, body, success) {
-  // The project this action was taken on. If navigation has moved on by the
-  // time it completes, the new view is left alone.
-  const projectId = state.record?.project.id ?? null;
-  try {
-    await api('POST', url, body);
-    toast(success);
-  } catch (error) {
-    toast(simError(error), 'error');
-  }
-  await loadProjects();
-  if (projectId !== null && state.selectedId === projectId) await loadRecord(projectId);
-}
-
-function emptyCell(version, versionCount, term, partyId, annotation, ctx) {
-  const cell = el('td', { className: 'cell none', attrs: { 'aria-label': 'no row stored' } });
-  // Offer the simulated act only where S05 would accept a row: a sole version 1.
-  if (SNAPSHOT || !ctx || versionCount !== 1 || version.sequence !== 1) return cell;
-  const button = el('button', {
-    className: 'sim-affirm',
-    text: 'simulate',
-    attrs: {
-      type: 'button',
-      title: `Simulation: record a tick row as if ${partyLabel(annotation, partyId)} had ticked this term. Not a signature. In the product only the party itself ticks (D12), signed in to its own account (D03).`,
-    },
-  });
-  button.addEventListener('click', () => {
-    button.disabled = true;
-    void simulate(`${ctx.base}/affirmations`, { presentedTermId: term.id, partyId }, `Simulated tick row recorded for ${partyLabel(annotation, partyId)}.`);
-  });
-  cell.append(button);
-  return cell;
-}
-
-function simPanel(terms, versions, ctx) {
-  const latest = versions.at(-1);
-  const inLatest = new Set(latest ? latest.terms.map((t) => t.sourceTermId) : terms.map((t) => t.id));
-
-  const input = el('input', { attrs: { type: 'text', maxlength: '2000', placeholder: '[synthetic] term text', 'aria-label': 'New term text' } });
-  const add = el('button', { className: 'secondary', text: 'Add term', attrs: { type: 'button' } });
-  add.addEventListener('click', () => {
-    if (!/\S/.test(input.value)) return toast('A term needs some text.', 'error');
-    add.disabled = true;
-    void simulate(`${ctx.base}/terms`, { content: input.value }, 'Term stored (not yet presented).');
-  });
-
-  // Once a version exists: no term outside it may be added (both layers), and
-  // no shared term may be left out (universal). The server enforces the same.
-  const copy = LAYER_COPY[ctx.layer];
-  const boxes = el('ul', { className: 'sim-terms' });
-  for (const term of terms) {
-    const box = el('input', { attrs: { type: 'checkbox', value: term.id, id: `sim-${term.id}` } });
-    box.checked = inLatest.has(term.id);
-    const addable = !latest || inLatest.has(term.id);
-    const droppable = ctx.layer !== 'universal' || !latest;
-    if (!addable || !droppable) box.disabled = true;
-    const label = el('label', { text: term.content, attrs: { for: `sim-${term.id}` } });
-    boxes.append(el('li', {}, [box, label, addable ? null : el('span', { className: 'hint sim-locked', text: copy.newTermNote })]));
-  }
-  const next = (latest?.sequence ?? 0) + 1;
-  const present = el('button', { className: 'secondary', text: `Present version ${next}`, attrs: { type: 'button' } });
-  present.addEventListener('click', () => {
-    const chosen = [...boxes.querySelectorAll('input:checked')].map((b) => b.value);
-    if (chosen.length === 0) return toast('Choose at least one term to present.', 'error');
-    present.disabled = true;
-    void simulate(`${ctx.base}/versions`, { termIds: chosen }, `Version ${next} presented and sealed.`);
-  });
-
-  return el('details', { className: 'sim-panel' }, [
-    el('summary', { text: 'Simulate — demo only' }),
-    el('p', { className: 'hint', text: 'The demo operator adds and presents terms. In the product this is not built, and who may drop a declined term is open (R2).' }),
-    el('div', { className: 'sim-row' }, [input, add]),
-    terms.length > 0
-      ? el('div', {}, [
-          el('p', { className: 'hint sim-present-hint', text: LAYER_COPY[ctx.layer].presentHint }),
-          boxes,
-          present,
-        ])
-      : null,
-  ]);
-}
-
-function simAssumptions() {
-  return el('aside', { className: 'sim-assumptions' }, [
-    el('strong', { text: 'Simulation assumptions. ' }),
-    el('span', {
-      text:
-        'The demo operator adds and presents terms and records tick rows naming a party. None of that is a product act: ' +
-        'who may drop a declined term is open (R2), and only a party may tick for itself (D12), signed in to its own account (D03 decided, not built). ' +
-        'Tick rows are not signatures; signing is not built. ' +
-        'Demo-only rules matching Cory’s rulings: a later version may not add a term (no escalation), and a shared safety term may not be left out. Production storage does not enforce these yet. ' +
-        'A version needing at least one term is a current storage restriction: the database requires a positive term count (S04). That is how it is built today, not a product rule. Not repeating a term is a simulator input rule. Everything else — frozen versions, numbering, which version can take rows — is the database’s own S03–S05 rules.',
-    }),
-  ]);
-}
-
 // ---- Data loading ----
 
 async function loadFixture() {
@@ -781,15 +567,15 @@ function route() {
   }
 }
 
-async function startSimulation(button) {
+async function startScenario(button) {
   button.disabled = true;
   try {
     const project = await api('POST', '/demo/sim/scenarios', {});
     await loadProjects();
     location.hash = `#/projects/${project.id}`;
-    toast('New simulation: one project, two parties, one pairwise agreement. Open “Simulate” in each layer.');
+    toast('New scenario: one project, two parties, one pair. No live brief is opened.');
   } catch (error) {
-    toast(`Could not start a simulation: ${error.message}`, 'error');
+    toast(`Could not start a scenario: ${error.message}`, 'error');
   } finally {
     button.disabled = false;
   }
@@ -822,7 +608,7 @@ if (SNAPSHOT) {
   document.getElementById('start-simulation').hidden = true;
 } else {
   createButton.addEventListener('click', (event) => void createProject(event.currentTarget));
-  document.getElementById('start-simulation').addEventListener('click', (event) => void startSimulation(event.currentTarget));
+  document.getElementById('start-simulation').addEventListener('click', (event) => void startScenario(event.currentTarget));
 }
 window.addEventListener('hashchange', route);
 

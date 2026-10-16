@@ -1,16 +1,8 @@
 import { z } from 'zod';
 import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
+import { findLiveBriefForProject, listBriefItems } from '../briefs/brief.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
 import { listPairwiseAgreements } from '../projects/agreement.ts';
-import { listAgreementAffirmations, listUniversalAffirmations, type AffirmationRecord } from '../projects/affirmations.ts';
-import { listAgreementTerms, listUniversalTerms } from '../projects/terms.ts';
-import {
-  findAgreementVersion,
-  findUniversalVersion,
-  listAgreementVersions,
-  listUniversalVersions,
-  type PresentedTerm,
-} from '../projects/versions.ts';
 import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, listProjectsCreatedBy } from '../projects/project.ts';
 import { simulatorOperations } from './simulator.ts';
@@ -24,9 +16,10 @@ import { simulatorOperations } from './simulator.ts';
  * output, authorization on the loaded project with the S01 creator-only
  * policy.
  *
- * The inspector shows the stored record as it is. It is not a view any party
- * would get: D10 is decided for photo shoots, but no party view is built. It
- * writes nothing.
+ * The inspector shows the stored record as it is: parties, the internal
+ * pair-scope records, and the draft live brief (S08). It is not a view any
+ * party would get: D10 is decided for photo shoots, but no party view is
+ * built. It writes nothing.
  */
 
 const anyPrincipalMayListOwn: Policy<object> = () => true;
@@ -61,37 +54,20 @@ export const listDemoProjectsOperation = defineOperation({
   },
 });
 
-// Stored terms (S03), sealed presented versions (S04) and per-term
-// affirmation rows (S05), exactly as stored. Deliberately no finality,
-// requiredness, "pending" or "declined": none of those is decided, and the
-// absence of an affirmation row means nothing (S05).
-const storedTerm = z.strictObject({ id: z.uuid(), position: z.number().int(), content: z.string() });
-const presentedVersion = z.strictObject({
+// A draft brief item exactly as stored (S08). Draft composition only: no
+// phase, tick, requiredness, finality or signature exists to show.
+const briefItemDto = z.strictObject({
   id: z.uuid(),
-  sequence: z.number().int(),
-  presentedAt: z.iso.datetime({ offset: true }),
-  terms: z.array(z.strictObject({ id: z.uuid(), sourceTermId: z.uuid(), position: z.number().int(), content: z.string() })),
-  affirmations: z.array(
-    z.strictObject({ presentedTermId: z.uuid(), partyId: z.uuid(), affirmedAt: z.iso.datetime({ offset: true }) }),
-  ),
+  layer: z.enum(['universal', 'shared', 'money']),
+  pairwiseAgreementId: z.uuid().nullable(),
+  subjectPartyId: z.uuid().nullable(),
+  shape: z.enum(['declaration', 'request', 'open_parameter']).nullable(),
+  itemKey: z.enum(['fee', 'no_means_no', 'coverage_level', 'physical_contact', 'stop_rule']).nullable(),
+  content: z.string().nullable(),
+  value: z.string().nullable(),
+  pending: z.enum(['decide_together', 'subject']).nullable(),
+  position: z.number().int().positive(),
 });
-
-function versionDto(
-  version: { id: string; sequence: number; presentedAt: Date; terms: readonly PresentedTerm[] },
-  affirmations: readonly AffirmationRecord[],
-): z.output<typeof presentedVersion> {
-  return {
-    id: version.id,
-    sequence: version.sequence,
-    presentedAt: version.presentedAt.toISOString(),
-    terms: version.terms.map((t) => ({ id: t.id, sourceTermId: t.sourceTermId, position: t.position, content: t.content })),
-    affirmations: affirmations.map((a) => ({
-      presentedTermId: a.presentedTermId,
-      partyId: a.partyId,
-      affirmedAt: a.affirmedAt.toISOString(),
-    })),
-  };
-}
 
 export const readDemoProjectRecordOperation = defineOperation({
   name: 'demo.project.record',
@@ -101,15 +77,8 @@ export const readDemoProjectRecordOperation = defineOperation({
   output: z.strictObject({
     project: z.strictObject({ id: z.uuid() }),
     parties: z.array(z.strictObject({ id: z.uuid() })),
-    universal: z.strictObject({ terms: z.array(storedTerm), versions: z.array(presentedVersion) }),
-    agreements: z.array(
-      z.strictObject({
-        id: z.uuid(),
-        partyIds: z.tuple([z.uuid(), z.uuid()]),
-        terms: z.array(storedTerm),
-        versions: z.array(presentedVersion),
-      }),
-    ),
+    agreements: z.array(z.strictObject({ id: z.uuid(), partyIds: z.tuple([z.uuid(), z.uuid()]) })),
+    brief: z.strictObject({ id: z.uuid(), items: z.array(briefItemDto) }).nullable(),
   }),
   access: {
     kind: 'protected',
@@ -119,36 +88,28 @@ export const readDemoProjectRecordOperation = defineOperation({
   run: async (_input, { db, target }) => {
     const parties = await listProjectParties(db, target.id);
     const agreements = await listPairwiseAgreements(db, target.id);
-
-    const universalVersions = [];
-    for (const { id } of await listUniversalVersions(db, target.id)) {
-      const version = await findUniversalVersion(db, id);
-      if (version) universalVersions.push(versionDto(version, await listUniversalAffirmations(db, id)));
-    }
-
-    const agreementDtos = [];
-    for (const agreement of agreements) {
-      const versions = [];
-      for (const { id } of await listAgreementVersions(db, agreement.id)) {
-        const version = await findAgreementVersion(db, id);
-        if (version) versions.push(versionDto(version, await listAgreementAffirmations(db, id)));
-      }
-      agreementDtos.push({
-        id: agreement.id,
-        partyIds: [agreement.partyIds[0], agreement.partyIds[1]] as [string, string],
-        terms: (await listAgreementTerms(db, agreement.id)).map((t) => ({ id: t.id, position: t.position, content: t.content })),
-        versions,
-      });
-    }
-
+    const brief = await findLiveBriefForProject(db, target.id);
     return {
       project: { id: target.id },
       parties: parties.map((p) => ({ id: p.id })),
-      universal: {
-        terms: (await listUniversalTerms(db, target.id)).map((t) => ({ id: t.id, position: t.position, content: t.content })),
-        versions: universalVersions,
-      },
-      agreements: agreementDtos,
+      agreements: agreements.map((a) => ({ id: a.id, partyIds: [a.partyIds[0], a.partyIds[1]] as [string, string] })),
+      brief: brief
+        ? {
+            id: brief.id,
+            items: (await listBriefItems(db, brief.id)).map((item) => ({
+              id: item.id,
+              layer: item.layer,
+              pairwiseAgreementId: item.pairwiseAgreementId,
+              subjectPartyId: item.subjectPartyId,
+              shape: item.shape,
+              itemKey: item.itemKey,
+              content: item.content,
+              value: item.value,
+              pending: item.pending,
+              position: item.position,
+            })),
+          }
+        : null,
     };
   },
 });

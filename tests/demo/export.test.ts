@@ -63,16 +63,12 @@ describe('portable snapshot', () => {
     }
   });
 
-  it('carries Cory’s October rulings, not the superseded wording', () => {
-    // Universal omission is ruled out, escalation is impossible, and the layer
-    // model is three layers with only money private.
-    expect(html).toContain('A shared safety term can never be dropped');
-    expect(html).toContain('escalation cannot happen');
+  it('carries Cory’s rulings and the S08 draft framing, not the superseded wording', () => {
+    expect(html).toContain('Draft composition only. Sharing, green state and signing arrive in S09–S11.');
     expect(html).toContain('private money only');
+    expect(html).toContain('private to this pair');
     expect(html).toContain('On site means physical proximity');
-    // Tick rows are not signatures; signing is not built.
-    expect(html).toContain('A tick is not a signature');
-    expect(html).toContain('Signing is not built');
+    expect(html).toContain('wording not materialized (draft)');
     // Decided is not implemented, for D03 and D10.
     expect(html).toContain('D10 is decided for photo shoots, but no party view is built');
     for (const stale of [
@@ -83,18 +79,26 @@ describe('portable snapshot', () => {
       'is undecided (D03)',
       'mostly undecided (D10)',
       'Leaving one out is how a term is dropped and resent (D02)',
+      // Retired with S03–S05 (S08).
+      'Present version',
+      'sealed',
+      'tick row',
+      'A tick is not a signature',
+      'escalation cannot happen',
+      'Simulate — demo only',
+      "id: 'R1'",
+      "id: 'R2'",
     ]) {
       expect({ stale, present: html.includes(stale) }).toEqual({ stale, present: false });
     }
   });
 
-  it('presents only the current Cory seams, with counsel items labelled as counsel, and the term-count rule accurately', () => {
+  it('presents only the current Cory seams, with counsel items labelled as counsel', () => {
     expect(html).toContain('A walkthrough of the current seams, not the full list');
     expect(html).toContain('Counsel items');
     expect(html).toContain('For counsel, not Cory homework.');
-    expect(html).toContain('the database requires a positive term count (S04)');
     expect(html).not.toContain('four decisions');
-    expect(html).not.toContain('A version needing at least one term is a simulator input rule');
+    expect(html).not.toContain('positive term count');
   });
 
   it('says it is a read-only synthetic snapshot', () => {
