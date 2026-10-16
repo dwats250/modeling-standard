@@ -15,6 +15,10 @@ const state = {
   // Labels for scenario projects started in this browser (the database stores
   // no name or role for a party). Display state only.
   sessionLabels: loadSessionLabels(),
+  // The last stage this browser rendered per project, and the stage change the
+  // latest reload produced. Display state only: a transient cue, never kept.
+  lastStage: {},
+  transition: null,
 };
 
 function loadSessionLabels() {
@@ -30,6 +34,30 @@ function saveSessionLabels() {
     localStorage.setItem('ms-demo-session-labels', JSON.stringify(state.sessionLabels));
   } catch {
     // Labels are a convenience; positional labels remain.
+  }
+}
+
+// ---- Engineering notes: decision references, ids and schema labels ----
+// Collapsed by default so the product story reads first. A per-browser
+// display preference only.
+
+function loadEngineeringNotes() {
+  try {
+    return localStorage.getItem('ms-demo-engineering-notes') === 'on';
+  } catch {
+    return false;
+  }
+}
+
+function setEngineeringNotes(on) {
+  document.body.classList.toggle('show-eng', on);
+  const toggle = document.getElementById('eng-toggle');
+  toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+  toggle.textContent = on ? 'Hide engineering notes' : 'Engineering notes';
+  try {
+    localStorage.setItem('ms-demo-engineering-notes', on ? 'on' : 'off');
+  } catch {
+    // A convenience only.
   }
 }
 
@@ -50,6 +78,11 @@ function el(tag, options = {}, children = []) {
   if (options.attrs) for (const [k, v] of Object.entries(options.attrs)) node.setAttribute(k, v);
   for (const child of children) if (child) node.append(child);
   return node;
+}
+
+/** A developer note: decision references, ids, schema labels. Hidden unless engineering notes are on. */
+function eng(text, tag = 'p') {
+  return el(tag, { className: 'eng eng-note', text });
 }
 
 function plural(n, word) {
@@ -110,6 +143,13 @@ function annotationFor(projectId) {
   return state.fixture.projects?.[projectId] ?? null;
 }
 
+/** A walkthrough started in this browser: its cast labels live here, never in the database. */
+function isWalkthrough(projectId) {
+  return Boolean(state.sessionLabels[projectId]);
+}
+
+const WALKTHROUGH_TITLE = 'Photographer & Model — shoot brief';
+
 // ---- Project list ----
 
 function renderList() {
@@ -142,8 +182,9 @@ function renderList() {
   const list = el('ul', { className: 'project-list' });
   for (const project of state.projects) {
     const annotation = annotationFor(project.id);
+    const title = annotation?.title ?? (isWalkthrough(project.id) ? `Walkthrough: ${WALKTHROUGH_TITLE}` : 'Project (created in this session)');
     const link = el('a', { attrs: { href: `#/projects/${project.id}` } }, [
-      el('span', { className: 'title', text: annotation?.title ?? 'Project (created in this session)' }),
+      el('span', { className: 'title', text: title }),
       el('span', { className: 'meta' }, [
         idCode(project.id),
         el('span', { text: ` · ${plural(project.partyCount, 'party').replace('partys', 'parties')} · ${plural(project.agreementCount, 'pair')}` }),
@@ -163,9 +204,9 @@ function retryButton(fn) {
 
 // ---- Project detail ----
 
-function section(title, hint, body) {
-  return el('section', { className: 'card' }, [
-    el('header', {}, [el('h3', { text: title }), hint ? el('p', { className: 'hint', text: hint }) : null]),
+function section(title, hint, body, { engNote = null, className = 'card' } = {}) {
+  return el('section', { className }, [
+    el('header', {}, [el('h3', { text: title }), hint ? el('p', { className: 'hint', text: hint }) : null, engNote ? eng(engNote) : null]),
     body,
   ]);
 }
@@ -179,6 +220,13 @@ function byLabel(annotation) {
   return (a, b) => partyLabel(annotation, a).localeCompare(partyLabel(annotation, b)) || a.localeCompare(b);
 }
 
+/** On a narrow screen the project list sits below the brief; this jumps to it. */
+function jumpToProjects() {
+  const node = el('button', { className: 'jump-projects', text: 'All projects ↓', attrs: { type: 'button' } });
+  node.addEventListener('click', () => document.getElementById('sidebar').scrollIntoView({ behavior: 'smooth' }));
+  return node;
+}
+
 function renderDetail() {
   const root = document.getElementById('detail');
   root.replaceChildren();
@@ -189,8 +237,9 @@ function renderDetail() {
         el('h2', { text: 'Select a project' }),
         el('p', {
           className: 'muted',
-          text: 'Each project is the common container for one collaboration (D01). Pick one on the left.',
+          text: 'Start the walkthrough to see a photographer and a model take one shared brief to ready to sign, or pick a project.',
         }),
+        eng('Each project is the common container for one collaboration (D01).'),
       ]),
     );
     return;
@@ -213,27 +262,35 @@ function renderDetail() {
   // shows what navigation selected.
   if (!record || record.project.id !== state.selectedId) return;
   const annotation = annotationFor(record.project.id);
+  const walkthrough = !annotation && isWalkthrough(record.project.id);
   // Projects without fixture labels get positional labels by id order.
   state.positional = Object.fromEntries(
     [...record.parties].map((p) => p.id).sort().map((id, i) => [id, `Party ${i + 1}`]),
   );
 
+  let intro = null;
+  if (annotation) {
+    intro = el('div', { className: 'annotation' }, [
+      el('p', { text: annotation.note }),
+      eng(`Grounds: ${annotation.source}`),
+      eng('Fixture labels are demo annotations; the database stores no name, role or label for a party.'),
+    ]);
+  } else if (!walkthrough) {
+    intro = el('div', { className: 'annotation' }, [
+      el('p', { text: `A project created in this session.${record.parties.length === 0 ? ' No parties yet.' : ''}` }),
+      eng('No fixture annotation. A project holds no description yet (S01).'),
+    ]);
+  }
+
   const head = el('header', { className: 'detail-head' }, [
-    el('p', { className: 'eyebrow', text: 'Project' }),
-    el('h2', { text: annotation?.title ?? 'Project created in this session' }),
-    el('p', { className: 'meta' }, [el('span', { text: 'id ' }), el('code', { text: record.project.id })]),
-    annotation
-      ? el('div', { className: 'annotation' }, [
-          el('p', { text: annotation.note }),
-          el('p', { className: 'source', text: `Grounds: ${annotation.source}` }),
-          el('p', {
-            className: 'source',
-            text: 'Fixture labels are demo annotations; the database stores no name, role or label for a party.',
-          }),
-        ])
-      : el('div', { className: 'annotation' }, [
-          el('p', { text: 'No fixture annotation. A project holds no description yet (S01).' }),
-        ]),
+    el('div', { className: 'head-row' }, [
+      el('p', { className: 'eyebrow', text: annotation ? 'Fixture' : walkthrough ? 'Synthetic walkthrough' : 'Project' }),
+      jumpToProjects(),
+    ]),
+    el('h2', { text: annotation?.title ?? (walkthrough ? WALKTHROUGH_TITLE : 'Project created in this session') }),
+    el('p', { className: 'meta eng' }, [el('span', { text: 'id ' }), el('code', { text: record.project.id })]),
+    record.brief ? renderStory(record, annotation) : null,
+    intro,
   ]);
 
   // Parties
@@ -272,23 +329,52 @@ function renderDetail() {
 
   root.append(
     head,
+    record.brief ? renderBand(record, annotation) : null,
     renderBrief(record, annotation),
-    section('Parties', 'Project-local parties (S01). No role or identity. Binding a party to a sign-in account is stored by S06 but not shown here.', partiesBody),
+    el('details', { className: 'card not-built' }, [
+      el('summary', { text: 'Not built yet: signing, party views, sign-in and more' }),
+      el('p', { className: 'hint', text: 'Decided is not implemented: not built yet, or still open.' }),
+      unavailable,
+    ]),
+    section(
+      'Parties',
+      'Project-local parties (S01). No role or identity. Binding a party to a sign-in account is stored by S06 but not shown here.',
+      partiesBody,
+      { className: 'card eng' },
+    ),
     section(
       'Pairs',
       'Internal pair-scope records: one per pair of parties, per project (S02, S08). Not a product noun and not a contract. A money item or a pair-scoped shared item names the pair it is between.',
       pairsBody,
+      { className: 'card eng' },
     ),
-    section('Not available as product actions', 'Decided is not implemented: not built yet, or still open.', unavailable),
   );
 }
 
 // ---- The live brief (S08 topology, S09 share and green state) ----
 
 const LAYERS = [
-  ['universal', 'Universal', 'Safety for everyone physically on site (Q8). Every party on site must green-light each item. Once shared, nothing here can be removed.'],
-  ['shared', 'Shared', 'Logistics and craft terms, seen by everyone (D10). Project-wide items need every party; a pair-scoped item needs its pair, but everyone still sees it.'],
-  ['money', 'Private money', 'One field: the fee (Q6). Private to the two people it is between (D10), and only they green-light it.'],
+  [
+    'universal',
+    'Universal',
+    'Everyone on site sees these',
+    'Safety for everyone physically on site. Everyone on site ticks each item, and nothing here can be removed once shared.',
+    'Q8: on site is physical proximity. Universal material is kept once shared (S09).',
+  ],
+  [
+    'shared',
+    'Shared',
+    'Everyone in the collaboration sees these',
+    'Logistics and craft terms. Most need everyone’s tick; an item between two people needs only those two — but everyone can still see it.',
+    'D10: pair scope does not restrict who sees a shared item.',
+  ],
+  [
+    'money',
+    'Private money',
+    'Only the pair it belongs to sees this',
+    'The fee — the one private thing. Only the two people it is between can see it, and only they tick it.',
+    'Q6: money is one field, the fee. D10: private to its pair.',
+  ],
 ];
 
 const SHAPE_LABELS = { declaration: 'declaration', request: 'request', open_parameter: 'open parameter' };
@@ -341,8 +427,19 @@ function pairLabel(annotation, record, agreementId) {
   return `Pair: ${partyLabel(annotation, one)} ↔ ${partyLabel(annotation, two)}`;
 }
 
+/** The two people a pair-scoped item is between, in plain words. */
+function pairNames(annotation, record, agreementId) {
+  const agreement = record.agreements.find((a) => a.id === agreementId);
+  if (!agreement) return 'this pair';
+  return [...agreement.partyIds].sort(byLabel(annotation)).map((id) => partyLabel(annotation, id)).join(' & ');
+}
+
 function tag(text, className = '') {
   return el('span', { className: `tag ${className}`.trim(), text });
+}
+
+function chip(text, className = '') {
+  return el('span', { className: `chip ${className}`.trim(), text });
 }
 
 function button(text, onClick, className = 'secondary') {
@@ -364,7 +461,7 @@ function actorFor(record, annotation) {
 
 function valueForm(label, placeholder, onSubmit) {
   const input = el('input', { attrs: { type: 'text', maxlength: '500', placeholder, 'aria-label': label } });
-  const submit = el('button', { className: 'secondary', text: label, attrs: { type: 'button' } });
+  const submit = el('button', { className: 'secondary set', text: label, attrs: { type: 'button' } });
   submit.addEventListener('click', () => {
     if (!/\S/.test(input.value)) return toast(SIM_ERRORS.blank_value, 'error');
     submit.disabled = true;
@@ -373,18 +470,42 @@ function valueForm(label, placeholder, onSubmit) {
   return el('div', { className: 'value-form' }, [input, submit]);
 }
 
+function isDeliberate(item) {
+  return item.itemKey !== null && DELIBERATE_TICK_KEYS.includes(item.itemKey);
+}
+
+/** Plain-language presentation of an item's stored fields. Labels only; nothing stored changes. */
+function plainChips(item, record, annotation) {
+  const chips = [];
+  const subject = item.subjectPartyId ? partyLabel(annotation, item.subjectPartyId) : null;
+  if (item.pending === 'subject') chips.push(chip(`Waiting for ${subject}`, 'waiting'));
+  if (item.pending === 'decide_together') chips.push(chip('Decide together · still open', 'waiting'));
+  if (item.layer === 'money') chips.push(chip(`Private · only ${pairNames(annotation, record, item.pairwiseAgreementId)} see this`, 'private'));
+  else if (item.pairwiseAgreementId) chips.push(chip(`Between ${pairNames(annotation, record, item.pairwiseAgreementId)} · everyone can see it`, 'between'));
+  if (item.shape === 'declaration') chips.push(chip(`Declaration by ${subject}`, 'subject'));
+  if (item.shape === 'open_parameter') chips.push(chip(`${subject} sets this`, 'subject'));
+  if (item.shape === 'request') chips.push(chip(`Request · only ${subject} can decline it`, 'subject'));
+  if (isDeliberate(item)) chips.push(chip('Needs its own tick', 'deliberate'));
+  return chips;
+}
+
 function renderItem(item, record, annotation, actor, displayNumber) {
   const brief = record.brief;
   const live = brief.phase === 'live';
-  const tags = el('div', { className: 'tags' });
+
+  // Schema-oriented labels, kept as instrumentation behind engineering notes.
+  const tags = el('div', { className: 'tags eng' });
   if (item.layer === 'money') tags.append(tag(`private to this pair · ${pairLabel(annotation, record, item.pairwiseAgreementId)}`, 'private'));
   else if (item.pairwiseAgreementId) tags.append(tag(`between · ${pairLabel(annotation, record, item.pairwiseAgreementId)}`));
   else tags.append(tag('project-wide'));
   if (item.subjectPartyId) tags.append(tag(`subject · ${partyLabel(annotation, item.subjectPartyId)}`));
   if (item.shape) tags.append(tag(`shape · ${SHAPE_LABELS[item.shape]}`));
   if (item.pending) tags.append(tag(`pending: ${PENDING_LABELS[item.pending]}`, 'pending'));
-  if (item.itemKey && DELIBERATE_TICK_KEYS.includes(item.itemKey)) tags.append(tag('deliberate tick', 'deliberate'));
+  if (isDeliberate(item)) tags.append(tag('deliberate tick', 'deliberate'));
   if (item.itemKey) tags.append(tag(`item key ${item.itemKey}`, 'key'));
+
+  const chips = plainChips(item, record, annotation);
+  const plain = chips.length ? el('div', { className: 'chips' }, chips) : null;
 
   // Wording is shown only when it is stored. A keyed item without wording is
   // instrumentation, never text that looks like part of a document.
@@ -393,13 +514,14 @@ function renderItem(item, record, annotation, actor, displayNumber) {
       ? el('p', { className: 'instrumentation', text: `item key ${item.itemKey} — wording not materialized (draft)` })
       : el('p', { className: 'wording', text: item.content });
   const value =
-    item.value === null ? null : el('p', { className: 'value' }, [el('span', { className: 'muted', text: 'value ' }), el('span', { text: item.value })]);
+    item.value === null ? null : el('p', { className: 'value' }, [el('span', { className: 'muted', text: 'Set to ' }), el('span', { text: item.value })]);
 
   // Who must green-light it, and who does now. Current state only.
   let approvals = null;
   if (live) {
     approvals = el('ul', { className: 'approvals', attrs: { 'aria-label': 'Green-light' } });
     if (item.approverIds.length === 0) approvals.append(el('li', { className: 'muted', text: 'nobody must green-light this' }));
+    else approvals.append(el('li', { className: 'approvals-label', text: item.green ? 'Green-lit by' : 'Ticks' }));
     for (const id of [...item.approverIds].sort(byLabel(annotation))) {
       const yes = item.tickedBy.includes(id);
       approvals.append(el('li', { className: yes ? 'approval yes' : 'approval no', text: `${yes ? '✓' : '○'} ${partyLabel(annotation, id)}` }));
@@ -426,74 +548,166 @@ function renderItem(item, record, annotation, actor, displayNumber) {
       }
     } else if (item.approverIds.includes(actor)) {
       const ticked = item.tickedBy.includes(actor);
-      actions.append(
-        ticked
-          ? button(`Untick as ${name}`, () => simulate(`/demo/sim/items/${item.id}/untick`, { partyId: actor }, 'Tick withdrawn.'), 'secondary untick')
-          : button(`Tick as ${name}`, () => simulate(`/demo/sim/items/${item.id}/tick`, { partyId: actor }, 'Ticked.'), 'secondary tick'),
-      );
+      if (ticked) {
+        if (item.green) actions.append(el('span', { className: 'green-note', text: 'Green — everyone has ticked' }));
+        actions.append(button(`Untick as ${name}`, () => simulate(`/demo/sim/items/${item.id}/untick`, { partyId: actor }, 'Tick withdrawn.'), 'untick'));
+      } else {
+        actions.append(button(`Tick as ${name}`, () => simulate(`/demo/sim/items/${item.id}/tick`, { partyId: actor }, 'Ticked.'), 'tick'));
+      }
     }
     if (item.shape === 'request' && item.subjectPartyId === actor && item.layer !== 'universal') {
-      actions.append(button(`Decline as ${name}`, () => simulate(`/demo/sim/items/${item.id}/decline`, { partyId: actor }, 'Declined. It is gone.'), 'secondary decline'));
+      actions.append(button(`Decline as ${name}`, () => simulate(`/demo/sim/items/${item.id}/decline`, { partyId: actor }, 'Request removed.'), 'decline'));
     }
   }
 
   const classes = ['brief-item'];
   if (live && item.green) classes.push('green');
+  if (item.pending) classes.push('open');
   return el('li', { className: classes.join(' '), attrs: { 'data-layer': item.layer, 'data-item': item.id } }, [
     // Numbered by display order, not stored position: a gap would hint that
     // something was declined, and a declined request simply disappears.
     el('span', { className: 'pos', text: live && item.green ? '✓' : String(displayNumber) }),
-    el('div', { className: 'item-body' }, [wording, value, tags, approvals, actions.childElementCount ? actions : null]),
+    el('div', { className: 'item-body' }, [wording, value, plain, tags, approvals, actions.childElementCount ? actions : null]),
   ]);
 }
 
-function renderStage(brief) {
+function stageOf(brief) {
+  return brief.ready ? 'ready' : brief.phase;
+}
+
+const STAGE_HEADLINES = { draft: 'DRAFT', live: 'LIVE', ready: 'READY TO SIGN' };
+
+/** One line of story: who, one shared brief, resolve, green-light, ready to sign. */
+function renderStory(record, annotation) {
+  const cast = record.parties.map((p) => p.id).sort(byLabel(annotation)).map((id) => partyLabel(annotation, id));
+  const steps = [
+    cast.length ? cast.join(' + ') : 'The parties',
+    'one shared brief',
+    'resolve what is still open',
+    `${cast.length === 2 ? 'both' : 'everyone'} green-light what matters`,
+    'ready to sign',
+  ];
+  const story = el('p', { className: 'story' });
+  steps.forEach((step, i) => {
+    if (i) story.append(el('span', { className: 'arrow', text: ' → ', attrs: { 'aria-hidden': 'true' } }));
+    story.append(el('span', { text: step }));
+  });
+  return story;
+}
+
+/**
+ * The persistent orientation band: who the people are, who is being simulated,
+ * and the stage. Sticky, so the stage and actor stay in view while acting.
+ */
+function renderBand(record, annotation) {
+  const brief = record.brief;
+  const stage = stageOf(brief);
   const live = brief.phase === 'live';
+  const ids = record.parties.map((p) => p.id).sort(byLabel(annotation));
+  const actor = live && !SNAPSHOT ? actorFor(record, annotation) : null;
   const greens = brief.items.filter((i) => i.green).length;
-  const steps = el('ol', { className: 'stage-steps' });
-  const current = brief.ready ? 2 : live ? 1 : 0;
+  const open = brief.items.filter((i) => i.pending !== null).length;
+  const change = state.transition?.projectId === record.project.id ? state.transition : null;
+
+  let who;
+  if (actor) {
+    who = renderActorBar(record, annotation, actor, ids);
+  } else {
+    who = el('div', { className: 'cast' }, [el('span', { className: 'band-label', text: 'Cast' })]);
+    if (ids.length === 0) who.append(el('span', { className: 'muted', text: 'No parties yet' }));
+    for (const id of ids) who.append(el('span', { className: 'cast-chip', text: partyLabel(annotation, id) }));
+  }
+
+  let progress;
+  if (stage === 'ready') progress = `All ${brief.items.length} green`;
+  else if (live) progress = `${greens} of ${brief.items.length} green${open ? ` · ${open} still open` : ''}`;
+  else progress = 'Not shared yet';
+
+  const steps = el('ol', { className: 'band-steps', attrs: { 'aria-label': 'Stages' } });
+  const current = ['draft', 'live', 'ready'].indexOf(stage);
   ['Draft', 'Live', 'Ready to sign'].forEach((label, i) => {
     steps.append(el('li', { className: i === current ? 'current' : i < current ? 'done' : '', text: label }));
   });
-  let headline;
-  let detail;
-  if (brief.ready) {
-    headline = 'READY TO SIGN';
-    detail =
-      'Every current item is green for everyone who must green-light it, and nothing is pending. Signing arrives in S10–S11. ' +
-      'This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated.';
-  } else if (live) {
-    headline = 'LIVE';
-    detail = `Shared: nothing can be added and the wording is fixed. ${greens} of ${brief.items.length} items green.`;
-  } else {
-    headline = 'DRAFT';
-    detail = 'Not shared yet. Say who will be on site, then share the brief.';
-  }
-  return el('div', { className: `stage ${brief.ready ? 'ready' : brief.phase}`, attrs: { role: 'status' } }, [
-    steps,
-    el('p', { className: 'stage-headline', text: headline }),
-    el('p', { className: 'stage-detail', text: detail }),
+
+  const band = el('div', { className: `band ${stage}${change ? ' changed' : ''}`, attrs: { 'data-stage': stage } }, [
+    who,
+    el('div', { className: 'band-stage', attrs: { role: 'status' } }, [
+      steps,
+      el('p', { className: 'stage-headline', text: STAGE_HEADLINES[stage] }),
+      el('p', { className: 'band-progress', text: progress }),
+    ]),
   ]);
+  if (change) {
+    let note;
+    if (change.to === 'ready') note = 'Everything is green. The brief is ready to sign.';
+    else if (change.from === 'ready') note = 'No longer ready to sign: an item needs its tick again.';
+    else if (change.to === 'live') note = 'Shared. The brief is now live: resolve what is open, then tick.';
+    if (note) band.append(el('p', { className: 'band-note', text: note }));
+  }
+  return band;
 }
 
-function renderActorBar(record, annotation, actor) {
-  const bar = el('div', { className: 'actor-bar', attrs: { role: 'group', 'aria-label': 'Simulating as' } }, [
-    el('span', { className: 'actor-label', text: 'Simulating as' }),
-  ]);
-  for (const id of record.parties.map((p) => p.id).sort(byLabel(annotation))) {
-    const chip = el('button', {
+function renderActorBar(record, annotation, actor, ids) {
+  const switcher = el('div', { className: 'actor-switch' });
+  for (const id of ids) {
+    const chipButton = el('button', {
       className: id === actor ? 'actor current' : 'actor',
       text: partyLabel(annotation, id),
       attrs: { type: 'button', 'aria-pressed': id === actor ? 'true' : 'false' },
     });
-    chip.addEventListener('click', () => {
+    chipButton.addEventListener('click', () => {
       state.actors[record.project.id] = id;
+      state.transition = null;
       renderDetail();
     });
-    bar.append(chip);
+    switcher.append(chipButton);
   }
-  bar.append(el('span', { className: 'hint', text: 'Simulation only: in the product each person acts for themselves (D12).' }));
-  return bar;
+  return el('div', { className: 'actor-bar', attrs: { role: 'group', 'aria-label': 'Simulating as' } }, [
+    el('span', { className: 'band-label', text: 'Acting as' }),
+    switcher,
+    el('span', { className: 'actor-caption', text: 'Tap a name to act as that person.' }),
+    eng('Simulation only: in the product each person acts for themselves (D12).', 'span'),
+  ]);
+}
+
+/** The stage, in words, at the top of the brief. READY TO SIGN is the milestone. */
+function renderMilestone(brief) {
+  const stage = stageOf(brief);
+  const greens = brief.items.filter((i) => i.green).length;
+  const open = brief.items.filter((i) => i.pending !== null).length;
+  const total = brief.items.length;
+  const node = el('div', { className: `milestone ${stage}` });
+  if (stage === 'ready') {
+    node.append(
+      el('p', { className: 'milestone-title', text: 'READY TO SIGN' }),
+      el('p', { className: 'stage-detail', text: 'Everything currently in this brief is resolved and green-lit. Signing is the next step.' }),
+      el('div', { className: 'next-step' }, [
+        el('span', { className: 'next-label', text: 'Next step: signing' }),
+        el('span', { text: 'Signing is not built in this demo yet.' }),
+      ]),
+      eng(
+        'Signing arrives in S10–S11. This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated (Gate 2).',
+      ),
+    );
+  } else if (stage === 'live') {
+    const bar = el('span');
+    bar.style.width = `${total ? Math.round((greens / total) * 100) : 0}%`;
+    node.append(
+      el('p', { className: 'milestone-title', text: 'Live — resolve what is open, then green-light' }),
+      el('div', { className: 'progress', attrs: { role: 'img', 'aria-label': `${greens} of ${total} items green` } }, [bar]),
+      el('p', {
+        className: 'stage-detail',
+        text: `${greens} of ${total} items green.${open ? ` ${plural(open, 'item')} still open.` : ''} An item turns green when everyone who must tick it has. Ticking is not signing.`,
+      }),
+      eng('Shared: nothing can be added and the wording is fixed (S09).'),
+    );
+  } else {
+    node.append(
+      el('p', { className: 'milestone-title', text: 'Draft — not shared yet' }),
+      el('p', { className: 'stage-detail', text: 'Say who will be on site, then share the brief. Once shared, it is live: nothing can be added and the wording is fixed.' }),
+    );
+  }
+  return node;
 }
 
 function renderPresence(record, annotation) {
@@ -502,7 +716,7 @@ function renderPresence(record, annotation) {
   const rows = el('ul', { className: 'presence' });
   for (const id of record.parties.map((p) => p.id).sort(byLabel(annotation))) {
     const fact = facts.get(id);
-    const status = fact === undefined ? 'not set' : fact ? 'on site' : 'not on site';
+    const status = fact === undefined ? 'not answered' : fact ? 'on site' : 'not on site';
     const controls = [];
     if (brief.phase === 'draft' && !SNAPSHOT) {
       controls.push(
@@ -514,13 +728,15 @@ function renderPresence(record, annotation) {
       el('li', { attrs: { 'data-party': id } }, [
         el('span', { className: 'who', text: partyLabel(annotation, id) }),
         el('span', { className: `presence-status ${fact === undefined ? 'unset' : ''}`.trim(), text: status }),
-        ...controls,
+        controls.length ? el('span', { className: 'presence-controls' }, controls) : null,
       ]),
     );
   }
-  return el('div', { className: 'presence-block' }, [
-    el('h4', { text: 'On site' }),
-    el('p', { className: 'hint', text: 'Who will physically be there (Q8). Everyone on site green-lights the universal items. Fixed once shared.' }),
+  const draft = brief.phase === 'draft';
+  return el('div', { className: `presence-block ${draft ? 'draft' : 'fixed'}` }, [
+    el('h4', { text: draft ? 'Who will be on site?' : 'On site' }),
+    el('p', { className: 'hint', text: draft ? 'Everyone on site ticks the universal safety items. Fixed once shared.' : 'Fixed when the brief was shared.' }),
+    eng('Q8: on site is physical proximity, one explicit fact per party.'),
     record.parties.length ? rows : el('p', { className: 'muted', text: 'No parties.' }),
   ]);
 }
@@ -531,7 +747,7 @@ function renderGroupCheck(record, annotation, actor) {
   const candidates = brief.items.filter((i) => i.pending === null && i.approverIds.includes(actor) && !i.tickedBy.includes(actor));
   const list = el('ul', { className: 'group-items' });
   for (const item of candidates) {
-    const deliberate = item.itemKey !== null && DELIBERATE_TICK_KEYS.includes(item.itemKey);
+    const deliberate = isDeliberate(item);
     const box = el('input', { attrs: { type: 'checkbox', value: item.id, id: `gc-${item.id}` } });
     box.checked = !deliberate;
     if (deliberate) box.disabled = true;
@@ -539,7 +755,7 @@ function renderGroupCheck(record, annotation, actor) {
       el('li', { className: deliberate ? 'deliberate' : '' }, [
         box,
         el('label', { text: item.content ?? `item key ${item.itemKey}`, attrs: { for: `gc-${item.id}` } }),
-        deliberate ? el('span', { className: 'hint', text: 'needs its own deliberate tick' }) : null,
+        deliberate ? el('span', { className: 'hint', text: 'Needs its own tick' }) : null,
       ]),
     );
   }
@@ -551,8 +767,12 @@ function renderGroupCheck(record, annotation, actor) {
     void simulate(`/demo/sim/briefs/${brief.id}/group-check`, { partyId: actor, itemIds }, `Ticked ${plural(itemIds.length, 'item')}.`);
   });
   return el('details', { className: 'group-check' }, [
-    el('summary', { text: `Group-check (${name})` }),
-    el('p', { className: 'hint', text: 'A convenience: it ticks each chosen item individually, exactly like single ticks, and nothing records that it was used. The fee, coverage level, physical contact and the stop rule always need their own tick.' }),
+    el('summary', { text: `Group-check: tick several ordinary items at once (${name})` }),
+    el('p', {
+      className: 'hint',
+      text: 'A shortcut only: it is exactly the same as ticking each chosen item one by one. The fee, coverage level, physical contact and the stop rule always need their own tick.',
+    }),
+    eng('Ticks are individual rows; nothing records that group-check was used. The server refuses a deliberate-tick key (deliberate_tick).'),
     candidates.length ? list : el('p', { className: 'muted', text: 'Nothing left for this party to tick.' }),
     candidates.length ? run : null,
   ]);
@@ -564,14 +784,13 @@ function renderBrief(record, annotation) {
     return section('Live brief', null, el('div', { className: 'state empty' }, [el('p', { text: 'No live brief has been opened for this project.' })]));
   }
   const actor = brief.phase === 'live' && !SNAPSHOT ? actorFor(record, annotation) : null;
-  const body = el('div', { className: 'brief' }, [renderStage(brief)]);
-  if (actor) body.append(renderActorBar(record, annotation, actor));
+  const body = el('div', { className: 'brief' }, [renderMilestone(brief)]);
   body.append(renderPresence(record, annotation));
   if (brief.phase === 'draft' && !SNAPSHOT && record.parties.length > 0) {
     body.append(
       el('div', { className: 'share-row' }, [
         button('Share the brief', () => simulate(`/demo/sim/briefs/${brief.id}/share`, {}, 'Shared. The brief is live.'), 'share'),
-        el('span', { className: 'hint', text: 'Pending items may stay pending; every item needs its wording, and every party an on-site answer.' }),
+        el('span', { className: 'hint', text: 'Open items can stay open until it is live; everyone needs an on-site answer first.' }),
       ]),
     );
   }
@@ -580,24 +799,23 @@ function renderBrief(record, annotation) {
     body.append(el('div', { className: 'state empty' }, [el('p', { text: 'The draft brief has no items.' })]));
   }
   const numberOf = new Map(brief.items.map((item, i) => [item.id, i + 1]));
-  for (const [layer, title, hint] of LAYERS) {
+  for (const [layer, title, audience, hint, engNote] of LAYERS) {
     const items = brief.items.filter((item) => item.layer === layer);
     if (items.length === 0) continue;
     const list = el('ol', { className: 'brief-items' });
     for (const item of items) list.append(renderItem(item, record, annotation, actor, numberOf.get(item.id)));
     body.append(
       el('section', { className: 'layer', attrs: { 'data-layer': layer } }, [
-        el('h4', { text: title }),
+        el('div', { className: 'layer-head' }, [el('h4', { text: title }), el('span', { className: 'layer-audience', text: audience })]),
         el('p', { className: 'hint', text: hint }),
+        eng(engNote),
         list,
       ]),
     );
   }
-  return section(
-    'Live brief',
-    'One current brief per project. It shows the state as it is now: no history, no record of a decline, nobody recorded as having proposed anything, and no times (HC1, HC2).',
-    body,
-  );
+  return section('The brief', 'One brief, as it stands right now.', body, {
+    engNote: 'Current state only: no history, no record of a decline, nobody recorded as having proposed anything, and no times (HC1, HC2).',
+  });
 }
 
 // ---- Remaining Cory seams, and what is decided but not built ----
@@ -739,6 +957,7 @@ function renderDecisions() {
 }
 
 
+
 // ---- Data loading ----
 
 async function loadFixture() {
@@ -794,6 +1013,12 @@ async function loadRecord(id, { quiet = false } = {}) {
     error = e.message;
   }
   if (generation !== recordGeneration) return;
+  // A stage change seen by this browser after a simulated act gets a
+  // transient cue in the band; it is gone on the next render.
+  const stage = record?.brief ? stageOf(record.brief) : null;
+  const before = state.lastStage[id];
+  state.transition = quiet && stage && before && before !== stage ? { projectId: id, from: before, to: stage } : null;
+  if (stage) state.lastStage[id] = stage;
   state.record = record;
   state.recordError = error;
   state.recordLoading = false;
@@ -804,6 +1029,7 @@ function route() {
   const decisionsLink = document.getElementById('decisions-link');
   if (location.hash === '#/decisions') {
     state.selectedId = null;
+    document.body.classList.remove('has-selection');
     invalidateRecordLoads();
     renderList();
     decisionsLink?.setAttribute('aria-current', 'page');
@@ -813,9 +1039,13 @@ function route() {
   decisionsLink?.removeAttribute('aria-current');
   const match = /^#\/projects\/([0-9a-f-]{36})$/i.exec(location.hash);
   state.selectedId = match ? match[1].toLowerCase() : null;
+  // On a narrow screen a selected project's brief comes first; the list follows it.
+  document.body.classList.toggle('has-selection', state.selectedId !== null);
   renderList();
-  if (state.selectedId) void loadRecord(state.selectedId);
-  else {
+  if (state.selectedId) {
+    window.scrollTo(0, 0);
+    void loadRecord(state.selectedId);
+  } else {
     invalidateRecordLoads();
     renderDetail();
   }
@@ -852,6 +1082,9 @@ async function createProject(button) {
     button.textContent = 'Create project';
   }
 }
+
+setEngineeringNotes(loadEngineeringNotes());
+document.getElementById('eng-toggle').addEventListener('click', () => setEngineeringNotes(!document.body.classList.contains('show-eng')));
 
 const createButton = document.getElementById('create-project');
 if (SNAPSHOT) {

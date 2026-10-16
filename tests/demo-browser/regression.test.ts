@@ -131,6 +131,20 @@ async function settle(page: Page): Promise<void> {
 /** Hides what changes run to run (ids), so the milestone screenshot is stable. */
 const masks = (page: Page) => [page.locator('.id'), page.locator('.detail-head .meta code'), page.locator('.project-list .meta code')];
 
+/**
+ * Mobile milestone shots mid-walkthrough: the first screen and the whole page at
+ * 390 px, with the brief near the top and no horizontal scroll; then back to desktop.
+ */
+async function shootMobile(page: Page, name: string): Promise<void> {
+  await page.setViewportSize(VIEWPORTS.mobile);
+  await page.evaluate('window.scrollTo(0, 0)');
+  await noHorizontalScroll(page);
+  expect((await page.locator('.band').boundingBox())!.y).toBeLessThan(VIEWPORTS.mobile.height / 2);
+  await page.screenshot({ path: join(SHOTS, `${name}-mobile-top.png`), mask: masks(page), animations: 'disabled' });
+  await page.screenshot({ path: join(SHOTS, `${name}-mobile.png`), fullPage: true, mask: masks(page), animations: 'disabled' });
+  await page.setViewportSize(VIEWPORTS.desktop);
+}
+
 describe('demo regression', () => {
   for (const viewport of ['desktop', 'mobile'] as const) {
     it(`shows the fixtures: drafts by layer, private money, and one brief ready to sign (${viewport})`, async () => {
@@ -149,9 +163,16 @@ describe('demo regression', () => {
       await expect.poll(() => page.locator('.brief-item').count()).toBe(5);
       expect(await page.locator('.stage-headline').innerText()).toBe('DRAFT');
       expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal', 'shared']);
-      const tags = (await page.locator('.brief .tag').allInnerTexts()).join(' | ').toLowerCase();
+      // Schema labels are kept as instrumentation behind Engineering notes (hidden by default)...
+      expect(await page.locator('.brief .tags').first().isVisible()).toBe(false);
+      const tags = (await page.locator('.brief .tag').allTextContents()).join(' | ').toLowerCase();
       for (const label of ['subject', 'shape', 'declaration', 'request', 'open parameter', 'decide together', 'awaiting its subject', 'project-wide', 'between']) {
         expect({ label, shown: tags.includes(label) }).toEqual({ label, shown: true });
+      }
+      // ...and the same facts read in plain language.
+      const chips = (await page.locator('.brief .chip').allInnerTexts()).join(' | ');
+      for (const label of ['Declaration by', 'Request · only', 'sets this', 'Decide together', 'Waiting for', 'Between', 'everyone can see it']) {
+        expect({ label, shown: chips.includes(label) }).toEqual({ label, shown: true });
       }
       expect(await page.locator('.presence-status.unset').count()).toBe(2);
       await noHorizontalScroll(page);
@@ -162,8 +183,12 @@ describe('demo regression', () => {
       await expect.poll(() => page.locator('.brief-item').count()).toBe(4);
       const money = page.locator('.brief-item[data-layer="money"]');
       expect(await money.count()).toBe(2);
-      for (const fee of await money.all()) expect(await fee.locator('.tag.private').innerText()).toMatch(/^private to this pair · Pair (A|B)–C$/);
+      for (const fee of await money.all()) {
+        expect(await fee.locator('.tag.private').textContent()).toMatch(/^private to this pair · Pair (A|B)–C$/);
+        expect(await fee.locator('.chip.private').innerText()).toMatch(/^Private · only Party (A|B) & Party C see this$/);
+      }
       expect(await page.locator('.brief-item:not([data-layer="money"]) .tag.private').count()).toBe(0);
+      expect(await page.locator('.brief-item:not([data-layer="money"]) .chip.private').count()).toBe(0);
       await noHorizontalScroll(page);
       await page.screenshot({ path: join(SHOTS, `fixture2-${viewport}.png`), fullPage: true });
 
@@ -176,9 +201,10 @@ describe('demo regression', () => {
       await expect.poll(() => page.locator('.stage-headline').innerText()).toBe('READY TO SIGN');
       expect(await page.locator('.brief-item').count()).toBe(7);
       expect(await page.locator('.brief-item.green').count()).toBe(7);
-      expect(await page.locator('.brief-item[data-layer="money"] .tag.private').innerText()).toBe('private to this pair · Pair: Photographer ↔ Model');
+      expect(await page.locator('.brief-item[data-layer="money"] .tag.private').textContent()).toBe('private to this pair · Pair: Photographer ↔ Model');
+      expect(await page.locator('.brief-item[data-layer="money"] .chip.private').innerText()).toBe('Private · only Model & Photographer see this');
       await noHorizontalScroll(page);
-      await page.screenshot({ path: join(SHOTS, `fixture4-${viewport}.png`), fullPage: true, mask: masks(page) });
+      await page.screenshot({ path: join(SHOTS, `fixture4-${viewport}.png`), fullPage: true, mask: masks(page), animations: 'disabled' });
 
       await page.locator('#decisions-link').click();
       await expect.poll(() => page.locator('.decision').count()).toBe(CURRENT_SEAMS.length);
@@ -286,14 +312,25 @@ describe('demo regression', () => {
 
     // 1–2. Start, and inspect the draft: three layers, private money, pending items.
     await page.locator('#start-simulation').click();
-    await page.locator('h2', { hasText: 'Project created in this session' }).waitFor();
+    await page.locator('h2', { hasText: 'Photographer & Model — shoot brief' }).waitFor();
     await expect.poll(() => page.locator('.brief-item').count()).toBe(8);
     expect(await headline()).toBe('DRAFT');
     expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal', 'shared', 'private money']);
-    expect(await page.locator('.brief-item[data-layer="money"] .tag.private').innerText()).toBe('private to this pair · Pair: Model ↔ Photographer');
+    expect(await page.locator('.brief-item[data-layer="money"] .tag.private').textContent()).toBe('private to this pair · Pair: Model ↔ Photographer');
+    expect(await page.locator('.brief-item[data-layer="money"] .chip.private').innerText()).toBe('Private · only Model & Photographer see this');
     expect(await page.locator('.actor-bar').count()).toBe(0);
+    // Orientation: the cast and the stage sit in one band; engineering notes are collapsed.
+    expect(await page.locator('.band .cast-chip').allInnerTexts()).toEqual(['Model', 'Photographer']);
+    expect(await page.locator('.detail-head .meta').isVisible()).toBe(false);
+    expect(await page.locator('.brief-item .tags').first().isVisible()).toBe(false);
+    await page.locator('#eng-toggle').click();
+    expect(await page.locator('.brief-item .tags').first().isVisible()).toBe(true);
+    await page.locator('#eng-toggle').click();
+    expect(await page.locator('.brief-item .tags').first().isVisible()).toBe(false);
     await settle(page);
-    await page.screenshot({ path: join(SHOTS, 'walkthrough-1-draft-desktop.png'), fullPage: true, mask: masks(page) });
+    await page.evaluate('window.scrollTo(0, 0)');
+    await page.screenshot({ path: join(SHOTS, 'walkthrough-1-draft-desktop.png'), fullPage: true, mask: masks(page), animations: 'disabled' });
+    await shootMobile(page, 'walkthrough-1-draft');
 
     // 3–5. Sharing is refused until both have an on-site answer; then it goes live.
     await expectRefusal(() => page.locator('button.share').click(), 'on-site answer');
@@ -305,6 +342,13 @@ describe('demo regression', () => {
       );
     }
     await act(() => page.locator('button.share').click(), async () => (await headline()) === 'LIVE');
+    expect(await page.locator('.band-note').innerText()).toContain('now live');
+    // Live with work still open: neutral waiting labels, not errors.
+    expect(await page.locator('.chip.waiting').allInnerTexts()).toEqual(['Decide together · still open', 'Waiting for Model']);
+    await settle(page);
+    await page.evaluate('window.scrollTo(0, 0)');
+    await page.screenshot({ path: join(SHOTS, 'walkthrough-2-live-open-desktop.png'), fullPage: true, mask: masks(page), animations: 'disabled' });
+    await shootMobile(page, 'walkthrough-2-live-open');
     expect(await page.locator('.presence button').count()).toBe(0);
     expect(await page.locator('button.share').count()).toBe(0);
 
@@ -327,15 +371,20 @@ describe('demo regression', () => {
       async () => (await itemWith('Coverage level').locator('.value').count()) === 1,
     );
     expect(await page.locator('.tag.pending').count()).toBe(0);
+    expect(await page.locator('.chip.waiting').count()).toBe(0);
 
     // 7. The model declines the album-cover request: it simply disappears.
     expect(await itemWith('album cover').locator('button', { hasText: 'Decline as Model' }).count()).toBe(1);
+    expect(await itemWith('album cover').locator('.chip', { hasText: 'only Model can decline it' }).count()).toBe(1);
     await act(() => itemWith('album cover').locator('button', { hasText: 'Decline as Model' }).click(), async () => (await page.locator('.brief-item').count()) === 7);
     expect(await page.getByText('album cover').count()).toBe(0);
+    expect(await page.locator('#toast').textContent()).toBe('Request removed.');
     // Numbering is display order: no gap betrays the declined request.
     expect(await page.locator('.brief-item .pos').allInnerTexts()).toEqual(['1', '2', '3', '4', '5', '6', '7']);
     await settle(page);
-    await page.screenshot({ path: join(SHOTS, 'walkthrough-2-live-desktop.png'), fullPage: true, mask: masks(page) });
+    await page.evaluate('window.scrollTo(0, 0)');
+    await page.screenshot({ path: join(SHOTS, 'walkthrough-3-live-resolved-desktop.png'), fullPage: true, mask: masks(page), animations: 'disabled' });
+    await shootMobile(page, 'walkthrough-3-live-resolved');
 
     // 8. Individual ticks: the fee, by each of the pair.
     for (const who of ['Photographer', 'Model'] as const) {
@@ -354,7 +403,7 @@ describe('demo regression', () => {
     const coverageBox = panel.locator('li', { hasText: 'Coverage level' }).locator('input');
     expect(await coverageBox.isDisabled()).toBe(true);
     expect(await coverageBox.isChecked()).toBe(false);
-    expect(await panel.locator('li.deliberate .hint').allInnerTexts()).toEqual(['needs its own deliberate tick']);
+    expect(await panel.locator('li.deliberate .hint').allInnerTexts()).toEqual(['Needs its own tick']);
     await coverageBox.evaluate((node) => {
       (node as unknown as { disabled: boolean; checked: boolean }).disabled = false;
       (node as unknown as { disabled: boolean; checked: boolean }).checked = true;
@@ -382,6 +431,7 @@ describe('demo regression', () => {
     }
     await expect.poll(headline).toBe('READY TO SIGN');
     expect(await page.locator('.brief-item.green').count()).toBe(7);
+    expect(await page.locator('.band-note').innerText()).toContain('ready to sign');
 
     // 12–13. An untick loses green and readiness at once; a retick restores both.
     await act(
@@ -390,6 +440,8 @@ describe('demo regression', () => {
     );
     expect(await itemWith('Fee for the shoot').getAttribute('class')).not.toContain('green');
     expect(await page.locator('.brief-item.green').count()).toBe(6);
+    expect(await page.locator('.band-note').innerText()).toContain('No longer ready to sign');
+    expect(await page.locator('.milestone.ready').count()).toBe(0);
     await act(
       () => itemWith('Fee for the shoot').locator('button', { hasText: 'Tick as Photographer' }).click(),
       async () => (await headline()) === 'READY TO SIGN',
@@ -399,15 +451,38 @@ describe('demo regression', () => {
     expect(await page.locator('.brief-item.green').count()).toBe(7);
     // The only "Sign" control is the disabled not-available entry.
     expect(await page.locator('button:not([disabled])', { hasText: /\bsign\b/i }).count()).toBe(0);
-    expect(await page.locator('.stage-detail').innerText()).toContain('Signing arrives in S10–S11');
+    expect(await page.locator('.milestone.ready .milestone-title').innerText()).toBe('READY TO SIGN');
+    expect(await page.locator('.stage-detail').innerText()).toContain('Signing is the next step');
+    expect(await page.locator('.next-step').innerText()).toContain('Signing is not built in this demo yet');
+    // The stage band stays on screen after the last tick: nothing to hunt for.
+    const band = (await page.locator('.band').boundingBox())!;
+    expect(band.y).toBeGreaterThanOrEqual(0);
+    expect(band.y + band.height).toBeLessThanOrEqual(VIEWPORTS.desktop.height);
+    expect(await page.locator('.band .stage-headline').innerText()).toBe('READY TO SIGN');
     const detail = await page.locator('#detail').innerText();
     for (const never of NEVER_IN_PROJECT_VIEWS) expect({ never: String(never), found: never.test(detail) }).toEqual({ never: String(never), found: false });
     await settle(page);
-    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-desktop.png'), fullPage: true, mask: masks(page) });
+    // What the viewer sees right after the final tick, then the whole page.
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-desktop-after-tick.png'), mask: masks(page), animations: 'disabled' });
+    await page.evaluate('window.scrollTo(0, 0)');
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-desktop-top.png'), mask: masks(page), animations: 'disabled' });
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-desktop.png'), fullPage: true, mask: masks(page), animations: 'disabled' });
 
     await page.setViewportSize(VIEWPORTS.mobile);
     await noHorizontalScroll(page);
-    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-mobile.png'), fullPage: true, mask: masks(page) });
+    await page.evaluate('window.scrollTo(0, 0)');
+    // On a phone the band and the milestone are in the first screen.
+    expect((await page.locator('.band').boundingBox())!.y).toBeLessThan(VIEWPORTS.mobile.height / 2);
+    expect((await page.locator('.milestone.ready').boundingBox())!.y).toBeLessThan(VIEWPORTS.mobile.height);
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-mobile-top.png'), mask: masks(page), animations: 'disabled' });
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-mobile.png'), fullPage: true, mask: masks(page), animations: 'disabled' });
+    // Scrolled into the items, the band keeps the stage and actor in view.
+    await itemWith('Fee for the shoot').scrollIntoViewIfNeeded();
+    const stuck = (await page.locator('.band').boundingBox())!;
+    expect(stuck.y).toBeGreaterThanOrEqual(0);
+    expect(stuck.y).toBeLessThan(20);
+    expect(await page.locator('.band .actor.current').isVisible()).toBe(true);
+    await page.screenshot({ path: join(SHOTS, 'ready-to-sign-mobile-scrolled.png'), mask: masks(page), animations: 'disabled' });
     await page.close();
   });
 
