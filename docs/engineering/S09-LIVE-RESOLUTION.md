@@ -41,7 +41,7 @@ All `check_violation` with a named constraint; invoker rights; `search_path = pg
 | `project_party_guard_roster` (before insert on `project_party`) | No new party in a project whose brief is live. | `project_party_roster_closed` |
 | `brief_tick_check` (before insert or update) | Live brief; item with `content` and `pending IS NULL`; party is a derived approver. Locks the item `FOR SHARE`, so a settlement or decline in flight is waited for. An item it cannot see is refused. | `brief_tick_requires_live`, `brief_tick_requires_settled`, `brief_tick_requires_approver` |
 
-The roster guard is this slice's reading of "refuse roster mutation once shared": approvers are derived from the roster, so an added party would silently change who must green-light what. The roster-addition workflow is a later decision.
+The roster guard is a **temporary fail-closed implementation guard**: approvers are derived from the roster, so adding a party without the live-addition workflow would silently change who must green-light what. Cory has already decided the product semantics for additions — they are a new clean decision that everyone green-lights. S09 simply does not build that capability.
 
 ## Data functions (`src/briefs/live.ts`)
 
@@ -112,7 +112,7 @@ Each applied to `0022` or `live.ts`, run against the database and demo unit suit
 
 ## Interpretations and open points
 
-- **Zero-approver items** (a universal item when nobody is on site; an empty live brief) are green and ready by the literal all-approvers rule. Not special-cased; for Cory.
+- **Zero-approver items** (a universal item when nobody is on site; an empty live brief) are green by the literal all-approvers rule. S09 does not special-case this structural edge case; `READY TO SIGN` is not a real-use completeness guarantee, and S10 separately requires exactly two parties and one pair.
 - **Readiness is not in the party-visible read**, since in a multi-party project it could reveal another pair's outstanding fee and the multi-party signing unit is Cory-open.
 - **Decide-together settlement takes no actor**, per HC2; anyone with the function can settle it. Who may enter the agreed value is a participant-surface question.
 - **D05** still names "a presented version" among open words; not reconciled here.
