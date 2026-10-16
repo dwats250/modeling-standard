@@ -37,7 +37,7 @@ Every item already satisfies the S08 constraints, which the database enforces on
 
 `brief_party_presence (brief_id, project_id, party_id, on_site boolean not null)`, primary key `(brief_id, party_id)`, contained by `(brief_id, project_id) → live_brief` and `(project_id, party_id) → project_party`. No timestamp, role, reason, author or history.
 
-`setDraftPartyPresence(db, briefId, partyId, onSite)`: draft only, upsert. Once live, presence cannot be inserted, changed or deleted, and no party can be added to the project (the roster is closed; the roster-addition workflow is a separate, later decision).
+`setDraftPartyPresence(db, briefId, partyId, onSite)`: draft only, upsert. Once live, presence cannot be inserted, changed or deleted. S09 also refuses adding a new project party while live as a temporary fail-closed implementation guard: Cory has already decided that additions are a new clean decision that everyone green-lights, but that live-addition workflow is not built in this slice.
 
 ### 3.4 Post-share rigidity (database)
 
@@ -116,8 +116,8 @@ Fingerprint; canonical serialization; `signing` phase; pending signatures; final
 
 ## 5. Interpretations recorded (not product decisions)
 
-- **"Roster mutation refused once shared"** is implemented as: no presence change and no new `project_party` row for a project whose brief is live. Approvers are derived from the roster, so an addition would silently change who must approve.
-- **Zero-approver items** (a universal item when no party is on site; an empty brief) are green and ready by the literal all-approvers rule. This sprint neither forbids nor special-cases them; flagged for Cory.
+- **Live roster additions are not implemented in S09.** The database therefore refuses a new `project_party` row while the brief is live so approvers cannot change silently. This is a temporary fail-closed guard, not a new product rule: Cory has already decided that an addition is a new clean decision that everyone green-lights; that capability belongs to a later slice.
+- **Zero-approver items** (a universal item when no party is on site; an empty live brief) are green by the literal all-approvers rule. S09 does not special-case this structural edge case. `READY TO SIGN` is not a real-use completeness guarantee, and S10 separately requires exactly two parties and one pair.
 - **Readiness is not exposed in the party-visible read.** In a project with several pairs it could reveal that another pair's private fee is outstanding, and the multi-party signing unit is Cory-open (LIVE-BRIEF-REBUILD §10.2).
 
 ## 6. Acceptance
