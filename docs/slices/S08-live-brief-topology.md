@@ -1,6 +1,6 @@
 # Slice — S08 draft live-brief topology, and retirement of S03–S05
 
-Status: PROPOSED — awaiting Dustin approval (revised 2026-10-15 after the seam review)
+Status: APPROVED — implemented in S08 (authorized by Dustin; revised 2026-10-15 after the seam review)
 Owner: Claude
 Date: 2026-10-15
 Architecture: [`docs/engineering/LIVE-BRIEF-REBUILD.md`](../engineering/LIVE-BRIEF-REBUILD.md)
