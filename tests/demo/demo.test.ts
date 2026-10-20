@@ -2,8 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inject } from 'vitest';
@@ -12,7 +10,8 @@ import { createLogger } from '../../src/app/logger.ts';
 import { operations } from '../../src/app/operation-list.ts';
 import { DEMO_OPERATOR, DemoGuardError, assertLoopbackListenHost, demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { loadDemoFixtures } from '../../src/demo/fixtures.ts';
-import { demoOperations } from '../../src/demo/operations.ts';
+import { createDemoOperations } from '../../src/demo/operations.ts';
+import { temporaryAnnotationStore } from '../support/annotations.ts';
 import { createDemoServer, isAllowedDemoAuthority } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
 import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
@@ -29,6 +28,7 @@ import { LogCapture, PRINCIPAL_HEADER, headerPrincipal } from '../support/app.ts
 
 let database: DatabaseHandle;
 let app: FastifyInstance;
+const demoOperations = createDemoOperations(temporaryAnnotationStore());
 
 beforeAll(async () => {
   const logger = createLogger('info', new LogCapture());
@@ -197,14 +197,13 @@ describe('demo fixtures and server', () => {
   let server: Server;
   let base: string;
   let annotations: Awaited<ReturnType<typeof loadDemoFixtures>>;
-  const fixturePath = join(tmpdir(), `ms-demo-fixture-${randomUUID()}.json`);
 
   beforeAll(async () => {
     const logger = createLogger('info', new LogCapture());
     demoApp = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
     await demoApp.ready();
     annotations = await loadDemoFixtures(demoApp, database.db);
-    server = createDemoServer({ app: demoApp, fixturePath });
+    server = createDemoServer({ app: demoApp, annotations: temporaryAnnotationStore() });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
@@ -326,10 +325,10 @@ describe('demo fixtures and server', () => {
     expect(await statusFor(`[::1]:${port}`)).toBe(200);
   });
 
-  it('keep the boundary: strict input, no other methods, an empty fixture when none is written', async () => {
+  it('keep the boundary: strict input, no other methods, empty annotations when none are written', async () => {
     const invalid = await fetch(`${base}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"role":"photographer"}' });
     expect(invalid.status).toBe(400);
     expect((await fetch(`${base}/projects`, { method: 'PUT' })).status).toBe(405);
-    expect(await (await fetch(`${base}/fixture.json`)).json()).toEqual({ projects: {} });
+    expect(await (await fetch(`${base}/annotations.json`)).json()).toEqual({ projects: {} });
   });
 });

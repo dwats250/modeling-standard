@@ -2,48 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f3ed" />
     <link rel="icon" href="data:," />
-    <title>Record Inspector — synthetic demo</title>
-    <link rel="stylesheet" href="/styles.css" />
-    <script type="module" src="/app.js"></script>
+    <title>Modeling Standard — synthetic demo</title>
+    <link rel="stylesheet" href="/journey.css" />
+    <script type="module" src="/journey.js"></script>
   </head>
-  <body>
-    <div class="banner" role="note">
-      <strong>Synthetic demo — invented records only. Not for real people.</strong>
-      <span class="banner-sub">Shows the whole brief at once, not what any one person would see.</span>
-      <button id="eng-toggle" type="button" class="eng-toggle" aria-pressed="false">Engineering notes</button>
-      <span class="eng banner-eng">
-        Internal code names (product words are Cory's D05, not chosen). This inspector shows the whole stored
-        record; it is not what any party would see. D10 is decided for photo shoots, but no party view is built.
-      </span>
-      <span id="snapshot-note" class="snapshot-note" hidden></span>
-    </div>
+  <body class="journey">
+    <header class="topbar">
+      <a class="wordmark" href="#/" id="shoots-link" aria-label="Modeling Standard — home">Modeling Standard</a>
+      <a class="demo-pill" href="#/about" title="Synthetic demo: invented people, nothing here is real. Interactive demo on this machine — not the read-only snapshot.">
+        <span class="demo-dot" aria-hidden="true"></span>Synthetic demo
+      </a>
+      <a class="menu-link" href="#/demo" aria-label="Demo menu">Demo</a>
+    </header>
 
-    <div class="shell">
-      <aside class="sidebar" id="sidebar">
-        <div class="sidebar-head">
-          <h1>Record Inspector</h1>
-          <p class="muted eng">Operator: <code>demo-operator</code> — stands for nobody and is never a party.</p>
-          <button id="start-simulation" type="button" class="sim-start">Start the walkthrough</button>
-          <button id="create-project" type="button" class="primary">Create project</button>
-          <p id="create-hint" class="hint">
-            The walkthrough: a synthetic photographer and model share one draft brief and take it to ready to sign.
-            <span class="eng">Create project: the real <code>project.create</code> operation (S01).</span>
-          </p>
-        </div>
-        <nav aria-label="Decisions" class="decisions-nav">
-          <a id="decisions-link" href="#/decisions">Open decisions for Cory →</a>
-        </nav>
-        <nav aria-label="Projects">
-          <h2>Projects</h2>
-          <div id="project-list" aria-live="polite"></div>
-        </nav>
-      </aside>
+    <main id="screen" class="screen"></main>
 
-      <main id="detail" class="detail" aria-live="polite"></main>
-    </div>
-
-    <div id="toast" class="toast" role="status" hidden></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

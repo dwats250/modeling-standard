@@ -5,8 +5,9 @@ import { inject } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import { operations } from '../../src/app/operation-list.ts';
-import { demoOperations } from '../../src/demo/operations.ts';
-import { simulatorOperations } from '../../src/demo/simulator.ts';
+import { createDemoOperations } from '../../src/demo/operations.ts';
+import { createSimulatorOperations } from '../../src/demo/simulator.ts';
+import { temporaryAnnotationStore } from '../support/annotations.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
 import { LogCapture, PRINCIPAL_HEADER, headerPrincipal } from '../support/app.ts';
 
@@ -19,11 +20,13 @@ import { LogCapture, PRINCIPAL_HEADER, headerPrincipal } from '../support/app.ts
 
 let database: DatabaseHandle;
 let app: FastifyInstance;
+const annotations = temporaryAnnotationStore();
+const simulatorOperations = createSimulatorOperations(annotations);
 
 beforeAll(async () => {
   const logger = createLogger('info', new LogCapture());
   database = openDatabase(inject('runtimeUrl'), logger);
-  app = createApp({ db: database.db, logger, resolvePrincipal: headerPrincipal, additionalOperations: demoOperations });
+  app = createApp({ db: database.db, logger, resolvePrincipal: headerPrincipal, additionalOperations: createDemoOperations(annotations) });
   await app.ready();
 });
 afterAll(async () => {
@@ -92,6 +95,30 @@ describe('simulator separation', () => {
       'demo.sim.item.tick',
       'demo.sim.item.untick',
       'demo.sim.brief.group-check',
+    ]);
+  });
+
+  it('is part of exactly this demo operation set (inspector, simulator, composer, participant screens)', () => {
+    expect(createDemoOperations(annotations).map((op) => `${op.method} ${op.path}`)).toEqual([
+      'GET /demo/projects',
+      'GET /demo/projects/:id/record',
+      'POST /demo/sim/scenarios',
+      'POST /demo/sim/briefs/:id/presence',
+      'POST /demo/sim/briefs/:id/share',
+      'POST /demo/sim/items/:id/settle',
+      'POST /demo/sim/items/:id/parameter',
+      'POST /demo/sim/items/:id/decline',
+      'POST /demo/sim/items/:id/tick',
+      'POST /demo/sim/items/:id/untick',
+      'POST /demo/sim/briefs/:id/group-check',
+      'POST /demo/shoots',
+      'POST /demo/shoots/scenarios',
+      'GET /demo/shoots/:projectId/as/:partyId',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/tick',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/untick',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/decline',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/parameter',
+      'POST /demo/shoots/:projectId/as/:partyId/group-check',
     ]);
   });
 

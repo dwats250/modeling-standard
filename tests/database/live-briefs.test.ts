@@ -370,9 +370,11 @@ describe('decline', () => {
     expect((await listBriefItems(db(), w.briefId)).map((i) => i.id)).toContain(request.id);
 
     const before = await owner(async (c) => {
+      // Scoped to this project: other suites write to the same database concurrently.
       const { rows } = await c.query<{ n: number }>(
-        `select (select count(*) from brief_item) + (select count(*) from brief_tick) + (select count(*) from brief_party_presence)
-                + (select count(*) from live_brief) as n`,
+        `select (select count(*) from brief_item where project_id = $1) + (select count(*) from brief_tick where project_id = $1)
+                + (select count(*) from brief_party_presence where project_id = $1) + (select count(*) from live_brief where project_id = $1) as n`,
+        [w.projectId],
       );
       return Number(rows[0]!.n);
     });
@@ -381,13 +383,15 @@ describe('decline', () => {
     expect(await tickCount(request.id)).toBe(0);
     // Exactly the item and its one tick are gone; nothing was written anywhere.
     const after = await owner(async (c) => {
+      // Scoped to this project: other suites write to the same database concurrently.
       const { rows } = await c.query<{ n: number }>(
-        `select (select count(*) from brief_item) + (select count(*) from brief_tick) + (select count(*) from brief_party_presence)
-                + (select count(*) from live_brief) as n`,
+        `select (select count(*) from brief_item where project_id = $1) + (select count(*) from brief_tick where project_id = $1)
+                + (select count(*) from brief_party_presence where project_id = $1) + (select count(*) from live_brief where project_id = $1) as n`,
+        [w.projectId],
       );
       return Number(rows[0]!.n);
     });
-    expect(before - after).toBeGreaterThanOrEqual(2);
+    expect(before - after).toBe(2);
     const declineNames = await owner(async (c) =>
       (
         await c.query<{ name: string }>(

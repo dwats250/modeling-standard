@@ -25,6 +25,7 @@
     "demo:reset": "node --env-file-if-exists=.env src/scripts/demo-reset.ts",
     "demo": "node --env-file-if-exists=.env src/scripts/demo.ts",
     "demo:lan": "node --env-file-if-exists=.env src/scripts/demo.ts --lan",
+    "demo:fresh": "node --env-file-if-exists=.env src/scripts/demo-fresh.ts",
     "demo:export": "node --env-file-if-exists=.env src/scripts/demo-export.ts"
   },
   "dependencies": {

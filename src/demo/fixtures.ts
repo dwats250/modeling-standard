@@ -11,6 +11,7 @@ import {
 import type { Database } from '../infrastructure/database/client.ts';
 import { createPairwiseAgreement } from '../projects/agreement.ts';
 import { addProjectParty } from '../projects/party.ts';
+import type { DemoAnnotations, ProjectAnnotation } from './annotations.ts';
 import { buildWalkthroughDraft } from './walkthrough.ts';
 
 /**
@@ -32,23 +33,14 @@ import { buildWalkthroughDraft } from './walkthrough.ts';
  * the same thing the test suites do; it says nothing about who may do this in
  * the product.
  *
- * The labels below are demo annotations. They are returned to the caller for
- * the inspector to display and are never written to the product database,
- * which deliberately holds no role, name or label for a party.
+ * The labels below are demo annotations. They are returned to the caller,
+ * which writes them to the demo annotation store (`./annotations.ts`); they
+ * are never written to the product database, which deliberately holds no
+ * role, name or label for a party.
  */
 
-export interface FixtureAnnotations {
-  readonly projects: Record<
-    string,
-    {
-      readonly title: string;
-      readonly source: string;
-      readonly note: string;
-      readonly parties: Record<string, string>;
-      readonly agreements: Record<string, string>;
-    }
-  >;
-}
+/** The fixtures' demo annotations (`./annotations.ts`), every one of kind `fixture`. */
+export type FixtureAnnotations = DemoAnnotations;
 
 async function createProjectThroughOperation(app: FastifyInstance): Promise<string> {
   const res = await app.inject({ method: 'POST', url: '/projects', payload: {} });
@@ -58,7 +50,7 @@ async function createProjectThroughOperation(app: FastifyInstance): Promise<stri
 }
 
 export async function loadDemoFixtures(app: FastifyInstance, db: Database): Promise<FixtureAnnotations> {
-  const projects: Record<string, FixtureAnnotations['projects'][string]> = {};
+  const projects: Record<string, ProjectAnnotation> = {};
 
   // 1. The D01 first scenario: two adults who know each other, no money.
   {
@@ -104,6 +96,7 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
 
     projects[projectId] = {
       title: 'Fixture 1 — D01 first scenario',
+      kind: 'fixture',
       source: 'D01; D02 and D10 layers; Q7 subject and shape; S08 draft brief',
       note:
         'Two adults who already know each other. In the walk-through the model created the project and sent it ' +
@@ -148,6 +141,7 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
 
     projects[projectId] = {
       title: 'Fixture 2 — three parties, two pairs',
+      kind: 'fixture',
       source: 'D02 pairwise topology; D10 money privacy; Q6 one fee per pair; S08 draft brief',
       note:
         'Parties A and B each have a pair with C; there is no A–B pair. Each pair has its own fee: A–C has a value, ' +
@@ -164,6 +158,7 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     await openLiveBrief(db, projectId);
     projects[projectId] = {
       title: 'Fixture 3 — empty project',
+      kind: 'fixture',
       source: 'S01; S08',
       note: 'A project with no parties yet and an empty draft brief. D03 is decided, but no product path adds a party until invitation and sign-in are built.',
       parties: {},
@@ -187,11 +182,12 @@ export async function loadDemoFixtures(app: FastifyInstance, db: Database): Prom
     }
     projects[projectId] = {
       title: 'Fixture 4 — walkthrough, ready to sign',
+      kind: 'fixture',
       source: 'D02 and D10 layers; D04 per-term ticks; Q7 subject control; Q8 on site; S09 live brief',
       note:
         'The two-person walkthrough taken to its end: both on site, shared, every pending value settled, and every item ' +
         'green for everyone who must green-light it. Start the walkthrough to do this step by step, including declining ' +
-        'a request, which simply disappears. Signing arrives in S10–S11.',
+        'a request, which simply disappears. Signing is the next step and is not built in this demo.',
       parties: { [w.photographerPartyId]: 'Photographer', [w.modelPartyId]: 'Model' },
       agreements: { [w.pairId]: 'Pair: Photographer ↔ Model' },
     };

@@ -12,30 +12,11 @@ const state = {
   recordLoading: false,
   // The synthetic party being simulated, per project. Display state only.
   actors: {},
-  // Labels for scenario projects started in this browser (the database stores
-  // no name or role for a party). Display state only.
-  sessionLabels: loadSessionLabels(),
   // The last stage this browser rendered per project, and the stage change the
   // latest reload produced. Display state only: a transient cue, never kept.
   lastStage: {},
   transition: null,
 };
-
-function loadSessionLabels() {
-  try {
-    return JSON.parse(localStorage.getItem('ms-demo-session-labels') ?? '{}') ?? {};
-  } catch {
-    return {};
-  }
-}
-
-function saveSessionLabels() {
-  try {
-    localStorage.setItem('ms-demo-session-labels', JSON.stringify(state.sessionLabels));
-  } catch {
-    // Labels are a convenience; positional labels remain.
-  }
-}
 
 // ---- Engineering notes: decision references, ids and schema labels ----
 // Collapsed by default so the product story reads first. A per-browser
@@ -65,10 +46,10 @@ function setEngineeringNotes(on) {
 // of these are decided by Cory and simply not built.
 const UNAVAILABLE = [
   ['Add a party', 'Decided (D03): a person joins through the invitation link and signs in with Google or Apple. Not built: account binding (S06) and invitation links (S07) are stored; sign-in and delivery are not.'],
-  ['Compose the brief', 'Not a product action. Draft composition has data functions (S08) but no route, and no participant surface exists.'],
+  ['Compose the brief for real', 'Not a product action. The demo composer (Shoots → New shoot) composes as the demo operator; who composes in the product, and how, is not ruled.'],
   ['Share, resolve and tick for real', 'Not a product action. These are data functions (S09); this page only simulates them for synthetic parties.'],
   ['Sign', 'Not built (S10–S11). Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
-  ['View as a party', 'Decided for photo shoots (D10). Not built: party-visible reads exist as data functions (S08, S09), but no party view does.'],
+  ['View as a party for real', 'Decided for photo shoots (D10). The demo shows party-filtered screens (Shoots → look at it as each person) by simulation; there is no sign-in, so no real party view exists.'],
 ];
 
 function el(tag, options = {}, children = []) {
@@ -139,16 +120,11 @@ function toast(message, kind = 'ok') {
   toast.timer = setTimeout(() => (node.hidden = true), 3500);
 }
 
+// Demo annotations (labels, titles, fixture notes) come from the server's
+// annotation store, the same for every browser; the database stores none.
 function annotationFor(projectId) {
   return state.fixture.projects?.[projectId] ?? null;
 }
-
-/** A walkthrough started in this browser: its cast labels live here, never in the database. */
-function isWalkthrough(projectId) {
-  return Boolean(state.sessionLabels[projectId]);
-}
-
-const WALKTHROUGH_TITLE = 'Photographer & Model — shoot brief';
 
 // ---- Project list ----
 
@@ -182,7 +158,7 @@ function renderList() {
   const list = el('ul', { className: 'project-list' });
   for (const project of state.projects) {
     const annotation = annotationFor(project.id);
-    const title = annotation?.title ?? (isWalkthrough(project.id) ? `Walkthrough: ${WALKTHROUGH_TITLE}` : 'Project (created in this session)');
+    const title = annotation?.title ?? 'Project (created in this session)';
     const link = el('a', { attrs: { href: `#/projects/${project.id}` } }, [
       el('span', { className: 'title', text: title }),
       el('span', { className: 'meta' }, [
@@ -212,7 +188,7 @@ function section(title, hint, body, { engNote = null, className = 'card' } = {})
 }
 
 function partyLabel(annotation, id) {
-  return annotation?.parties?.[id] ?? state.sessionLabels[state.selectedId]?.[id] ?? state.positional?.[id] ?? 'Party';
+  return annotation?.parties?.[id] ?? state.positional?.[id] ?? 'Party';
 }
 
 /** Display order only: by fixture label, then id. Stored order carries no meaning. */
@@ -262,20 +238,19 @@ function renderDetail() {
   // shows what navigation selected.
   if (!record || record.project.id !== state.selectedId) return;
   const annotation = annotationFor(record.project.id);
-  const walkthrough = !annotation && isWalkthrough(record.project.id);
   // Projects without fixture labels get positional labels by id order.
   state.positional = Object.fromEntries(
     [...record.parties].map((p) => p.id).sort().map((id, i) => [id, `Party ${i + 1}`]),
   );
 
   let intro = null;
-  if (annotation) {
+  if (annotation?.note) {
     intro = el('div', { className: 'annotation' }, [
       el('p', { text: annotation.note }),
-      eng(`Grounds: ${annotation.source}`),
+      annotation.source ? eng(`Grounds: ${annotation.source}`) : null,
       eng('Fixture labels are demo annotations; the database stores no name, role or label for a party.'),
     ]);
-  } else if (!walkthrough) {
+  } else if (!annotation) {
     intro = el('div', { className: 'annotation' }, [
       el('p', { text: `A project created in this session.${record.parties.length === 0 ? ' No parties yet.' : ''}` }),
       eng('No fixture annotation. A project holds no description yet (S01).'),
@@ -284,10 +259,10 @@ function renderDetail() {
 
   const head = el('header', { className: 'detail-head' }, [
     el('div', { className: 'head-row' }, [
-      el('p', { className: 'eyebrow', text: annotation ? 'Fixture' : walkthrough ? 'Synthetic walkthrough' : 'Project' }),
+      el('p', { className: 'eyebrow', text: EYEBROWS[annotation?.kind] ?? 'Project' }),
       jumpToProjects(),
     ]),
-    el('h2', { text: annotation?.title ?? (walkthrough ? WALKTHROUGH_TITLE : 'Project created in this session') }),
+    el('h2', { text: annotation?.title ?? 'Project created in this session' }),
     el('p', { className: 'meta eng' }, [el('span', { text: 'id ' }), el('code', { text: record.project.id })]),
     record.brief ? renderStory(record, annotation) : null,
     intro,
@@ -332,7 +307,7 @@ function renderDetail() {
     record.brief ? renderBand(record, annotation) : null,
     renderBrief(record, annotation),
     el('details', { className: 'card not-built' }, [
-      el('summary', { text: 'Not built yet: signing, party views, sign-in and more' }),
+      el('summary', { text: 'Not built yet: signing, sign-in and more' }),
       el('p', { className: 'hint', text: 'Decided is not implemented: not built yet, or still open.' }),
       unavailable,
     ]),
@@ -576,6 +551,7 @@ function stageOf(brief) {
 }
 
 const STAGE_HEADLINES = { draft: 'DRAFT', live: 'LIVE', ready: 'READY TO SIGN' };
+const EYEBROWS = { fixture: 'Fixture', scenario: 'Synthetic walkthrough', composed: 'Composed shoot' };
 
 /** One line of story: who, one shared brief, resolve, green-light, ready to sign. */
 function renderStory(record, annotation) {
@@ -686,7 +662,7 @@ function renderMilestone(brief) {
         el('span', { text: 'Signing is not built in this demo yet.' }),
       ]),
       eng(
-        'Signing arrives in S10–S11. This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated (Gate 2).',
+        'Signing is the next slice (S10–S11) and is not built in this demo. This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated (Gate 2).',
       ),
     );
   } else if (stage === 'live') {
@@ -871,7 +847,7 @@ const CAPABILITIES = [
 // Decided by Cory but not built. DECIDED is not IMPLEMENTED.
 const DECIDED_NOT_BUILT = [
   'D03 participation credential: account by Google or Apple sign-in, the link is the invitation. Account storage exists (S06); sign-in and invitation do not.',
-  'D10 what each party sees (photo shoots): decided in full. No party view is built.',
+  'D10 what each party sees (photo shoots): decided in full. The demo simulates party-filtered screens; no real party view (signed in) is built.',
   'D02 lifecycle: share, resolve, decline and green state are data functions (S09), simulated here; signing is not built (S10–S11).',
   'Three layers: universal safety, shared logistics including the call sheet, private money only. Built as draft topology (S08); the call sheet is not built.',
   'On site means physical proximity: an explicit fact per party, fixed once the brief is shared (S09). The roster-addition workflow is not built.',
@@ -962,7 +938,7 @@ function renderDecisions() {
 
 async function loadFixture() {
   try {
-    state.fixture = await api('GET', '/fixture.json');
+    state.fixture = await api('GET', '/annotations.json');
   } catch {
     state.fixture = { projects: {} };
   }
@@ -1055,8 +1031,7 @@ async function startScenario(button) {
   button.disabled = true;
   try {
     const project = await api('POST', '/demo/sim/scenarios', {});
-    state.sessionLabels[project.id] = { [project.photographerPartyId]: 'Photographer', [project.modelPartyId]: 'Model' };
-    saveSessionLabels();
+    await loadFixture();
     await loadProjects();
     location.hash = `#/projects/${project.id}`;
     toast('New walkthrough: a photographer, a model and a draft brief.');
@@ -1096,6 +1071,9 @@ if (SNAPSHOT) {
     `Read-only snapshot of synthetic fixtures, exported ${new Date(SNAPSHOT.exportedAt).toLocaleString()} from the local demo. Not a product build.`;
   document.getElementById('start-simulation').hidden = true;
 } else {
+  // Back to the participant journey (not in a snapshot, which has no server).
+  const shoots = el('a', { className: 'shoots-link', text: '← Shoots', attrs: { href: '/' } });
+  document.querySelector('.sidebar-head').prepend(shoots);
   createButton.addEventListener('click', (event) => void createProject(event.currentTarget));
   document.getElementById('start-simulation').addEventListener('click', (event) => void startScenario(event.currentTarget));
 }
