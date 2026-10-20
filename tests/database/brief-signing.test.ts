@@ -41,7 +41,7 @@ import { CHECK_VIOLATION, withClient } from '../support/sql.ts';
  * the fingerprint (application and database computing the same digest),
  * signing rigidity through the data functions and through direct SQL,
  * fingerprint immutability, withdrawal by untick with no residue, re-freeze,
- * and serialized outcomes under concurrency.
+ * serialized outcomes under concurrency, and sharing only in READ COMMITTED.
  */
 
 let database: DatabaseHandle;
@@ -616,5 +616,81 @@ describe('serialized outcomes', () => {
       expect(await freezing).toEqual(refused('not_ready'));
     });
     expect(await getBriefSigningState(db(), w.briefId)).toEqual({ phase: 'live', fingerprint: null });
+  });
+});
+
+describe('sharing isolation (0025)', () => {
+  /** A draft brief with two parties, their pair and both presence facts: shareable. */
+  async function shareableDraft(): Promise<{ projectId: string; briefId: string }> {
+    const project = await insertProject(db(), { createdByPrincipalId: `s10-${randomUUID()}` });
+    const p = (await addProjectParty(db(), project.id)).id;
+    const m = (await addProjectParty(db(), project.id)).id;
+    await createPairwiseAgreement(db(), project.id, [p, m]);
+    const briefId = (await openLiveBrief(db(), project.id)).id;
+    await item(briefId, { layer: 'shared', content: '[s10] one' });
+    for (const party of [p, m]) await setDraftPartyPresence(db(), briefId, party, true);
+    return { projectId: project.id, briefId };
+  }
+
+  for (const level of ['repeatable read', 'serializable'] as const) {
+    it(`refuses a share in ${level}, so a party committed behind its snapshot cannot be missed`, async () => {
+      const { projectId, briefId } = await shareableDraft();
+      const outcome = await runtime(async (a) => {
+        await a.query(`begin isolation level ${level}`);
+        try {
+          // Connection A's snapshot, taken before the third party exists.
+          await a.query('select count(*) from project_party where project_id = $1', [projectId]);
+          // Connection B: a third party, committed, with no presence fact.
+          await runtime((b) => b.query('insert into project_party (project_id) values ($1)', [projectId]));
+          return await failure(() => a.query(`update live_brief set phase = 'live' where id = $1`, [briefId]));
+        } finally {
+          await a.query('rollback');
+        }
+      });
+      expect(outcome).toEqual(violation('live_brief_share_read_committed_only'));
+      expect(await getBriefSigningState(db(), briefId)).toEqual({ phase: 'draft', fingerprint: null });
+    });
+  }
+
+  it('refuses a plain share in snapshot isolation, with nothing concurrent', async () => {
+    const { briefId } = await shareableDraft();
+    for (const level of ['repeatable read', 'serializable']) {
+      const outcome = await runtime(async (a) => {
+        await a.query(`begin isolation level ${level}`);
+        try {
+          return await failure(() => a.query(`update live_brief set phase = 'live' where id = $1`, [briefId]));
+        } finally {
+          await a.query('rollback');
+        }
+      });
+      expect({ level, outcome }).toEqual({ level, outcome: violation('live_brief_share_read_committed_only') });
+    }
+  });
+
+  it('shares in READ COMMITTED, through the data function and directly, and sees a party committed meanwhile', async () => {
+    const viaFunction = await shareableDraft();
+    expect((await shareLiveBrief(db(), viaFunction.briefId)).phase).toBe('live');
+
+    const direct = await shareableDraft();
+    await runtime(async (a) => {
+      await a.query('begin isolation level read committed');
+      await a.query(`update live_brief set phase = 'live' where id = $1`, [direct.briefId]);
+      await a.query('commit');
+    });
+    expect(await getBriefSigningState(db(), direct.briefId)).toEqual({ phase: 'live', fingerprint: null });
+
+    // The same interleaving as the snapshot-isolation case: READ COMMITTED sees the new party and refuses.
+    const raced = await shareableDraft();
+    const outcome = await runtime(async (a) => {
+      await a.query('begin isolation level read committed');
+      try {
+        await a.query('select count(*) from project_party where project_id = $1', [raced.projectId]);
+        await runtime((b) => b.query('insert into project_party (project_id) values ($1)', [raced.projectId]));
+        return await failure(() => a.query(`update live_brief set phase = 'live' where id = $1`, [raced.briefId]));
+      } finally {
+        await a.query('rollback');
+      }
+    });
+    expect(outcome).toEqual(violation('live_brief_share_requires_presence'));
   });
 });

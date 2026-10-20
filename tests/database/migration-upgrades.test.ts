@@ -39,6 +39,7 @@ const T0016 = '0016_account_party_binding_stamps_and_grants';
 const T0018 = '0018_direct_invitation_stamp_and_grants';
 const T0020 = '0020_live_brief_scope_and_grants';
 const T0022 = '0022_live_resolution_guards_and_grants';
+const T0024 = '0024_signing_guards_and_grants';
 
 const ROW_TABLES = [
   'project',
@@ -902,6 +903,49 @@ describe('populated migration upgrades', () => {
         } finally {
           await handle.close();
         }
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    '0024 → current: a share in REPEATABLE READ, admitted at 0024, is refused after 0025; READ COMMITTED still shares',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0024);
+        const draft = async (): Promise<string> =>
+          asRuntime(db, async (c) => {
+            const s = await populateS01S02(c);
+            const brief = (await c.query<{ id: string }>('insert into live_brief (project_id) values ($1) returning id', [s.projectId])).rows[0]!.id;
+            for (const party of s.partyIds) {
+              await c.query('insert into brief_party_presence (brief_id, project_id, party_id, on_site) values ($1, $2, $3, true)', [brief, s.projectId, party]);
+            }
+            return brief;
+          });
+        const shareIn = (briefId: string, level: string) =>
+          asRuntime(db, async (c) => {
+            await c.query(`begin isolation level ${level}`);
+            try {
+              await c.query(`update live_brief set phase = 'live' where id = $1`, [briefId]);
+              await c.query('commit');
+              return null;
+            } catch (error) {
+              await c.query('rollback');
+              const e = error as { code?: string; constraint?: string };
+              return { code: e.code, constraint: e.constraint };
+            }
+          });
+
+        // At 0024 the gap exists.
+        expect(await shareIn(await draft(), 'repeatable read')).toBeNull();
+
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => {
+          expect((await bookkeeping(c)).length).toBe(journal().entries.length);
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+        expect(await shareIn(await draft(), 'repeatable read')).toEqual({ code: CHECK_VIOLATION, constraint: 'live_brief_share_read_committed_only' });
+        expect(await shareIn(await draft(), 'read committed')).toBeNull();
       });
     },
     UPGRADE_TIMEOUT,

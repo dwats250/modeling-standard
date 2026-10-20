@@ -23,7 +23,7 @@ A live brief that is structurally READY TO SIGN, in a project of exactly two par
   - `getBriefSigningState(db, briefId)` → `{ phase, fingerprint }`.
   - `briefFingerprint(snapshot)` — the pure v1 digest.
   - Every other S09 and S08 function keeps refusing a brief that is not in its phase (`not_live`, `not_draft`). `isReady` and `isBriefReadyToSign` stay live-phase predicates: a signing brief is reported as `signing`, not as ready.
-- **Migrations**: `0023_signing_phase` (generated, hand-ordered: the column and the two checks) and `0024_signing_guards_and_grants` (hand-written: the transition and digest guard, the signing guards, the grant).
+- **Migrations**: `0023_signing_phase` (generated, hand-ordered: the column and the two checks), `0024_signing_guards_and_grants` (hand-written: the transition and digest guard, the signing guards, the grant) and `0025_share_read_committed_only` (hand-written review fix: the share accepts only READ COMMITTED, below).
 
 ## The supported topology is an engineering boundary
 
@@ -66,6 +66,7 @@ Golden vector (pinned in `tests/database/brief-signing.test.ts`): the snapshot t
 |---|---|---|
 | `live_brief_check_phase` (replaced) | live → signing | Only in READ COMMITTED (`live_brief_signing_read_committed_only`); exactly two parties and one pair (`live_brief_signing_requires_two_party`); nothing pending, every item has stored wording and every derived approver's tick (`live_brief_signing_requires_ready`); the fingerprint equals the database's own v1 digest (`live_brief_signing_fingerprint_mismatch`) |
 | `live_brief_check_phase` | same phase | The fingerprint cannot be replaced or cleared in place (`live_brief_fingerprint_fixed`) |
+| `live_brief_check_phase` (0025) | draft → live | Only in READ COMMITTED (`live_brief_share_read_committed_only`); then, as in S09, every item has stored wording and every party a presence fact |
 | `live_brief_check_phase` | anything else | Only draft → live, live → signing, signing → live (`live_brief_phase_transition`); signing → live must clear the fingerprint (`live_brief_fingerprint_iff_signing`) |
 | `brief_item_guard_live` (replaced) | signing | Every item insert, update and delete refused (`brief_item_signing_fixed`) |
 | `brief_tick_guard_delete` (new) | signing | No tick removed (`brief_tick_signing_fixed`): withdrawal returns to live first, then removes the tick, in one transaction |
@@ -79,6 +80,8 @@ A bare `signing → live` with the fingerprint cleared is admitted by the databa
 These guards bind the runtime role. Pairs and parties are protected against update and delete by privilege, not by triggers: the runtime role has only SELECT and INSERT on `pairwise_agreement` and `project_party`, as in S09. The migration (owner) role is not constrained by them.
 
 **Roster and pair races (also an S09 fix).** A party or pair insert begun before a project's brief was visible to it used to pass the roster guard (which can only lock a brief row it sees), and a share or freeze counting parties in its own snapshot missed the uncommitted row. The draft → live and live → signing transitions and the roster and pair guards now also take a per-project advisory lock and re-read after it, so whichever comes second sees the other. The guards first wait out a transition in flight on the brief row, so the two lock orders cannot deadlock. This tightens enforcement of S09's decided rule (no party is added once the brief is shared) without changing it.
+
+**Snapshot isolation (0025).** A lock serializes transactions but cannot refresh a REPEATABLE READ or SERIALIZABLE transaction's snapshot. 0024 refused snapshot isolation for live → signing but not for draft → live. A share whose snapshot predated a newly committed third party counted only the parties it could see, and committed a live brief with a party lacking a presence fact. This was reproduced under both REPEATABLE READ and SERIALIZABLE (SERIALIZABLE raised no serialization failure, because the party insert committed before the share's predicate read). 0025 makes the share accept only READ COMMITTED, like the other cross-table checks (0013, 0024). Following the repository's practice, 0024 was not edited; the fix is a new migration (as 0013 followed 0012).
 
 **Concurrency.** Every guard on a write the fingerprint or readiness depends on locks the brief row `FOR SHARE`. `freezeBriefForSigning` takes the advisory lock and then locks the brief row `FOR UPDATE` before reading anything. So a concurrent write, even one bypassing the data functions, has either committed (and is read) or waits (and then finds the brief signing). The database's own recheck and digest comparison make any remaining race fail closed. The live → signing checks read other tables, so they accept only READ COMMITTED, as the affirmation guards in 0013 do.
 
@@ -105,6 +108,7 @@ S10 freezes exactly what S09 calls ready to sign: the brief is live, nothing is 
 | Two freezes | One transition, one `not_live` |
 | Raw SQL decline or tick removal in flight, bypassing the data functions | The freeze waits for it (the test confirms it is blocked on a lock), then fingerprints the resulting brief or refuses `not_ready` |
 | A party insert begun before the brief existed, still uncommitted | The share waits for the project's roster lock, then refuses (`live_brief_share_requires_presence`); the same lock serializes freeze against party and pair inserts |
+| A share in REPEATABLE READ or SERIALIZABLE, its snapshot taken before a third party was committed | Refused (`live_brief_share_read_committed_only`); the same interleaving in READ COMMITTED sees the party and refuses for its missing presence |
 
 Races of freeze against decline and against untick are also run repeatedly, alternating which call is issued first, asserting that only these serialized outcomes occur and that a signing brief's fingerprint always equals the digest of its current rows.
 
@@ -130,6 +134,8 @@ Races of freeze against decline and against untick are also run repeatedly, alte
   - withdrawal with no residue (a full row comparison against the never-frozen brief), an untick without a tick, re-freeze;
   - the fingerprint's golden vector, its sensitivity to every bound field, and its insensitivity to position gaps, input order and id case;
   - the serialized outcomes above, deterministic and raced.
+- `tests/database/brief-signing.test.ts`, sharing isolation: a share in REPEATABLE READ and in SERIALIZABLE is refused, both with a third party committed behind its snapshot and with nothing concurrent. A share in READ COMMITTED succeeds, through the data function and directly, and refuses the same interleaved third party.
+- `tests/database/migration-upgrades.test.ts`: at 0024 a REPEATABLE READ share is admitted (the gap); after upgrading, it is refused while READ COMMITTED still shares, and the catalog matches a fresh database.
 - `tests/database/migration-upgrades.test.ts`: a database populated at 0022 with a draft and a live, all-ticked brief upgrades with rows and phases unchanged and fingerprints null, matches a fresh catalog, and the pre-existing brief can be frozen.
 - Schema pins updated deliberately in `briefs.test.ts` (columns, constraints), `runtime-role.test.ts` (UPDATE columns), `trigger-functions.test.ts` (the two new functions), `live-briefs.test.ts` (a raw `phase = 'signing'` now meets the digest guard) and the S08 upgrade case (the new null column).
 - `live-briefs.test.ts`'s decline row count is scoped to its own project, so suites writing to the same test database concurrently cannot race it. (An identical edit exists on the unmerged demo branch `demo/participant-journey`, so the two merge cleanly.)
