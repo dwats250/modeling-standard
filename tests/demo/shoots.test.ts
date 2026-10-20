@@ -1,4 +1,5 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inject } from 'vitest';
@@ -149,10 +150,19 @@ describe('the composer', () => {
     expect(record.body).not.toMatch(/Photographer|Model"|"Model|role|label/);
   });
 
-  it('adds no migration', async () => {
+  it('adds no migration and no label column', async () => {
+    // Every migration is a journalled slice migration; none comes from the demo.
     const files = (await readdir('migrations')).filter((f) => f.endsWith('.sql')).sort();
-    expect(files.at(-1)).toBe('0022_live_resolution_guards_and_grants.sql');
-    expect(files).toHaveLength(23);
+    const journal = JSON.parse(await readFile('migrations/meta/_journal.json', 'utf8')) as { entries: { tag: string }[] };
+    expect(files).toEqual(journal.entries.map((e) => `${e.tag}.sql`).sort());
+    expect(files.filter((f) => /demo|annotation|label|shoot|composer/i.test(f))).toEqual([]);
+    // Labels live in the annotation store: no project, party, pair or brief table has a name, role, label or title column.
+    const { rows } = await database.db.execute<{ table_name: string; column_name: string }>(
+      sql`select table_name, column_name from information_schema.columns
+          where table_schema = 'public' and column_name ~ '(name|role|label|title)'
+            and table_name in ('project', 'project_party', 'pairwise_agreement', 'live_brief', 'brief_item', 'brief_party_presence', 'brief_tick')`,
+    );
+    expect(rows).toEqual([]);
   });
 });
 
