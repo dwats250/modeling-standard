@@ -98,6 +98,30 @@ describe('simulator separation', () => {
     ]);
   });
 
+  it('is part of exactly this demo operation set (inspector, simulator, composer, participant screens)', () => {
+    expect(createDemoOperations(annotations).map((op) => `${op.method} ${op.path}`)).toEqual([
+      'GET /demo/projects',
+      'GET /demo/projects/:id/record',
+      'POST /demo/sim/scenarios',
+      'POST /demo/sim/briefs/:id/presence',
+      'POST /demo/sim/briefs/:id/share',
+      'POST /demo/sim/items/:id/settle',
+      'POST /demo/sim/items/:id/parameter',
+      'POST /demo/sim/items/:id/decline',
+      'POST /demo/sim/items/:id/tick',
+      'POST /demo/sim/items/:id/untick',
+      'POST /demo/sim/briefs/:id/group-check',
+      'POST /demo/shoots',
+      'POST /demo/shoots/scenarios',
+      'GET /demo/shoots/:projectId/as/:partyId',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/tick',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/untick',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/decline',
+      'POST /demo/shoots/:projectId/as/:partyId/items/:itemId/parameter',
+      'POST /demo/shoots/:projectId/as/:partyId/group-check',
+    ]);
+  });
+
   it('rejects a missing principal before reading the body', async () => {
     for (const op of simulatorOperations) {
       const res = await app.inject({ method: 'POST', url: op.path.replace(':id', randomUUID()), payload: {} });

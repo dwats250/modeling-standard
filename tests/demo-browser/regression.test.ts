@@ -654,7 +654,7 @@ describe('demo regression', () => {
     await production.ready();
     try {
       for (const op of demoOperations) {
-        const res = await production.inject({ method: op.method, url: op.path.replace(':id', '00000000-0000-4000-8000-000000000000'), payload: {} });
+        const res = await production.inject({ method: op.method, url: op.path.replace(/:[a-zA-Z]+/g, '00000000-0000-4000-8000-000000000000'), payload: {} });
         expect({ op: op.name, status: res.statusCode }).toEqual({ op: op.name, status: 404 });
       }
     } finally {
