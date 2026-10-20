@@ -4,6 +4,7 @@ Work item: *Modeling Standard — Demonstration Session PRD*, v2 (2026-10-20), i
 
 - Base: `main` at `820e1bf9445ba3293ce59308d6a2c35a02e5870c` (verified locally and on `origin`).
 - Branch: `demo/participant-journey`.
+- **Current state:** the demonstration work is combined with the separately built S10 slice on `integration/mobile-demo-s10`; see "Combined baseline" at the end. The sections between here and there record the demonstration session as it happened.
 
 ## Authorization amendments (take precedence over the PRD)
 
@@ -23,12 +24,12 @@ Work item: *Modeling Standard — Demonstration Session PRD*, v2 (2026-10-20), i
 | B. Composer | done | `tests/demo/shoots.test.ts`; `journey.test.ts` (compose at 1280 and 390) |
 | C. Participant views | done | `tests/demo/participant.test.ts` (privacy tampering on Fixture 2) |
 | D. Live resolution | done | `participant.test.ts`; `journey.test.ts` (READY TO SIGN at 1280 and 390, untick/retick, decline path) |
-| E. S10 freeze/withdrawal | deferred (Q-E = no) | — |
+| E. S10 freeze/withdrawal | deferred in this session (Q-E = no); S10 was later built as its own slice on `stage-1/s10-signing-freeze` (no signing, no demo change) | see "Combined baseline" |
 | F. Delivery | done | `npm run check`; `npm test` 29 files / 357 tests; `npm run test:demo` 2 files / 21 tests; verbatim clean-clone run |
 
 ## Exact next action
 
-None in this slice. Next: Dustin and Cory run the journey (handoff below). The S10/S11 signing slice is separate work; its design input is PRD §9 (freeze as an internal mechanism, fingerprint, signature evidence, withdrawal before finality, LB-16 refusal, presence copied into the contract) and it needs its own slice document and migrations.
+See "Combined baseline" for the current next action. As recorded at the end of the demonstration session: none in this slice. Next: Dustin and Cory run the journey (handoff below). The S10/S11 signing slice is separate work; its design input is PRD §9 (freeze as an internal mechanism, fingerprint, signature evidence, withdrawal before finality, LB-16 refusal, presence copied into the contract) and it needs its own slice document and migrations.
 
 ## Choices made (for Dustin to see)
 
@@ -89,3 +90,44 @@ Based on `demo/participant-journey` at `2bca5ae` (PR #31, untouched). Presentati
 - The brief as one document; a next-step card for the current person and a waiting state when they are done; a milestone card at READY TO SIGN.
 - `[synthetic]` marks are kept in storage and hidden in display; values typed on the screens are stored marked.
 - Presentation assertions in `tests/demo-browser/journey.test.ts` were updated to the new structure and wording; behaviour, refusal and privacy assertions kept.
+
+## Combined baseline (branch `integration/mobile-demo-s10`)
+
+The completed demonstration work and the S10 slice, combined and verified together. Nothing here is on `main`; `main` is still `820e1bf`.
+
+| Source | Head | Pull request | Contains |
+|---|---|---|---|
+| `demo/participant-journey` | `2bca5ae` | #31 (open) | Increments A–D and F: launch, annotation store, composer, participant views and live resolution to READY TO SIGN |
+| `demo/mobile-presentation` | `276fe87` | none | `demo/participant-journey` plus the mobile presentation pass |
+| `stage-1/s10-signing-freeze` | `78bc4e0` | #32 (open) | S10: the internal signing phase, fingerprint v1, withdrawal by untick, migrations 0023–0025 (0025: sharing only in READ COMMITTED) |
+
+**How it was built.** From `main` at `820e1bf`: `git merge --no-ff demo/mobile-presentation`, then `git merge --no-ff stage-1/s10-signing-freeze`. Both merged without textual conflicts. The one expected overlap, `src/demo/operations.ts`, auto-merged: the demo operation factory and participant routes, and S10's `signing` in the inspector record's phase enum. Checked by hand and kept:
+
+- the polished participant journey and its privacy pre-checks (participant routes stay live-only);
+- `signing` in the inspector's phase schema, and S10's refusal-code mappings next to the simulator factory;
+- S10's fingerprint, withdrawal and concurrency guards, and migration 0025's READ COMMITTED rule for sharing;
+- the project-scoped decline-count fix in `tests/database/live-briefs.test.ts`, which was identical on both sides.
+
+**One integration defect, fixed.** `tests/demo/shoots.test.ts` pinned the last migration to 0022 (23 files). That was true on the demo branch and false once S10's migrations are present. It now states its intent independently of slice numbering: every migration file is journalled, none comes from the demo, and no project, party, pair or brief table has a name, role, label or title column. Nothing else changed.
+
+**What the combined baseline does.** Everything in "Mobile presentation pass" above, unchanged: compose → share → look as each person → resolve → READY TO SIGN, at phone and desktop widths. Underneath, the S10 data functions exist: a READY TO SIGN two-party brief can be frozen for signing internally and withdrawn by an untick. No screen, route or control freezes or signs anything; the demo never enters `signing`. Signing (S11) is not built.
+
+**Verified on the combined tree.** Run against an isolated PostgreSQL 17 container on `127.0.0.1:5433` provisioned from `db/provision.sql`, so the presentation demo's database on 5432 was never touched:
+
+- `npm run check`: passed (typecheck, lint, `db:drift`, `db:identifiers`: 26 migration files).
+- `npm test`: 30 files, 387 tests passed, twice.
+- Among them, `tests/database/migration-upgrades.test.ts`: 11 populated upgrades passed, including 0020 → current, 0022 → current and 0024 → current.
+- Among them, `tests/database/brief-signing.test.ts`: 28 passed, including the sharing-isolation regressions under REPEATABLE READ and SERIALIZABLE.
+- `npm run test:demo`: 2 files, 22 browser tests passed. The journey suite covers compose → share → participant resolution → READY TO SIGN and back at 1280 and 390, the decline path, the three-person case and no browser errors.
+- `npm run build`: `dist/` has no `src/demo`.
+
+**Recommended integration order.**
+
+1. PR #31 (`demo/participant-journey`) into `main`.
+2. `demo/mobile-presentation` into `main` (it has no pull request yet).
+3. PR #32 (`stage-1/s10-signing-freeze`) into `main`.
+4. The integration fix commit (the `shoots.test.ts` change) with or right after step 3. Without it, `main` fails that one test as soon as both the demo and S10 are present, in either order.
+
+Equivalently, after step 1, `integration/mobile-demo-s10` itself can be merged: its tree is the combined, verified result. PRs and merges are Dustin's and ChatGPT's.
+
+**Still open.** S11 (signatures and the final contract), whose affirmation-evidence design is unresolved. The visible signing act (D04). The no-means-no wording (D04). Who composes, who shares and who enters an agreed value (Cory). Chaperone participation and three-party signing. What a person sees while a brief is signing. The required-term catalogue (Dustin drafts, Cory reviews). Gate 2 (D06) for any real use.
