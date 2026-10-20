@@ -1,9 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
+import type { AnnotationStore } from './annotations.ts';
 
 /**
- * The demo's front door. It serves the inspector's static files and passes
+ * The demo's front door. It serves the demo's static pages (the participant
+ * journey at `/`, the record inspector at `/inspector`) and its demo
+ * annotations (`/annotations.json`), and passes
  * every other request, unchanged, to the real application with
  * `app.inject`. The Fastify application therefore keeps its rule that every
  * route is an operation with declared access; nothing here adds a route to
@@ -14,6 +17,8 @@ const UI_DIR = new URL('./ui/', import.meta.url);
 
 const STATIC_FILES: Readonly<Record<string, { file: string; type: string }>> = {
   '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
+  '/journey.js': { file: 'journey.js', type: 'text/javascript; charset=utf-8' },
+  '/inspector': { file: 'inspector.html', type: 'text/html; charset=utf-8' },
   '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
   '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8' },
 };
@@ -29,8 +34,8 @@ const MAX_BODY_BYTES = 64 * 1024;
 
 export interface DemoServerOptions {
   readonly app: FastifyInstance;
-  /** Absolute path of the fixture annotation file written by `demo:reset`, if any. */
-  readonly fixturePath: string;
+  /** The demo annotation store (labels for invented records), served read-only. */
+  readonly annotations: AnnotationStore;
   /** Host names/IPs accepted in the HTTP Host header. Defaults to loopback only. */
   readonly allowedHosts?: readonly string[];
 }
@@ -92,14 +97,11 @@ async function handle(options: DemoServerOptions, request: IncomingMessage, resp
     return;
   }
 
-  if (method === 'GET' && url.pathname === '/fixture.json') {
-    // Demo annotations (labels for invented records). Never stored in the
-    // product database. Absent until `npm run demo:reset` has run.
-    try {
-      send(response, 200, 'application/json; charset=utf-8', await readFile(options.fixturePath));
-    } catch {
-      send(response, 200, 'application/json; charset=utf-8', '{"projects":{}}');
-    }
+  if (method === 'GET' && url.pathname === '/annotations.json') {
+    // Demo annotations (labels for invented records), the same for every
+    // requester. Never stored in the product database. Empty until
+    // `npm run demo:reset` has run.
+    send(response, 200, 'application/json; charset=utf-8', JSON.stringify(await options.annotations.read()));
     return;
   }
 

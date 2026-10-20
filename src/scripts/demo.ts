@@ -4,7 +4,8 @@ import { createApp } from '../app/create-app.ts';
 import { createLogger } from '../app/logger.ts';
 import { ConfigError, loadAppConfig } from '../config/config.ts';
 import { DemoGuardError, demoDatabaseTarget, demoListenTarget, demoOperatorPrincipal } from '../demo/demo.ts';
-import { demoOperations } from '../demo/operations.ts';
+import { ANNOTATIONS_FILE, AnnotationStore } from '../demo/annotations.ts';
+import { createDemoOperations } from '../demo/operations.ts';
 import { createDemoServer } from '../demo/server.ts';
 import { openDatabase, type DatabaseTarget } from '../infrastructure/database/client.ts';
 
@@ -41,18 +42,20 @@ try {
   process.exit(1);
 }
 
+const annotations = new AnnotationStore(resolve(process.cwd(), '.demo', ANNOTATIONS_FILE));
 const app = createApp({
   db: database.db,
   logger,
   resolvePrincipal: demoOperatorPrincipal,
-  additionalOperations: demoOperations,
+  additionalOperations: createDemoOperations(annotations),
 });
 await app.ready();
 
-const server = createDemoServer({ app, fixturePath: resolve(process.cwd(), '.demo', 'fixture.json'), allowedHosts: listen.allowedHosts });
+const server = createDemoServer({ app, annotations, allowedHosts: listen.allowedHosts });
 server.listen(port, listen.listenHost, () => {
-  process.stdout.write('Synthetic demo (not for real people):\n');
+  process.stdout.write('Synthetic demo (invented people; nothing here is real):\n');
   for (const host of listen.urls) process.stdout.write(`  http://${host}:${port}/\n`);
+  process.stdout.write('Stop it with Ctrl+C.\n');
 });
 
 const shutdown = (): void => {

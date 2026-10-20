@@ -119,9 +119,9 @@ describe('demo database targets (Astra B01)', () => {
       { databaseUrl: 'postgres://u:p@db.invalid/x', migrationDatabaseUrl: good },
     ];
     for (const urls of attempts) {
-      await expect(resetDemoDatabase({ host: '127.0.0.1', fixtureDir: '/nonexistent', ...urls })).rejects.toThrow(DemoGuardError);
+      await expect(resetDemoDatabase({ host: '127.0.0.1', demoDir: '/nonexistent', ...urls })).rejects.toThrow(DemoGuardError);
     }
-    await expect(resetDemoDatabase({ host: '0.0.0.0', fixtureDir: '/nonexistent', databaseUrl: good, migrationDatabaseUrl: good })).rejects.toThrow(DemoGuardError);
+    await expect(resetDemoDatabase({ host: '0.0.0.0', demoDir: '/nonexistent', databaseUrl: good, migrationDatabaseUrl: good })).rejects.toThrow(DemoGuardError);
     expect(constructed).toEqual({ clients: 0, pools: 0 });
   });
 });

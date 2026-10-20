@@ -23,8 +23,8 @@ async function getJson(app: FastifyInstance, url: string): Promise<unknown> {
 }
 
 /** Every response the inspector reads, as the demo operator sees it. */
-export async function collectSnapshot(app: FastifyInstance, fixture: unknown, now = new Date()): Promise<SnapshotData> {
-  const responses: Record<string, unknown> = { '/fixture.json': fixture };
+export async function collectSnapshot(app: FastifyInstance, annotations: unknown, now = new Date()): Promise<SnapshotData> {
+  const responses: Record<string, unknown> = { '/annotations.json': annotations };
   const list = (await getJson(app, '/demo/projects')) as { projects: { id: string }[] };
   responses['/demo/projects'] = list;
   for (const project of list.projects) {
@@ -44,10 +44,10 @@ const SNAPSHOT_CSP =
 
 export async function renderSnapshotHtml(data: SnapshotData): Promise<string> {
   const read = (file: string): Promise<string> => readFile(new URL(file, UI_DIR), 'utf8');
-  const [html, css, js] = await Promise.all([read('index.html'), read('styles.css'), read('app.js')]);
+  const [html, css, js] = await Promise.all([read('inspector.html'), read('styles.css'), read('app.js')]);
   const stylesheet = '<link rel="stylesheet" href="/styles.css" />';
   const script = '<script type="module" src="/app.js"></script>';
-  if (!html.includes(stylesheet) || !html.includes(script)) throw new Error('index.html no longer matches the export template');
+  if (!html.includes(stylesheet) || !html.includes(script)) throw new Error('inspector.html no longer matches the export template');
   return html
     .replace('<meta charset="utf-8" />', `<meta charset="utf-8" />\n    <meta http-equiv="Content-Security-Policy" content="${SNAPSHOT_CSP}" />`)
     .replace('<title>Record Inspector — synthetic demo</title>', '<title>Record Inspector — read-only synthetic snapshot</title>')

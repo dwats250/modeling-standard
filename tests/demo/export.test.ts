@@ -6,7 +6,8 @@ import { createLogger } from '../../src/app/logger.ts';
 import { demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../../src/demo/export.ts';
 import { loadDemoFixtures } from '../../src/demo/fixtures.ts';
-import { demoOperations } from '../../src/demo/operations.ts';
+import { createDemoOperations } from '../../src/demo/operations.ts';
+import { temporaryAnnotationStore } from '../support/annotations.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
 import { LogCapture } from '../support/app.ts';
 
@@ -20,7 +21,7 @@ let fixtureIds: string[];
 beforeAll(async () => {
   const logger = createLogger('info', new LogCapture());
   database = openDatabase(inject('runtimeUrl'), logger);
-  app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
+  app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: createDemoOperations(temporaryAnnotationStore()) });
   await app.ready();
   const annotations = await loadDemoFixtures(app, database.db);
   fixtureIds = Object.keys(annotations.projects);
@@ -48,7 +49,7 @@ describe('portable snapshot', () => {
     expect(data.exportedAt).toBe('2026-10-13T12:00:00.000Z');
     for (const id of fixtureIds) expect(Object.keys(data.responses)).toContain(`/demo/projects/${id}/record`);
     expect(data.responses['/demo/projects']).toBeDefined();
-    expect(data.responses['/fixture.json']).toBeDefined();
+    expect(data.responses['/annotations.json']).toBeDefined();
   });
 
   it('cannot be broken out of by embedded text', () => {
@@ -65,7 +66,7 @@ describe('portable snapshot', () => {
 
   it('carries Cory’s rulings and the S09 live framing, not the superseded wording', () => {
     expect(html).toContain('READY TO SIGN');
-    expect(html).toContain('Signing arrives in S10–S11');
+    expect(html).toContain('Signing is the next slice (S10–S11) and is not built in this demo');
     expect(html).toContain('the required-item catalogue does not exist yet, so real use stays gated');
     expect(html).toContain('Needs its own tick');
     expect(html).toContain('private money only');
@@ -73,7 +74,8 @@ describe('portable snapshot', () => {
     expect(html).toContain('On site means physical proximity');
     expect(html).toContain('wording not materialized (draft)');
     // Decided is not implemented, for D03 and D10.
-    expect(html).toContain('D10 is decided for photo shoots, but no party view is built');
+    expect(html).toContain('D10 is decided for photo shoots; the participant screens under Shoots simulate it');
+    expect(html).not.toContain('Signing arrives in S10–S11');
     for (const stale of [
       'may be left out is undecided',
       'Who counts as on site is undecided',

@@ -15,7 +15,8 @@ import {
 import type { Executor } from '../infrastructure/database/client.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
 import { creatorOnly, findProject, insertProject } from '../projects/project.ts';
-import { buildWalkthroughDraft } from './walkthrough.ts';
+import type { AnnotationStore } from './annotations.ts';
+import { buildWalkthroughDraft, walkthroughAnnotation } from './walkthrough.ts';
 
 /**
  * The demo's scenario simulator. Demo-only operations, registered only by the
@@ -87,7 +88,7 @@ const CONSTRAINT_CODES: Readonly<Record<string, string>> = {
   brief_party_presence_live_fixed: 'not_draft',
 };
 
-function asConflict(error: unknown): never {
+export function asConflict(error: unknown): never {
   if (error instanceof AppError) throw error;
   if (error instanceof BriefActionRefusedError) throw new AppError(409, error.reason);
   const e = error as { code?: unknown; constraint?: unknown; cause?: { code?: unknown; constraint?: unknown } };
@@ -100,7 +101,7 @@ function asConflict(error: unknown): never {
   throw error;
 }
 
-async function guarded<T>(fn: () => Promise<T>): Promise<T> {
+export async function guarded<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (error) {
@@ -118,23 +119,33 @@ const party = z.strictObject({ partyId: z.uuid() });
 
 // ---- Start ----
 
-export const startScenarioOperation = defineOperation({
-  name: 'demo.sim.scenario.start',
-  method: 'POST',
-  path: '/demo/sim/scenarios',
-  successStatus: 201,
-  input: { body: z.strictObject({}) },
-  output: z.strictObject({ id: z.uuid(), photographerPartyId: z.uuid(), modelPartyId: z.uuid() }),
-  access: { kind: 'protected', load: async () => ({}), policy: () => true },
-  run: async (_input, { db, principal }) => {
-    // A fresh project with the synthetic photographer and model, their pair,
-    // and the walkthrough's draft brief, as fixture construction.
-    const self = principal as SyntheticPrincipal;
-    const project = await insertProject(db, { createdByPrincipalId: self.id });
-    const draft = await buildWalkthroughDraft(db, project.id);
-    return { id: project.id, photographerPartyId: draft.photographerPartyId, modelPartyId: draft.modelPartyId };
-  },
-});
+/**
+ * Starts the walkthrough. The labels Photographer and Model, and the pair's
+ * label, go to the demo annotation store, so every browser (a LAN phone
+ * included) sees them; the database stores no role.
+ */
+export function startScenarioOperation(annotations: AnnotationStore) {
+  return defineOperation({
+    name: 'demo.sim.scenario.start',
+    method: 'POST',
+    path: '/demo/sim/scenarios',
+    successStatus: 201,
+    input: { body: z.strictObject({}) },
+    output: z.strictObject({ id: z.uuid(), photographerPartyId: z.uuid(), modelPartyId: z.uuid() }),
+    access: { kind: 'protected', load: async () => ({}), policy: () => true },
+    run: async (_input, { db, principal }) => {
+      // A fresh project with the synthetic photographer and model, their pair,
+      // and the walkthrough's draft brief, as fixture construction.
+      const self = principal as SyntheticPrincipal;
+      const { project, draft } = await db.transaction(async (tx) => {
+        const project = await insertProject(tx, { createdByPrincipalId: self.id });
+        return { project, draft: await buildWalkthroughDraft(tx, project.id) };
+      });
+      await annotations.setProject(project.id, walkthroughAnnotation(draft, 'Walkthrough — Photographer and Model'));
+      return { id: project.id, photographerPartyId: draft.photographerPartyId, modelPartyId: draft.modelPartyId };
+    },
+  });
+}
 
 // ---- Draft: presence and share ----
 
@@ -244,8 +255,8 @@ export const groupCheckOperation = defineOperation({
     }),
 });
 
-export const simulatorOperations: readonly AnyOperation[] = [
-  startScenarioOperation,
+export const createSimulatorOperations = (annotations: AnnotationStore): readonly AnyOperation[] => [
+  startScenarioOperation(annotations),
   setPresenceOperation,
   shareBriefOperation,
   settleOperation,
