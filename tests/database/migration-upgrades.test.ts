@@ -790,8 +790,8 @@ describe('populated migration upgrades', () => {
         await asOwner(db, async (c) => {
           const after = await rowsOf(c);
           for (const table of s08Tables) expect({ table, rows: after[table] }).toEqual({ table, rows: before.rows[table] });
-          // The brief is unchanged but for its new phase, which is draft.
-          expect(after['live_brief']).toEqual((before.rows['live_brief'] as object[]).map((row) => ({ ...row, phase: 'draft' })));
+          // The brief is unchanged but for its new phase, which is draft, and (S10) no fingerprint.
+          expect(after['live_brief']).toEqual((before.rows['live_brief'] as object[]).map((row) => ({ ...row, phase: 'draft', fingerprint: null })));
           expect(after['brief_party_presence']).toEqual([]);
           expect(after['brief_tick']).toEqual([]);
           expect(await runtimePrivileges(c, 'brief_party_presence')).toEqual(['INSERT', 'SELECT']);

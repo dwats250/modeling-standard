@@ -89,10 +89,10 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime role may update exactly live_brief.phase and brief_party_presence.on_site (S09)', async () => {
+  it('runtime role may update exactly live_brief.phase and .fingerprint (S09, S10) and brief_party_presence.on_site (S09)', async () => {
     await withClient(inject('runtimeUrl'), async (c) => {
       for (const [table, columns] of [
-        ['live_brief', ['phase']],
+        ['live_brief', ['fingerprint', 'phase']],
         ['brief_party_presence', ['on_site']],
         ['brief_tick', []],
       ] as const) {

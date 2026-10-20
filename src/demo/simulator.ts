@@ -85,6 +85,10 @@ const CONSTRAINT_CODES: Readonly<Record<string, string>> = {
   brief_item_live_no_delete: 'fixed_once_shared',
   brief_item_live_universal_kept: 'universal_kept',
   brief_party_presence_live_fixed: 'not_draft',
+  // S10: a brief being signed is fixed (the demo never freezes one).
+  brief_item_signing_fixed: 'not_live',
+  brief_tick_signing_fixed: 'not_live',
+  pairwise_agreement_signing_fixed: 'not_live',
 };
 
 function asConflict(error: unknown): never {

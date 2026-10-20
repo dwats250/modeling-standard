@@ -162,6 +162,20 @@
       "when": 1792119264449,
       "tag": "0022_live_resolution_guards_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792527979553,
+      "tag": "0023_signing_phase",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792527990889,
+      "tag": "0024_signing_guards_and_grants",
+      "breakpoints": true
     }
   ]
 }
