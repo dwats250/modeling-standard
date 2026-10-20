@@ -92,7 +92,8 @@ export const readDemoProjectRecordOperation = defineOperation({
     brief: z
       .strictObject({
         id: z.uuid(),
-        phase: z.enum(['draft', 'live']),
+        // `signing` (S10) is internal; the demo never freezes a brief.
+        phase: z.enum(['draft', 'live', 'signing']),
         ready: z.boolean(),
         presence: z.array(z.strictObject({ partyId: z.uuid(), onSite: z.boolean() })),
         items: z.array(briefItemDto),

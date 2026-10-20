@@ -133,9 +133,10 @@ describe('phase and share', () => {
     expect(
       await failure(() => runtime((c) => c.query(`insert into live_brief (project_id, phase) values ($1, 'live')`, [other.id]))),
     ).toEqual(violation('live_brief_phase_transition'));
-    // No other phase exists in S09; the transition guard refuses before the CHECK is reached.
+    // S10: entering signing needs the brief's own fingerprint stored with it
+    // (this empty two-party brief is otherwise ready); tests/database/brief-signing.test.ts covers the phase.
     expect(await failure(() => runtime((c) => c.query(`update live_brief set phase = 'signing' where id = $1`, [w.briefId])))).toEqual(
-      violation('live_brief_phase_transition'),
+      violation('live_brief_signing_fingerprint_mismatch'),
     );
     expect(await failure(() => shareLiveBrief(db(), randomUUID()))).toEqual({ name: BriefNotFoundError.name });
     expect(await phaseOf(w.briefId)).toBe('live');
