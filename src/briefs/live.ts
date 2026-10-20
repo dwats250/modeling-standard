@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Executor } from '../infrastructure/database/client.ts';
 import { pairwiseAgreement, projectParty } from '../projects/tables.ts';
@@ -20,7 +21,7 @@ import {
 import { briefItem, briefPartyPresence, briefTick, liveBrief } from './tables.ts';
 
 /**
- * The live brief (slice S09; D02, D04, D10, D12; HC1, HC2).
+ * The live brief (slices S09 and S10; D02, D04, D10, D12; HC1, HC2).
  *
  * Sharing turns the draft into the one current live brief. From then on
  * nothing is added, wording and positions are fixed, a pending value settles
@@ -36,6 +37,13 @@ import { briefItem, briefPartyPresence, briefTick, liveBrief } from './tables.ts
  * unmaterialized wording or a missing presence fact, and admit a tick only
  * from a derived approver of a settled item. These functions add what the
  * database cannot know (who is acting) and clear refusals.
+ *
+ * S10 adds an internal signing phase. A brief that is ready to sign, in a
+ * project of exactly two parties and one pair, can be frozen: its
+ * signing-relevant state is fingerprinted and every change is refused, except
+ * an untick, which withdraws it to live with nothing kept. Freezing is an
+ * internal mechanism, not a party act; signatures and the final contract are
+ * S11.
  *
  * Every mutation runs READ COMMITTED under the per-brief advisory lock.
  *
@@ -235,14 +243,30 @@ export async function tickBriefItem(db: Executor, itemId: string, partyId: strin
 /**
  * Withdraws the party's own tick before finality. The row is deleted; no
  * "withdrawn" record. Returns whether a tick was there.
+ *
+ * While the brief is signing (S10), removing a tick is the withdrawal: in
+ * one transaction the brief returns to live, its fingerprint is cleared, and
+ * the tick is removed. Nothing records that the brief was ever frozen. A
+ * party without a tick on the item changes nothing.
  */
 export async function untickBriefItem(db: Executor, itemId: string, partyId: string): Promise<boolean> {
   return db.transaction(async (tx) => {
-    const item = await liveItem(tx, itemId);
-    const removed = await tx
-      .delete(briefTick)
-      .where(and(eq(briefTick.briefItemId, item.id), eq(briefTick.partyId, partyId)))
-      .returning({ partyId: briefTick.partyId });
+    const briefId = await briefOfItem(tx, itemId);
+    await lockBrief(tx, briefId);
+    const brief = await requireBrief(tx, briefId);
+    // Re-read under the lock: a request declined meanwhile is gone.
+    const [item] = await tx.select({ id: briefItem.id }).from(briefItem).where(eq(briefItem.id, itemId)).limit(1);
+    if (!item) throw new BriefItemNotFoundError();
+    const own = and(eq(briefTick.briefItemId, itemId), eq(briefTick.partyId, partyId));
+    if (brief.phase === 'signing') {
+      const [held] = await tx.select({ partyId: briefTick.partyId }).from(briefTick).where(own).limit(1);
+      if (!held) return false;
+      // Back to live first: the database refuses removing a tick while signing.
+      await tx.update(liveBrief).set({ phase: 'live', fingerprint: null }).where(eq(liveBrief.id, briefId));
+    } else if (brief.phase !== 'live') {
+      throw new BriefActionRefusedError('not_live');
+    }
+    const removed = await tx.delete(briefTick).where(own).returning({ partyId: briefTick.partyId });
     return removed.length > 0;
   }, READ_COMMITTED);
 }
@@ -382,4 +406,147 @@ export async function listBriefTicks(db: Executor, briefId: string): Promise<Tic
     .where(eq(briefItem.briefId, briefId))
     .orderBy(asc(briefTick.briefItemId), asc(briefTick.partyId));
   return rows;
+}
+
+// ---- Signing freeze (S10) ----
+
+/** The brief's phase and, while signing, its fingerprint. */
+export interface BriefSigningState {
+  readonly phase: BriefPhase;
+  readonly fingerprint: string | null;
+}
+
+/**
+ * Everything the fingerprint binds (docs/engineering/S10-SIGNING-FREEZE.md).
+ * Positions only order the items: a gap would encode that a request was
+ * declined (HC1), so their values are not bound. Ticks are not bound: at
+ * freeze they equal each item's approvers, and how affirmation is evidenced
+ * is S11's open question.
+ */
+export interface FingerprintSnapshot {
+  readonly briefId: string;
+  readonly projectId: string;
+  readonly parties: readonly { readonly id: string; readonly onSite: boolean | null }[];
+  readonly pairs: readonly { readonly id: string; readonly partyIds: readonly [string, string] }[];
+  readonly items: readonly {
+    readonly id: string;
+    readonly position: number;
+    readonly layer: BriefItemRecord['layer'];
+    readonly pairwiseAgreementId: string | null;
+    readonly subjectPartyId: string | null;
+    readonly shape: BriefItemRecord['shape'];
+    readonly itemKey: BriefItemKey | null;
+    readonly content: string | null;
+    readonly value: string | null;
+    readonly approverIds: readonly string[];
+  }[];
+}
+
+/** Fingerprint format v1. Changing what is bound or how is a new version. */
+export const FINGERPRINT_DOMAIN = 'modeling-standard/brief-fingerprint';
+export const FINGERPRINT_VERSION = 1;
+
+const lower = (id: string): string => id.toLowerCase();
+const lowerOrNull = (id: string | null): string | null => (id === null ? null : id.toLowerCase());
+const byCodeUnits = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * SHA-256, lowercase hex, of the UTF-8 JSON of a nested array (no object key
+ * order is relied on): domain, version, brief, project, the parties with
+ * their on-site fact, the pairs with their two parties, and the items in
+ * canonical order (position, then id) with their stored identity, wording,
+ * value and derived approvers. Ids are lowercased; every list without a
+ * meaningful order is sorted by code units; text is hashed exactly as
+ * stored, with no trimming or normalization. The database computes the same
+ * digest on entering signing (migrations/0024) and refuses any other.
+ */
+export function briefFingerprint(snapshot: FingerprintSnapshot): string {
+  const items = [...snapshot.items].sort((a, b) => a.position - b.position || byCodeUnits(lower(a.id), lower(b.id)));
+  const payload = [
+    FINGERPRINT_DOMAIN,
+    FINGERPRINT_VERSION,
+    lower(snapshot.briefId),
+    lower(snapshot.projectId),
+    snapshot.parties.map((p) => [lower(p.id), p.onSite] as const).sort((a, b) => byCodeUnits(a[0], b[0])),
+    snapshot.pairs.map((p) => [lower(p.id), p.partyIds.map(lower).sort(byCodeUnits)] as const).sort((a, b) => byCodeUnits(a[0], b[0])),
+    items.map((i) => [
+      lower(i.id),
+      i.layer,
+      lowerOrNull(i.pairwiseAgreementId),
+      lowerOrNull(i.subjectPartyId),
+      i.shape,
+      i.itemKey,
+      i.content,
+      i.value,
+      i.approverIds.map(lower).sort(byCodeUnits),
+    ]),
+  ];
+  return createHash('sha256').update(JSON.stringify(payload), 'utf8').digest('hex');
+}
+
+/** The brief's current fingerprint snapshot, read in the caller's transaction. */
+async function fingerprintSnapshot(tx: Executor, brief: LiveBriefRecord, state: readonly ItemGreenState[]): Promise<FingerprintSnapshot> {
+  const parties = await tx.select({ id: projectParty.id }).from(projectParty).where(eq(projectParty.projectId, brief.projectId));
+  const presence = new Map((await listBriefPresence(tx, brief.id)).map((p) => [p.partyId, p.onSite]));
+  const pairs = await tx
+    .select({ id: pairwiseAgreement.id, one: pairwiseAgreement.partyOneId, two: pairwiseAgreement.partyTwoId })
+    .from(pairwiseAgreement)
+    .where(eq(pairwiseAgreement.projectId, brief.projectId));
+  return {
+    briefId: brief.id,
+    projectId: brief.projectId,
+    parties: parties.map((p) => ({ id: p.id, onSite: presence.get(p.id) ?? null })),
+    pairs: pairs.map((p) => ({ id: p.id, partyIds: [p.one, p.two] as const })),
+    items: state.map(({ item, approverIds }) => ({
+      id: item.id,
+      position: item.position,
+      layer: item.layer,
+      pairwiseAgreementId: item.pairwiseAgreementId,
+      subjectPartyId: item.subjectPartyId,
+      shape: item.shape,
+      itemKey: item.itemKey,
+      content: item.content,
+      value: item.value,
+      approverIds,
+    })),
+  };
+}
+
+/**
+ * Freezes a brief for signing (S10): live -> signing, with the fingerprint
+ * of its current signing-relevant state. Refused unless the brief is live
+ * (`not_live`), ready to sign (`not_ready`), and in a project of exactly two
+ * parties and one pair (`unsupported_topology`; a conservative boundary of
+ * this slice, not a product ruling). The database re-checks readiness and
+ * topology on the transition and recomputes the digest, refusing a mismatch.
+ *
+ * Internal: no party act and no record of who or when. Freezing again after
+ * a withdrawal recomputes everything.
+ */
+export async function freezeBriefForSigning(db: Executor, briefId: string): Promise<{ briefId: string; fingerprint: string }> {
+  return db.transaction(async (tx) => {
+    await lockBrief(tx, briefId);
+    // The row lock is taken before anything is read: every database guard on
+    // a write the fingerprint depends on locks this row FOR SHARE, so such a
+    // write has either committed (and is read below) or waits for this
+    // transaction (and then finds the brief signing).
+    await tx.select({ id: liveBrief.id }).from(liveBrief).where(eq(liveBrief.id, briefId)).for('update');
+    const brief = await requireBrief(tx, briefId);
+    if (brief.phase !== 'live') throw new BriefActionRefusedError('not_live');
+    const state = await greenStateOf(tx, brief, await listBriefItems(tx, briefId));
+    if (!isReady(brief.phase, state)) throw new BriefActionRefusedError('not_ready');
+    const snapshot = await fingerprintSnapshot(tx, brief, state);
+    if (snapshot.parties.length !== 2 || snapshot.pairs.length !== 1) throw new BriefActionRefusedError('unsupported_topology');
+    const fingerprint = briefFingerprint(snapshot);
+    const [row] = await tx.update(liveBrief).set({ phase: 'signing', fingerprint }).where(eq(liveBrief.id, briefId)).returning({ id: liveBrief.id });
+    if (!row) throw new BriefNotFoundError();
+    return { briefId: row.id, fingerprint };
+  }, READ_COMMITTED);
+}
+
+/** The brief's phase and fingerprint. */
+export async function getBriefSigningState(db: Executor, briefId: string): Promise<BriefSigningState> {
+  const [row] = await db.select({ phase: liveBrief.phase, fingerprint: liveBrief.fingerprint }).from(liveBrief).where(eq(liveBrief.id, briefId)).limit(1);
+  if (!row) throw new BriefNotFoundError();
+  return { phase: row.phase as BriefPhase, fingerprint: row.fingerprint };
 }

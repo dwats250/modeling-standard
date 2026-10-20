@@ -6,6 +6,8 @@ import { describe, expect, inject, it } from 'vitest';
 import { createLogger } from '../../src/app/logger.ts';
 import { listBriefItems } from '../../src/briefs/brief.ts';
 import {
+  freezeBriefForSigning,
+  getBriefSigningState,
   isBriefReadyToSign,
   setDraftPartyPresence,
   setOpenParameterBySubject,
@@ -36,6 +38,7 @@ const T0014 = '0014_agreement_version_fk_name';
 const T0016 = '0016_account_party_binding_stamps_and_grants';
 const T0018 = '0018_direct_invitation_stamp_and_grants';
 const T0020 = '0020_live_brief_scope_and_grants';
+const T0022 = '0022_live_resolution_guards_and_grants';
 
 const ROW_TABLES = [
   'project',
@@ -824,6 +827,78 @@ describe('populated migration upgrades', () => {
           }
           expect((await getBriefGreenState(run, ids.briefId)).items.every((i) => i.green)).toBe(true);
           expect(await isBriefReadyToSign(run, ids.briefId)).toBe(true);
+        } finally {
+          await handle.close();
+        }
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'populated S09 (0022) → current: draft and live briefs keep their rows and phase with no fingerprint, and a ready brief can enter signing',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0022);
+        const s = await asRuntime(db, populateS01S02);
+        const ids = await asRuntime(db, async (c) => {
+          const brief = await c.query<{ id: string }>('insert into live_brief (project_id) values ($1) returning id', [s.projectId]);
+          const briefId = brief.rows[0]!.id;
+          const insert = async (cols: string, vals: unknown[]): Promise<string> => {
+            const placeholders = vals.map((_, i) => `$${i + 3}`).join(', ');
+            const r = await c.query<{ id: string }>(`insert into brief_item (brief_id, project_id, ${cols}) values ($1, $2, ${placeholders}) returning id`, [
+              briefId,
+              s.projectId,
+              ...vals,
+            ]);
+            return r.rows[0]!.id;
+          };
+          const items = [
+            await insert('layer, content, position', ['universal', '[upgrade] safety', 1]),
+            await insert('layer, pairwise_agreement_id, item_key, content, value, position', ['money', s.agreementId, 'fee', '[upgrade] fee', '[upgrade] 100', 2]),
+          ];
+          for (const party of s.partyIds) {
+            await c.query('insert into brief_party_presence (brief_id, project_id, party_id, on_site) values ($1, $2, $3, true)', [briefId, s.projectId, party]);
+          }
+          await c.query(`update live_brief set phase = 'live' where id = $1`, [briefId]);
+          for (const itemId of items) {
+            for (const party of s.partyIds) {
+              await c.query('insert into brief_tick (brief_item_id, project_id, party_id) values ($1, $2, $3)', [itemId, s.projectId, party]);
+            }
+          }
+          // A second project with a draft brief.
+          const draftProject = await c.query<{ id: string }>(`insert into project (created_by_principal_id) values ('upgrade-test-creator') returning id`);
+          await c.query('insert into live_brief (project_id) values ($1)', [draftProject.rows[0]!.id]);
+          return { briefId };
+        });
+
+        const boundary = journal().entries.findIndex((e) => e.tag === T0022) + 1;
+        const before = await asOwner(db, async (c) => ({ rows: await rowsOf(c), books: await bookkeeping(c) }));
+        expect((before.rows['live_brief'] as { phase: string }[]).map((b) => b.phase).sort()).toEqual(['draft', 'live']);
+        expect(before.rows['brief_tick']).toHaveLength(4);
+
+        await runMigrations(db.migrationUrl);
+
+        await asOwner(db, async (c) => {
+          const after = await rowsOf(c);
+          for (const table of [...SURVIVING_TABLES, 'brief_item', 'brief_party_presence', 'brief_tick']) {
+            expect({ table, rows: after[table] }).toEqual({ table, rows: before.rows[table] });
+          }
+          // Each brief is unchanged but for its new fingerprint column, which is null.
+          expect(after['live_brief']).toEqual((before.rows['live_brief'] as object[]).map((row) => ({ ...row, fingerprint: null })));
+          expect(await runtimePrivileges(c, 'live_brief')).toEqual(['INSERT', 'SELECT']);
+          const books = await bookkeeping(c);
+          expect(books.slice(0, boundary)).toEqual(before.books);
+          expect(books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(journal().entries.length));
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+
+        // The pre-existing live brief is ready to sign and can be frozen.
+        const handle = openDatabase(db.runtimeUrl, createLogger('silent'));
+        try {
+          expect(await isBriefReadyToSign(handle.db, ids.briefId)).toBe(true);
+          const { fingerprint } = await freezeBriefForSigning(handle.db, ids.briefId);
+          expect(await getBriefSigningState(handle.db, ids.briefId)).toEqual({ phase: 'signing', fingerprint });
         } finally {
           await handle.close();
         }
