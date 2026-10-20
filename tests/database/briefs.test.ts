@@ -376,11 +376,12 @@ describe('what the S08 tables hold', () => {
       )
     ).rows;
 
-  it('live_brief holds only an id, its project and (S09) its phase', async () => {
+  it('live_brief holds only an id, its project, (S09) its phase and (S10) its signing fingerprint', async () => {
     expect(await columnsOf('live_brief')).toEqual([
       { column_name: 'id', data_type: 'uuid', is_nullable: 'NO' },
       { column_name: 'project_id', data_type: 'uuid', is_nullable: 'NO' },
       { column_name: 'phase', data_type: 'text', is_nullable: 'NO' },
+      { column_name: 'fingerprint', data_type: 'text', is_nullable: 'YES' },
     ]);
   });
 
@@ -431,6 +432,7 @@ describe('what the S08 tables hold', () => {
       'brief_item.brief_item_subject_pending_is_open_parameter:c',
       'brief_item.brief_item_universal_is_project_wide:c',
       'brief_item.brief_item_value_nonblank:c',
+      'live_brief.live_brief_fingerprint_iff_signing:c',
       'live_brief.live_brief_id_project_unique:u',
       'live_brief.live_brief_one_per_project:u',
       'live_brief.live_brief_phase_known:c',

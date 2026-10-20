@@ -1,5 +1,6 @@
 import { addBriefItem, openLiveBrief } from '../briefs/brief.ts';
 import type { Executor } from '../infrastructure/database/client.ts';
+import type { ProjectAnnotation } from './annotations.ts';
 import { createPairwiseAgreement } from '../projects/agreement.ts';
 import { addProjectParty } from '../projects/party.ts';
 
@@ -89,5 +90,16 @@ export async function buildWalkthroughDraft(db: Executor, projectId: string): Pr
     briefId: brief.id,
     pairId: pair.id,
     items: { decideTogether: decideTogether.id, openParameter: openParameter.id, request: request.id },
+  };
+}
+
+/** The walkthrough cast's demo labels (never stored in the product database). */
+export function walkthroughAnnotation(draft: WalkthroughDraft, title: string, kind: ProjectAnnotation['kind'] = 'scenario'): ProjectAnnotation {
+  return {
+    title,
+    kind,
+    parties: { [draft.photographerPartyId]: 'Photographer', [draft.modelPartyId]: 'Model' },
+    // The inspector names the pair from its two parties' labels.
+    agreements: {},
   };
 }

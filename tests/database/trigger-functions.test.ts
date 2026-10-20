@@ -23,8 +23,10 @@ describe('trigger functions', () => {
         'brief_item_guard_live',
         'brief_party_presence_guard',
         'brief_tick_check',
+        'brief_tick_guard_delete',
         'direct_invitation_stamp',
         'live_brief_check_phase',
+        'pairwise_agreement_guard_signing',
         'party_account_binding_stamp',
         'project_party_guard_roster',
       ]);

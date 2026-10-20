@@ -31,7 +31,7 @@ export type BriefLayer = 'universal' | 'shared' | 'money';
 export type BriefShape = 'declaration' | 'request' | 'open_parameter';
 export type BriefItemKey = 'fee' | 'no_means_no' | 'coverage_level' | 'physical_contact' | 'stop_rule';
 export type BriefPending = 'decide_together' | 'subject';
-export type BriefPhase = 'draft' | 'live';
+export type BriefPhase = 'draft' | 'live' | 'signing';
 
 export interface LiveBriefRecord {
   readonly id: string;
@@ -101,7 +101,9 @@ export type BriefRefusal =
   | 'universal_kept'
   | 'blank_value'
   | 'deliberate_tick'
-  | 'item_not_in_brief';
+  | 'item_not_in_brief'
+  | 'not_ready'
+  | 'unsupported_topology';
 
 export class BriefActionRefusedError extends Error {
   readonly reason: BriefRefusal;

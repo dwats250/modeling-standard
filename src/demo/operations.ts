@@ -6,7 +6,10 @@ import { defineOperation, type AnyOperation } from '../http/operations.ts';
 import { listPairwiseAgreements } from '../projects/agreement.ts';
 import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, listProjectsCreatedBy } from '../projects/project.ts';
-import { simulatorOperations } from './simulator.ts';
+import type { AnnotationStore } from './annotations.ts';
+import { participantOperations } from './participant.ts';
+import { createShootOperations } from './shoots.ts';
+import { createSimulatorOperations } from './simulator.ts';
 
 /**
  * Read-only operations for the local synthetic demo's record inspector.
@@ -89,7 +92,8 @@ export const readDemoProjectRecordOperation = defineOperation({
     brief: z
       .strictObject({
         id: z.uuid(),
-        phase: z.enum(['draft', 'live']),
+        // `signing` (S10) is internal; the demo never freezes a brief.
+        phase: z.enum(['draft', 'live', 'signing']),
         ready: z.boolean(),
         presence: z.array(z.strictObject({ partyId: z.uuid(), onSite: z.boolean() })),
         items: z.array(briefItemDto),
@@ -137,8 +141,17 @@ export const readDemoProjectRecordOperation = defineOperation({
   },
 });
 
-export const demoOperations: readonly AnyOperation[] = [
-  listDemoProjectsOperation,
-  readDemoProjectRecordOperation,
-  ...simulatorOperations,
-];
+/**
+ * Every demo operation: the inspector's reads, the simulator, the composer
+ * and scenario cards, and the participant screens. The operations that write
+ * demo labels are given the annotation store they write to.
+ */
+export function createDemoOperations(annotations: AnnotationStore): readonly AnyOperation[] {
+  return [
+    listDemoProjectsOperation,
+    readDemoProjectRecordOperation,
+    ...createSimulatorOperations(annotations),
+    ...createShootOperations(annotations),
+    ...participantOperations,
+  ];
+}

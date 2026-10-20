@@ -13,7 +13,8 @@ import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
 import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../../src/demo/export.ts';
 import type { FixtureAnnotations } from '../../src/demo/fixtures.ts';
-import { demoOperations } from '../../src/demo/operations.ts';
+import { ANNOTATIONS_FILE, AnnotationStore } from '../../src/demo/annotations.ts';
+import { createDemoOperations } from '../../src/demo/operations.ts';
 import { resetDemoDatabase } from '../../src/demo/reset.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
@@ -37,6 +38,7 @@ let app: FastifyInstance;
 let server: Server;
 let base: string;
 let browser: Browser;
+let demoOperations: ReturnType<typeof createDemoOperations>;
 const pageErrors: string[] = [];
 
 async function reset(): Promise<FixtureAnnotations> {
@@ -44,11 +46,11 @@ async function reset(): Promise<FixtureAnnotations> {
     host: '127.0.0.1',
     databaseUrl: requireEnv('DATABASE_URL'),
     migrationDatabaseUrl: requireEnv('MIGRATION_DATABASE_URL'),
-    fixtureDir,
+    demoDir: fixtureDir,
   });
 }
 
-async function openPage(viewport: keyof typeof VIEWPORTS, url = `${base}/`): Promise<Page> {
+async function openPage(viewport: keyof typeof VIEWPORTS, url = `${base}/inspector`): Promise<Page> {
   const page = await browser.newPage({ viewport: VIEWPORTS[viewport] });
   page.on('pageerror', (e) => pageErrors.push(`${viewport}: ${e.message}`));
   page.on('console', (m) => {
@@ -86,9 +88,11 @@ afterAll(async () => {
 async function startServer(port = 0): Promise<void> {
   const logger = createLogger('warn');
   database = openDatabase(demoDatabaseTarget(requireEnv('DATABASE_URL')), logger);
+  const store = new AnnotationStore(join(fixtureDir, ANNOTATIONS_FILE));
+  demoOperations = createDemoOperations(store);
   app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
   await app.ready();
-  server = createDemoServer({ app, fixturePath: join(fixtureDir, 'fixture.json') });
+  server = createDemoServer({ app, annotations: store });
   await new Promise<void>((done) => server.listen(port, '127.0.0.1', done));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
@@ -312,7 +316,7 @@ describe('demo regression', () => {
 
     // 1–2. Start, and inspect the draft: three layers, private money, pending items.
     await page.locator('#start-simulation').click();
-    await page.locator('h2', { hasText: 'Photographer & Model — shoot brief' }).waitFor();
+    await page.locator('h2', { hasText: 'Walkthrough — Photographer and Model' }).waitFor();
     await expect.poll(() => page.locator('.brief-item').count()).toBe(8);
     expect(await headline()).toBe('DRAFT');
     expect((await page.locator('.brief .layer h4').allInnerTexts()).map((t) => t.toLowerCase())).toEqual(['universal', 'shared', 'private money']);
@@ -502,7 +506,7 @@ describe('demo regression', () => {
   });
 
   it('exports a portable snapshot that renders from disk with no network and no writes', async () => {
-    const fixture = JSON.parse(await (await fetch(`${base}/fixture.json`)).text()) as unknown;
+    const fixture = JSON.parse(await (await fetch(`${base}/annotations.json`)).text()) as unknown;
     const html = await renderSnapshotHtml(await collectSnapshot(app, fixture));
     const file = join(fixtureDir, 'snapshot.html');
     await writeFile(file, html);
@@ -650,7 +654,7 @@ describe('demo regression', () => {
     await production.ready();
     try {
       for (const op of demoOperations) {
-        const res = await production.inject({ method: op.method, url: op.path.replace(':id', '00000000-0000-4000-8000-000000000000'), payload: {} });
+        const res = await production.inject({ method: op.method, url: op.path.replace(/:[a-zA-Z]+/g, '00000000-0000-4000-8000-000000000000'), payload: {} });
         expect({ op: op.name, status: res.statusCode }).toEqual({ op: op.name, status: 404 });
       }
     } finally {

@@ -133,9 +133,10 @@ describe('phase and share', () => {
     expect(
       await failure(() => runtime((c) => c.query(`insert into live_brief (project_id, phase) values ($1, 'live')`, [other.id]))),
     ).toEqual(violation('live_brief_phase_transition'));
-    // No other phase exists in S09; the transition guard refuses before the CHECK is reached.
+    // S10: entering signing needs the brief's own fingerprint stored with it
+    // (this empty two-party brief is otherwise ready); tests/database/brief-signing.test.ts covers the phase.
     expect(await failure(() => runtime((c) => c.query(`update live_brief set phase = 'signing' where id = $1`, [w.briefId])))).toEqual(
-      violation('live_brief_phase_transition'),
+      violation('live_brief_signing_fingerprint_mismatch'),
     );
     expect(await failure(() => shareLiveBrief(db(), randomUUID()))).toEqual({ name: BriefNotFoundError.name });
     expect(await phaseOf(w.briefId)).toBe('live');
@@ -370,9 +371,11 @@ describe('decline', () => {
     expect((await listBriefItems(db(), w.briefId)).map((i) => i.id)).toContain(request.id);
 
     const before = await owner(async (c) => {
+      // Scoped to this project: other suites write to the same database concurrently.
       const { rows } = await c.query<{ n: number }>(
-        `select (select count(*) from brief_item) + (select count(*) from brief_tick) + (select count(*) from brief_party_presence)
-                + (select count(*) from live_brief) as n`,
+        `select (select count(*) from brief_item where project_id = $1) + (select count(*) from brief_tick where project_id = $1)
+                + (select count(*) from brief_party_presence where project_id = $1) + (select count(*) from live_brief where project_id = $1) as n`,
+        [w.projectId],
       );
       return Number(rows[0]!.n);
     });
@@ -381,13 +384,15 @@ describe('decline', () => {
     expect(await tickCount(request.id)).toBe(0);
     // Exactly the item and its one tick are gone; nothing was written anywhere.
     const after = await owner(async (c) => {
+      // Scoped to this project: other suites write to the same database concurrently.
       const { rows } = await c.query<{ n: number }>(
-        `select (select count(*) from brief_item) + (select count(*) from brief_tick) + (select count(*) from brief_party_presence)
-                + (select count(*) from live_brief) as n`,
+        `select (select count(*) from brief_item where project_id = $1) + (select count(*) from brief_tick where project_id = $1)
+                + (select count(*) from brief_party_presence where project_id = $1) + (select count(*) from live_brief where project_id = $1) as n`,
+        [w.projectId],
       );
       return Number(rows[0]!.n);
     });
-    expect(before - after).toBeGreaterThanOrEqual(2);
+    expect(before - after).toBe(2);
     const declineNames = await owner(async (c) =>
       (
         await c.query<{ name: string }>(

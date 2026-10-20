@@ -16,7 +16,7 @@ try {
     host: app.host,
     databaseUrl: app.databaseUrl,
     migrationDatabaseUrl: migration.migrationDatabaseUrl,
-    fixtureDir: resolve(process.cwd(), '.demo'),
+    demoDir: resolve(process.cwd(), '.demo'),
   });
   process.stdout.write(`Demo database ${DEMO_DATABASE} reset with ${Object.keys(annotations.projects).length} synthetic projects.\n`);
 } catch (error) {

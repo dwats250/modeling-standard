@@ -3,28 +3,38 @@ import { boolean, check, foreignKey, integer, pgTable, primaryKey, text, unique,
 import { pairwiseAgreement, project, projectParty } from '../projects/tables.ts';
 
 /**
- * Slices S08 and S09: the live brief (D02, D04, D10; HC1, HC2).
+ * Slices S08, S09 and S10: the live brief (D02, D04, D10; HC1, HC2).
  *
  * One mutable workspace per project, holding brief items. S08 is draft
  * composition; S09 adds the phase (draft, then live), the on-site presence
- * fact and current ticks. Live state is not evidence (HC1), so these tables
+ * fact and current ticks; S10 adds the internal signing phase and its
+ * fingerprint. Live state is not evidence (HC1), so these tables
  * carry no timestamp, author, proposer, revision, history, requiredness,
  * decline or group-check column, and live rows are updated and deleted in
  * place.
  *
  * Privileges and every trigger (pair-subject scope; the S09 phase, live-item,
- * presence, roster and tick guards) are hand-written SQL in `migrations/`,
+ * presence, roster and tick guards; the S10 signing guards) are hand-written SQL in `migrations/`,
  * never here.
  */
 
 /**
  * The live brief: one per project. Runtime role: SELECT, INSERT, UPDATE of
- * phase only.
+ * phase and fingerprint only.
  *
- * `phase` is `draft` or `live` (S09). Only draft → live is allowed, and only
- * when every item has stored wording and every party an explicit presence
- * fact; a database trigger enforces both. S10 extends the phase model. No
- * timestamps: when people act is noise (D10, noise doctrine).
+ * `phase` is `draft`, `live` (S09) or `signing` (S10). Draft → live needs
+ * stored wording on every item and an explicit presence fact for every
+ * party. Live → signing needs the brief to be ready to sign in a project of
+ * exactly two parties and one pair (this slice's engineering boundary, not
+ * a product ruling); signing → live is the withdrawal. A
+ * database trigger enforces each transition and refuses every other one.
+ *
+ * `fingerprint` is the SHA-256 (lowercase hex) of the brief's
+ * signing-relevant state, computed by `freezeBriefForSigning`. It is stored
+ * exactly while signing and cleared on withdrawal. The database checks its
+ * presence, format and immutability, and recomputes it on entering signing,
+ * refusing any value that does not match the brief. No timestamps: when
+ * people act is noise (D10, noise doctrine).
  */
 export const liveBrief = pgTable(
   'live_brief',
@@ -34,9 +44,14 @@ export const liveBrief = pgTable(
       .notNull()
       .references(() => project.id),
     phase: text('phase').notNull().default('draft'),
+    fingerprint: text('fingerprint'),
   },
   (table) => [
-    check('live_brief_phase_known', sql`${table.phase} in ('draft', 'live')`),
+    check('live_brief_phase_known', sql`${table.phase} in ('draft', 'live', 'signing')`),
+    check(
+      'live_brief_fingerprint_iff_signing',
+      sql`(${table.phase} = 'signing') = (${table.fingerprint} IS NOT NULL) AND (${table.fingerprint} IS NULL OR ${table.fingerprint} ~ '^[0-9a-f]{64}$')`,
+    ),
     unique('live_brief_one_per_project').on(table.projectId),
     // Containment target for brief items. `id` alone is already unique.
     unique('live_brief_id_project_unique').on(table.id, table.projectId),
