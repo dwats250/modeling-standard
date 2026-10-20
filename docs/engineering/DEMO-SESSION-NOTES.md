@@ -24,11 +24,11 @@ Work item: *Modeling Standard — Demonstration Session PRD*, v2 (2026-10-20), i
 | C. Participant views | done | `tests/demo/participant.test.ts` (privacy tampering on Fixture 2) |
 | D. Live resolution | done | `participant.test.ts`; `journey.test.ts` (READY TO SIGN at 1280 and 390, untick/retick, decline path) |
 | E. S10 freeze/withdrawal | deferred (Q-E = no) | — |
-| F. Delivery | see the handoff section | — |
+| F. Delivery | done | `npm run check`; `npm test` 29 files / 357 tests; `npm run test:demo` 2 files / 21 tests; verbatim clean-clone run |
 
 ## Exact next action
 
-See the handoff section at the end; if it is absent, F is unfinished: rewrite `docs/engineering/DEMO.md`, run the verification list, push.
+None in this slice. Next: Dustin and Cory run the journey (handoff below). The S10/S11 signing slice is separate work; its design input is PRD §9 (freeze as an internal mechanism, fingerprint, signature evidence, withdrawal before finality, LB-16 refusal, presence copied into the contract) and it needs its own slice document and migrations.
 
 ## Choices made (for Dustin to see)
 
@@ -59,3 +59,22 @@ See the handoff section at the end; if it is absent, F is unfinished: rewrite `d
 - The simulated party is a URL parameter: on LAN anyone on the Wi-Fi can act as any person by editing the address. Acceptable only because everything is synthetic; stated on the entry screen and in `DEMO.md`.
 - The inspector (engineering aid) still has its pre-existing "Settle together" form inside the simulated party's action area; the participant screens never attribute settle to a party.
 - Settle and parameter values typed on the participant screen are prefilled with `[synthetic] ` but not forced to keep it.
+
+## Handoff
+
+**Open and do (on Asher, from a clean checkout of `demo/participant-journey`):**
+
+```
+npm run db:up                 # only if PostgreSQL is not already up (Docker; db/provision.sql)
+cp .env.example .env          # first time only
+npm ci
+npm run demo:fresh            # open http://127.0.0.1:3100/
+npm run demo:fresh -- --lan   # for a phone on the same Wi-Fi: open the printed 192.168.x.x URL
+npm run demo:export           # .demo/modeling-standard-demo.html, read-only inspector snapshot
+```
+
+Then: **New shoot** → compose → set both on site → **Share the brief** → **Look at it as Model** → set the coverage level → switch to **Photographer** in the band → enter the agreed values in **Simulation controls** → group-check and tick the fee and coverage → switch to **Model** → tick → **READY TO SIGN**. Untick anything to see "No longer ready to sign"; retick. The **Declined request** card shows decline-and-continue; **Three-person fee case** shows each person only their own fee.
+
+**Verification run in this environment:** `npm run check` (pass); `npm test` 29 files, 357 tests (pass, twice); `npm run test:demo` 2 files, 21 tests (pass; Chrome at `/usr/bin/google-chrome`); `npm run build` excludes `src/demo`; `demo:fresh` twice from clean gives identical fixtures, and a third run while serving exits 1 with "stop the running demo first"; `--lan` serves on the machine's private addresses and refuses a foreign Host header (421); `demo:export` writes the snapshot; the commands above run verbatim in a fresh clone (with the database already up). Greps over new code, UI strings and export: no "declined by", history, timestamp or AI attribution.
+
+**Not personally verified:** a real phone on the LAN (only the LAN address from this machine was tested); `npm run db:up` from a fresh clone (the existing container was already serving port 5432; a second compose project from another directory would collide on that port).
