@@ -7,6 +7,8 @@ import { listPairwiseAgreements } from '../projects/agreement.ts';
 import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, listProjectsCreatedBy } from '../projects/project.ts';
 import type { AnnotationStore } from './annotations.ts';
+import { participantOperations } from './participant.ts';
+import { createShootOperations } from './shoots.ts';
 import { createSimulatorOperations } from './simulator.ts';
 
 /**
@@ -139,7 +141,8 @@ export const readDemoProjectRecordOperation = defineOperation({
 });
 
 /**
- * Every demo operation: the inspector's reads and the simulator. The operations that write
+ * Every demo operation: the inspector's reads, the simulator, the composer
+ * and scenario cards, and the participant screens. The operations that write
  * demo labels are given the annotation store they write to.
  */
 export function createDemoOperations(annotations: AnnotationStore): readonly AnyOperation[] {
@@ -147,5 +150,7 @@ export function createDemoOperations(annotations: AnnotationStore): readonly Any
     listDemoProjectsOperation,
     readDemoProjectRecordOperation,
     ...createSimulatorOperations(annotations),
+    ...createShootOperations(annotations),
+    ...participantOperations,
   ];
 }

@@ -1,7 +1,7 @@
 import { connect } from 'node:net';
 import { resolve } from 'node:path';
 import { loadAppConfig, loadMigrationConfig } from '../config/config.ts';
-import { DEMO_DATABASE } from '../demo/demo.ts';
+import { DEMO_DATABASE, DemoGuardError, demoListenTarget } from '../demo/demo.ts';
 import { resetDemoDatabase } from '../demo/reset.ts';
 
 /**
@@ -41,6 +41,9 @@ if ((await listening(port, '127.0.0.1')) || (await listening(port, '::1'))) {
 try {
   const app = loadAppConfig(process.env);
   const migration = loadMigrationConfig(process.env);
+  // The listener is validated (LAN mode needs a private address) before
+  // anything is reset, so a refusal leaves the demo database as it was.
+  demoListenTarget(app.host, process.argv.includes('--lan'));
   const annotations = await resetDemoDatabase({
     host: app.host,
     databaseUrl: app.databaseUrl,
@@ -49,7 +52,8 @@ try {
   });
   process.stdout.write(`Demo database ${DEMO_DATABASE} reset with ${Object.keys(annotations.projects).length} synthetic projects.\n`);
 } catch (error) {
-  process.stderr.write(`Demo reset failed: ${error instanceof Error ? error.message : 'unknown error'}\n`);
+  const prefix = error instanceof DemoGuardError ? '' : 'Demo reset failed: ';
+  process.stderr.write(`${prefix}${error instanceof Error ? error.message : 'unknown error'}\n`);
   process.exit(1);
 }
 

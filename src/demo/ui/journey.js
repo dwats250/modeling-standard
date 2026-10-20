@@ -44,15 +44,28 @@ class ApiError extends Error {
   }
 }
 
+// While a request or a render is in flight the body carries data-busy, so
+// a test (or a curious reader) can tell when the screen has caught up.
+let inflight = 0;
+function busy(delta) {
+  inflight += delta;
+  document.body.toggleAttribute('data-busy', inflight > 0);
+}
+
 async function api(method, url, body) {
-  const res = await fetch(url, {
-    method,
-    headers: body === undefined ? {} : { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, data?.error?.code ?? `http_${res.status}`, data?.error?.issues);
-  return data;
+  busy(1);
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: body === undefined ? {} : { 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(res.status, data?.error?.code ?? `http_${res.status}`, data?.error?.issues);
+    return data;
+  } finally {
+    busy(-1);
+  }
 }
 
 function toast(message, kind = 'ok') {
@@ -171,6 +184,10 @@ function stageStrip(stage) {
   const list = el('ol', { className: 'stage-strip', attrs: { 'aria-label': 'Stages' } });
   STAGES.forEach(([key, label], i) => {
     const item = el('li', { className: i === current ? 'current' : i < current ? 'done' : '', text: label });
+    if (key === 'live') {
+      item.title = '“Live” is a candidate word for Cory (D05); not chosen.';
+      item.append(el('span', { className: 'proposed-mark', text: ' (proposed word)' }));
+    }
     if (i === current) item.setAttribute('aria-current', 'step');
     list.append(item);
   });
@@ -216,7 +233,7 @@ const CARDS = [
   {
     card: 'declined',
     title: 'Declined request',
-    text: 'Shared, and the Model has declined the album-cover request: it is simply gone. Carry on to ready to sign without it.',
+    text: 'Shared; the album-cover request is no longer in the brief. Carry on to ready to sign without it.',
   },
 ];
 
@@ -415,7 +432,7 @@ function showFieldErrors(form, errors) {
     row.classList.toggle('has-error', Boolean(message));
     row.querySelector('.field-error').textContent = message;
   }
-  const first = form.querySelector('.field.has-error input:not([hidden]), .field.has-error textarea');
+  const first = form.querySelector('.field.has-error input[type="text"]:not([hidden]), .field.has-error textarea');
   first?.focus();
 }
 
@@ -733,7 +750,8 @@ async function renderParticipant(root, projectId, partyId) {
     renderMilestone(view, stage),
     renderAttention(view, label, act),
     ...renderLayers(view, label, act),
-    renderSimulationControls(view, projectId),
+    // append() would print a null as the text "null".
+    ...[renderSimulationControls(view, projectId)].filter(Boolean),
   );
 }
 
@@ -800,7 +818,8 @@ function renderMilestone(view, stage) {
 /** This person's pending acts, in order: set your open parameter; decide a request about you; tick. */
 function renderAttention(view, label, act) {
   const toSet = view.items.filter((i) => i.actions.setParameter);
-  const toDecide = view.items.filter((i) => i.actions.decline);
+  // A request about this person needs a decision until they have ticked it.
+  const toDecide = view.items.filter((i) => i.actions.decline && !i.actions.untick);
   const toTick = view.items.filter((i) => i.actions.tick && !i.actions.setParameter);
   const waiting = view.items.filter((i) => i.pending !== null && !i.actions.setParameter);
   const list = el('ol', { className: 'attention-list' });
@@ -955,6 +974,15 @@ function renderSimulationControls(view, projectId) {
 let generation = 0;
 
 async function render(scrollTop) {
+  busy(1);
+  try {
+    await renderScreen(scrollTop);
+  } finally {
+    busy(-1);
+  }
+}
+
+async function renderScreen(scrollTop) {
   generation += 1;
   const mine = generation;
   const screen = document.getElementById('screen');
@@ -979,6 +1007,8 @@ async function render(scrollTop) {
   const y = window.scrollY;
   screen.replaceChildren(next);
   document.body.dataset.screen = hash.includes('/as/') ? 'participant' : hash.startsWith('#/shoots/') ? 'shoot' : 'entry';
+  // The route this screen shows; with data-busy, tells when navigation has caught up.
+  document.body.dataset.route = hash;
   window.scrollTo(0, scrollTop ? 0 : y);
 }
 

@@ -58,6 +58,13 @@ server.listen(port, listen.listenHost, () => {
   process.stdout.write('Stop it with Ctrl+C.\n');
 });
 
+server.on('error', (error: NodeJS.ErrnoException) => {
+  process.stderr.write(
+    error.code === 'EADDRINUSE' ? `Port ${port} is already in use: stop the running demo first.\n` : `The demo server could not listen: ${error.message}\n`,
+  );
+  void app.close().then(() => database.close()).finally(() => process.exit(1));
+});
+
 const shutdown = (): void => {
   server.close();
   void app.close().then(() => database.close());
