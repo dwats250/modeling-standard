@@ -23,46 +23,25 @@ The individual steps remain: `npm run demo:reset`, `npm run demo`, `npm run demo
 
 ## What you can do
 
-Public words on these screens are **proposed labels** for Cory's review in context (D05); "Live" is flagged on screen as a proposed word.
+The journey follows `planning/I-creative-direction.md` §10: warm near-monochrome neutrals, one accent for the primary action and agreed states, an editorial serif for titles, state carried by words and position. Its styles are `src/demo/ui/journey.css`; the inspector keeps `styles.css`. Public words are **proposed labels** for Cory's review in context (D05).
 
-1. **Shoots** (`/`). Every screen carries the banner "Synthetic demo · invented people · nothing here is real." and a **Shoots** link back here. Cards:
-   - **New shoot** → the composer.
-   - **Two-person straightforward shoot** — the walkthrough draft, nothing done yet.
-   - **Unresolved two-person shoot** — shared, with the Model's coverage level and the delivery date still open.
-   - **Declined request** — shared, with the album-cover request no longer in the brief.
-   - **Three-person fee case** — Fixture 2 (Party A, B, C; fees A–C and B–C, each private to its pair).
-   - **Empty shoot** — Fixture 3.
-   - **Inspector** — engineering aid (`/inspector`): the whole stored record, not what any person sees.
+Every screen has a top bar with the wordmark (back to the start), a discreet **Synthetic demo** indicator (opens About) and the **Demo** menu.
 
-   Below: the shoots composed or opened so far (kept until reset), and **what this demo does not show**: the no-means-no term (wording is Cory's, D04), required-term completeness (catalogue not drafted), real sign-in (D03), what signing looks like (D04), walking away from a collaboration.
+1. **Welcome** (`/`). A short introduction, one primary action — **Create a shoot** — a three-step "How it works", and the shoots composed or opened so far (kept until reset).
+2. **Demo menu** (`/#/demo`). The ready-made examples (two-person shoot from the start; shared with values still open; after a declined request; three people, two fees — Fixture 2; empty shoot — Fixture 3), **About this demo**, the **Inspector** (engineering aid, `/inspector`: the whole stored record, not what any person sees) and the engineering-notes switch.
+3. **About this demo** (`/#/about`). One place for the caveats: invented people, interactive demo not the snapshot; what is simulated (one operator plays every person; composing, presence and sharing are operator acts; who enters an agreed value is an open question for Cory; the address is not a credential, so anyone on the Wi-Fi can act as anyone); what READY TO SIGN means (structural all-green rule; the required-term list is not drafted; signing is not built; no overall readiness with more than two people); what is not shown (no-means-no, required-term completeness, sign-in, the signing act, walking away); that the words are proposed ("Live" is a candidate) and that section placement is a demo choice; the decision references.
+4. **Compose** (`/#/shoots/new`). Section cards — The shoot, On set, Logistics, Creative and usage, Fee — with natural invented examples. Each value is **filled in now** or explicitly **decide together** (coverage: **Model sets it** / **set it now**; fee: **no fee** / **amount** / **decide together**) as a segmented choice; the value box appears only for a state that has a value. Blank values are refused per field ("Fill it in, or mark it decide together."); typed input is kept in the browser session across reloads until the draft is created. "You are composing as the demo operator." Nothing can be marked required; no closed-set term, physical-contact row, extra rows or no-means-no item.
+5. **Draft** (`/#/shoots/<id>`). Title, Draft → Live → Ready to sign progress, cast, **Who will be on set?** (On set / Not on set per person), **Share the brief** — refused with "Every person needs an on-site answer before the brief can be shared." until each has an answer — and the draft as a read-only document.
+6. **Open the brief as…** After sharing, a chooser, the Model first.
+7. **Each person's brief** (`/#/shoots/<id>/as/<person>`).
+   - **Viewing as** switch, sticky under the top bar, with "Demo simulation — in the product, each person signs in and acts only for themselves."
+   - Title, progress and a status line ("3 of 8 terms agreed · 2 still open"); with more than two people, "overall readiness isn't shown".
+   - **Your next step**, in order: set the value only you control; decide on a request about you; tick N terms (the ordinary ones together — the same as ticking each — then the fee and coverage level on their own). When nothing is left for this person: **You're done for now — Waiting on the others**, listing what the brief waits on (from what this person can see).
+   - **The brief** as one document in three sections — On set (Universal · everyone on site), The shoot (Shared · everyone in the collaboration), Fee (Private money · only you and the other person) — numbered by what this person sees. Per term: wording, value or a neutral open state, quiet notes (declared by, a request about you, between, ticked on its own), ✓/○ per person who ticks it, "Agreed" when complete, and only this person's actions: **Tick**, **Untick**, **Set as Model**, **Decline as Model** (the request disappears; "Request removed.").
+   - **Demo control** (dashed, after the document) for decide-together values: "Enter the value the two of them agreed — who enters it in the product is an open question for Cory."
+   - **Ready to sign**: a milestone card — "Everyone has ticked every term in this brief." and "Signing comes next. It isn't part of this demo, so nothing here is signed." Readiness gained or lost by an act is announced ("No longer ready to sign."). No signing control exists anywhere.
 
-2. **Compose** (`/#/shoots/new`). "You are composing this brief as the demo operator; the product's composing flow and who composes are not shown here." Rows, grouped by layer:
-
-   | Row | Layer / scope | States |
-   |---|---|---|
-   | What the shoot is (the screen heading) | shared, project-wide | filled in |
-   | A declaration by the Model | universal | filled in (cannot be declined) |
-   | Call time and location | shared | filled in / decide together |
-   | Delivery date | shared | filled in / decide together |
-   | Coverage level — **a synthetic example**, the Model's open parameter (`coverage_level`, needs its own tick) | shared | leave it for the Model to set / set it now |
-   | Deliverables | shared, between the pair | filled in |
-   | A request about the Model (album cover) | shared, between the pair | filled in (only the Model can decline it) |
-   | Fee (`fee`, needs its own tick) | private money, the pair | no fee (omitted) / an amount / decide together |
-
-   **Layer placement of each item is a demo choice, not the term catalogue** (not yet drafted); the screens say so beside each layer. A blank value is refused with "Fill it in, or mark it decide together." (or "…leave it for the Model to set"). Nothing can be marked required. There is no closed-set term, no physical-contact row, no extra rows, no no-means-no item. To change a draft, compose another shoot (no in-place editing). Everything is stored marked `[synthetic]`.
-
-3. **Draft** (`/#/shoots/<id>`). Heading, cast, the Draft → Live → Ready to sign strip, each person's **On site / Not on site**, then **Share the brief** — refused with "Every person needs an on-site answer before the brief can be shared." until each has an answer. Below, the draft as composed (operator view; nobody is simulated before sharing). Presence and sharing are operator acts, and the screen says who does them in the product is not shown.
-
-4. **Look at it as…** After sharing, the same address shows a chooser, defaulting to the Model, with the cue to switch to the Photographer from the band.
-
-5. **Each person's screen** (`/#/shoots/<id>/as/<person>`).
-   - **Band** (sticky; in the first half-screen on a phone): cast with on-site facts; **Simulating as** switch; "simulation — in the product each person acts only for themselves, signed in (D03/D12)"; the stage — "Live (proposed word) · n of m green · k still open", or READY TO SIGN; a one-off note when this browser sees readiness gained or lost.
-   - **Needs your attention**: set your open parameter; decide a request about you (tick or decline); how many items you have not ticked; **Group-check** for ordinary items (the fee and coverage level are listed as "Needs its own tick").
-   - **Three layers** — Universal · everyone on site; Shared · everyone in the collaboration; Private money · only this pair — already filtered by the server. Per item: wording, value or a neutral pending state ("Waiting for Model", "Decide together · still open"), ✓/○ per person who must tick it, and only this person's permitted actions: **Tick / Untick**, **Set as Model** (subject only), **Decline as Model** (subject only, non-universal request; it disappears with a "Request removed." toast and the numbering shows no gap).
-   - **Simulation controls** (dashed, apart from everything a person does): enter a decide-together value — "Enter the value the two of them agreed — who enters it in the product is an open question for Cory."
-   - **Milestone**: "READY TO SIGN is the structural all-green rule; the required-term list is not yet drafted." Once ready: "Signing is the next step and is not built in this demo." Any untick returns to Live ("No longer ready to sign."). With more than two people no readiness is shown. No signing control exists anywhere.
-
-**Engineering notes** (banner toggle, off by default) reveal item, project and party ids and item keys. Internal ids are not otherwise shown.
+Stored demo text keeps its `[synthetic]` mark; the journey shows it without repeating the mark on each line, and values typed on these screens are stored marked. Engineering notes (Demo menu) reveal ids and item keys.
 
 ## How it is built
 
@@ -99,7 +78,7 @@ Public words on these screens are **proposed labels** for Cory's review in conte
 
 `npm run test:demo` (needs `CHROME_PATH`; see `.env.example`) runs two real-browser suites through `playwright-core`, each resetting `modeling_standard_demo`:
 
-- `tests/demo-browser/journey.test.ts` — the participant journey at 1280 and 390: entry cards and omissions; composer fields (exactly these rows) and per-field blank refusals; share refused then shared; chooser; each person's screen with the simulation label, band and proposed-word flag; the Model's open parameter; Simulation controls; group-check and deliberate ticks to READY TO SIGN with the catalogue caveat and "signing is the next step and is not built"; untick ("No longer ready to sign.") and retick; mobile band in the first half-screen and stuck while scrolling, controls at least 44 px; reload; the decline path with no numbering gap; the three-person case (only one's own fee, no readiness); the empty shoot; a draft refused under a person's screen; labels kept across a restart and cleared by reset; no history words, no stray text, no signing control, no horizontal scroll, no browser errors.
+- `tests/demo-browser/journey.test.ts` — the participant journey at 1280 and 390: the welcome screen's single primary action, the demo menu and every About statement; composer fields (exactly these rows) and per-field blank refusals; share refused then shared; chooser; each person's screen with the simulation label, band and proposed-word flag; the Model's open parameter; Simulation controls; group-check and deliberate ticks to READY TO SIGN with the catalogue caveat and "signing is the next step and is not built"; untick ("No longer ready to sign.") and retick; mobile band in the first half-screen and stuck while scrolling, controls at least 44 px; reload; the decline path with no numbering gap; the three-person case (only one's own fee, no readiness); the empty shoot; a draft refused under a person's screen; labels kept across a restart and cleared by reset; no history words, no stray text, no signing control, no horizontal scroll, no browser errors.
 - `tests/demo-browser/regression.test.ts` — the inspector at `/inspector`: fixtures, the walkthrough, the decisions view, the snapshot from `file://`, reset repeatability, every demo route 404 in production.
 
 Screenshots go to `test-results/demo/` (`journey-*` per stage and width; the inspector's existing set). They are evidence, not design approval.

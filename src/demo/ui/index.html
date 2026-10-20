@@ -2,22 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f3ed" />
     <link rel="icon" href="data:," />
-    <title>Shoots — synthetic demo</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <title>Modeling Standard — synthetic demo</title>
+    <link rel="stylesheet" href="/journey.css" />
     <script type="module" src="/journey.js"></script>
   </head>
   <body class="journey">
-    <div class="banner" role="note">
-      <strong>Synthetic demo · invented people · nothing here is real.</strong>
-      <span class="banner-sub">Interactive demo on this machine — not the read-only snapshot.</span>
-      <a id="shoots-link" class="banner-link" href="#/">Shoots</a>
-      <button id="eng-toggle" type="button" class="eng-toggle" aria-pressed="false">Engineering notes</button>
-    </div>
+    <header class="topbar">
+      <a class="wordmark" href="#/" id="shoots-link" aria-label="Modeling Standard — home">Modeling Standard</a>
+      <a class="demo-pill" href="#/about" title="Synthetic demo: invented people, nothing here is real. Interactive demo on this machine — not the read-only snapshot.">
+        <span class="demo-dot" aria-hidden="true"></span>Synthetic demo
+      </a>
+      <a class="menu-link" href="#/demo" aria-label="Demo menu">Demo</a>
+    </header>
 
     <main id="screen" class="screen"></main>
 
-    <div id="toast" class="toast" role="status" hidden></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

@@ -78,3 +78,14 @@ Then: **New shoot** → compose → set both on site → **Share the brief** →
 **Verification run in this environment:** `npm run check` (pass); `npm test` 29 files, 357 tests (pass, twice); `npm run test:demo` 2 files, 21 tests (pass; Chrome at `/usr/bin/google-chrome`); `npm run build` excludes `src/demo`; `demo:fresh` twice from clean gives identical fixtures, and a third run while serving exits 1 with "stop the running demo first"; `--lan` serves on the machine's private addresses and refuses a foreign Host header (421); `demo:export` writes the snapshot; the commands above run verbatim in a fresh clone (with the database already up). Greps over new code, UI strings and export: no "declined by", history, timestamp or AI attribution.
 
 **Not personally verified:** a real phone on the LAN (only the LAN address from this machine was tested); `npm run db:up` from a fresh clone (the existing container was already serving port 5432; a second compose project from another directory would collide on that port).
+
+## Mobile presentation pass (branch `demo/mobile-presentation`)
+
+Based on `demo/participant-journey` at `2bca5ae` (PR #31, untouched). Presentation only: no route, rule, permitted action, privacy behaviour or stored data changed.
+
+- The journey has its own stylesheet (`journey.css`) following `planning/I-creative-direction.md` §10; the inspector keeps `styles.css`.
+- Welcome with one primary action; examples, inspector and engineering notes in a Demo menu; caveats, proposed vocabulary, the catalogue caveat and decision references consolidated in About this demo, reachable from the persistent Synthetic demo indicator.
+- Composer in section cards with segmented states, progressive value boxes, natural invented examples and session-kept input.
+- The brief as one document; a next-step card for the current person and a waiting state when they are done; a milestone card at READY TO SIGN.
+- `[synthetic]` marks are kept in storage and hidden in display; values typed on the screens are stored marked.
+- Presentation assertions in `tests/demo-browser/journey.test.ts` were updated to the new structure and wording; behaviour, refusal and privacy assertions kept.

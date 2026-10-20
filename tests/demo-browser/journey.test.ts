@@ -139,61 +139,88 @@ async function expectRefusal(page: Page, viewport: Viewport, act: () => Promise<
 }
 
 /** Every participant screen carries the simulation label, the band and no signing control. */
+/** Every participant screen carries the demo indicator, the simulation note and no signing control. */
 async function participantInvariants(page: Page, viewport: Viewport): Promise<void> {
-  expect(await page.locator('.simulation-label').innerText()).toContain('simulation — in the product each person acts only for themselves, signed in (D03/D12)');
-  expect(await page.locator('.banner').innerText()).toContain('Synthetic demo · invented people · nothing here is real.');
-  expect(await page.locator('button:not([disabled]), a', { hasText: /\bsign(ature)?\b(?! in)/i }).count()).toBe(0);
+  expect(await page.locator('.simulation-note').innerText()).toBe('Demo simulation — in the product, each person signs in and acts only for themselves.');
+  expect(await page.locator('.demo-pill').innerText()).toContain('Synthetic demo');
+  expect(await page.locator('button:not([disabled]), a', { hasText: /\bsign(ature|ed)?\b(?! in)/i }).count()).toBe(0);
   const text = await page.locator('#screen').innerText();
   for (const never of NEVER_SHOWN) expect({ never: String(never), found: never.test(text) }).toEqual({ never: String(never), found: false });
-  expect(text).not.toMatch(/\bnull\b|\bundefined\b|\[object /);
+  expect(text).not.toMatch(/\bnull\b|\bundefined\b|\[object |\[synthetic\]/);
   if (viewport === 'mobile') {
-    // The band is in the first half-screen; every control is at least 44 px tall.
-    expect((await page.locator('.participant-band').boundingBox())!.y).toBeLessThan(VIEWPORTS.mobile.height / 2);
-    for (const control of await page.locator('#screen button:visible, #screen .actor:visible, #screen input[type=text]:visible').all()) {
+    // The person switch is in the first half-screen; every control is at least 44 px tall.
+    expect((await page.locator('.viewing').boundingBox())!.y).toBeLessThan(VIEWPORTS.mobile.height / 2);
+    for (const control of await page.locator('#screen button:visible, #screen .people a:visible, #screen input[type=text]:visible').all()) {
       const box = await control.boundingBox();
-      if (box) expect({ control: await control.innerText().catch(() => ''), height: box.height >= 44 }).toEqual({ control: await control.innerText().catch(() => ''), height: true });
+      const name = await control.innerText().catch(() => '');
+      if (box) expect({ control: name, tall: box.height >= 44 }).toEqual({ control: name, tall: true });
     }
   }
   await noHorizontalScroll(page);
 }
 
 async function switchTo(page: Page, label: string): Promise<void> {
-  await click(page, page.locator('.actor-switch .actor', { hasText: label }));
-  await expect.poll(() => page.locator('.actor.current').innerText()).toContain(label);
+  await click(page, page.locator('.people a', { hasText: label }));
+  await expect.poll(() => page.locator('.people a[aria-current="page"]').innerText()).toBe(label);
 }
 
-const item = (page: Page, text: string) => page.locator('.brief-item', { hasText: text });
+const item = (page: Page, text: string) => page.locator('.term', { hasText: text });
+const stage = (page: Page) => page.locator('.progress-steps li.current').innerText();
 
-/** Ticks everything this person can tick: group-check for the ordinary items, then each deliberate one on its own. */
+/** Ticks everything this person can tick: the ordinary terms together, then each deliberate one on its own. */
 async function tickEverything(page: Page): Promise<void> {
-  const group = page.locator('details.group-check');
-  if (await group.count()) {
-    await group.locator('summary').click();
-    await click(page, group.locator('button.group-run'));
+  const group = page.locator('.next button.group-run');
+  if (await group.count()) await click(page, group);
+  while (await page.locator('.term button.tick').count()) {
+    await click(page, page.locator('.term button.tick').first());
   }
-  while (await page.locator('.brief-item button.tick').count()) {
-    await click(page, page.locator('.brief-item button.tick').first());
-  }
+}
+
+/** Opens a demo-menu entry from the welcome screen. */
+async function fromMenu(page: Page, title: string): Promise<void> {
+  await click(page, page.locator('.menu-link'));
+  await click(page, page.locator('.menu-item', { hasText: title }));
 }
 
 describe('participant journey', () => {
-  it('shows the entry screen: banner, cards, what is not shown', async () => {
+  it('welcomes with one primary action, keeps examples and tools in the demo menu, and explains the demo in About', async () => {
     for (const viewport of ['desktop', 'mobile'] as const) {
       const page = await openPage(viewport);
-      expect(await page.locator('.banner').innerText()).toContain('Synthetic demo · invented people · nothing here is real.');
-      const cards = await page.locator('.entry-card h2').allInnerTexts();
-      expect(cards).toEqual([
-        'New shoot',
-        'Two-person straightforward shoot',
-        'Unresolved two-person shoot',
-        'Declined request',
-        'Three-person fee case',
+      expect(await page.locator('.demo-pill').innerText()).toContain('Synthetic demo');
+      expect(await page.locator('.hero .btn.primary').allInnerTexts()).toEqual(['Create a shoot']);
+      expect(await page.locator('#screen .btn.primary').count()).toBe(1);
+      await shot(page, '1-welcome', viewport);
+
+      await click(page, page.locator('.menu-link'));
+      expect((await page.locator('.menu-item strong').allInnerTexts()).slice(0, 5)).toEqual([
+        'Two-person shoot, from the start',
+        'Shared, with values still open',
+        'After a declined request',
+        'Three people, two fees',
         'Empty shoot',
-        'Inspector',
       ]);
-      const notShown = await page.locator('.not-shown').innerText();
-      for (const omission of ['no-means-no term', 'required-term catalogue', 'Real sign-in', 'What signing looks like', 'Walking away']) expect(notShown).toContain(omission);
-      await shot(page, 'entry', viewport);
+      expect(await page.locator('.menu-item', { hasText: 'Inspector' }).count()).toBe(1);
+      await shot(page, '1-demo-menu', viewport);
+
+      await click(page, page.locator('.menu-item', { hasText: 'About this demo' }));
+      const about = await page.locator('#screen').innerText();
+      for (const statement of [
+        'Invented people, nothing here is real',
+        'not the read-only snapshot',
+        'Who enters an agreed value in the product is an open question for Cory',
+        'It is a structural rule: the list of terms a shoot must contain is not drafted yet',
+        'Signing is the next step and is not built in this demo',
+        'The no-means-no term — its wording is Cory’s to write (D04).',
+        'Real sign-in (D03).',
+        'What signing looks like (D04).',
+        'Walking away from a collaboration.',
+        '“Live” in particular is a candidate word, not a chosen one.',
+        'Which section each term sits in (on set, the shoot, fee) is a demo choice, not the term catalogue.',
+        'anyone who opens this demo can act as any person by changing the address',
+      ]) {
+        expect({ statement, shown: about.includes(statement) }).toEqual({ statement, shown: true });
+      }
+      await shot(page, '1-about', viewport);
       await page.close();
     }
   });
@@ -201,8 +228,8 @@ describe('participant journey', () => {
   for (const viewport of ['desktop', 'mobile'] as const) {
     it(`composes a shoot and resolves it, as each person, to READY TO SIGN — and back (${viewport})`, async () => {
       const page = await openPage(viewport);
-      await click(page, page.locator('a', { hasText: 'Compose a shoot' }));
-      expect(await page.locator('.operator-note').first().innerText()).toContain('composing this brief as the demo operator');
+      await click(page, page.locator('a', { hasText: 'Create a shoot' }));
+      expect(await page.locator('.operator-note').innerText()).toContain('You are composing as the demo operator.');
       // No closed-set term, no physical-contact row, no extra rows: exactly these fields.
       expect(await page.locator('.compose .field').evaluateAll((rows) => rows.map((r) => (r as unknown as { dataset: { field: string } }).dataset.field))).toEqual([
         'concept',
@@ -219,105 +246,117 @@ describe('participant journey', () => {
       // Nothing can mark an item required; the form says so.
       expect(form).toContain('Nothing here marks a term as required.');
       expect(await page.locator('.compose input[type=checkbox]').count()).toBe(0);
+      // Progressive disclosure: a value box shows only for a state that has a value.
+      expect(await page.locator('#f-fee-value').isHidden()).toBe(true);
+      expect(await page.locator('#f-coverage-value').isHidden()).toBe(true);
 
       // A blank supplied value is refused, with feedback on that field.
       const concept = `Rooftop portraits (${viewport})`;
       await page.locator('#f-concept').fill('   ');
       await page.locator('#f-fee-amount').check();
+      expect(await page.locator('#f-fee-value').isVisible()).toBe(true);
       await page.locator('#f-fee-value').fill('');
       await page.locator('button', { hasText: 'Create the draft' }).click();
       expect(await page.locator('[data-field="concept"] .field-error').innerText()).toBe('Fill it in.');
       expect(await page.locator('[data-field="fee"] .field-error').innerText()).toBe('Fill it in, or mark it decide together.');
-      await shot(page, '1-compose-blank', viewport);
+      await shot(page, '2-compose-blank', viewport);
+
+      // Typed input survives a reload.
+      await page.locator('#f-concept').fill(concept);
+      await page.reload();
+      await idle(page);
+      expect(await page.locator('#f-concept').inputValue()).toBe(concept);
+      expect(await page.locator('#f-fee-amount').isChecked()).toBe(true);
 
       // This variation: the fee and the delivery date to decide together, coverage left to the Model.
-      await page.locator('#f-concept').fill(concept);
       await page.locator('#f-fee-decide_together').check();
+      await shot(page, '2-compose', viewport);
       await click(page, page.locator('button', { hasText: 'Create the draft' }));
       await page.locator('h1', { hasText: concept }).waitFor();
-      expect(await page.locator('.stage-strip li.current').innerText()).toBe('Draft');
-      await shot(page, '2-draft', viewport);
+      expect(await stage(page)).toBe('Draft');
+      await shot(page, '3-draft', viewport);
 
       // Sharing is refused until every person has an on-site answer.
       await expectRefusal(page, viewport, () => click(page, page.locator('button.share')), 409);
       expect(await page.locator('.share-error').innerText()).toBe('Every person needs an on-site answer before the brief can be shared.');
-      for (const row of await page.locator('.presence-list li').all()) await click(page, row.locator('button', { hasText: /^On site$/ }));
+      for (const row of await page.locator('.presence-row').all()) await click(page, row.locator('button', { hasText: /^On set$/ }));
       await click(page, page.locator('button.share'));
-      await page.locator('h2', { hasText: 'The brief is live. Look at it as…' }).waitFor();
-      expect(await page.locator('.chooser-buttons a').allInnerTexts()).toEqual(['Look at it as Model', 'Look at it as Photographer']);
-      await shot(page, '3-chooser', viewport);
+      await page.locator('h2', { hasText: 'Open the brief as…' }).waitFor();
+      expect(await page.locator('.chooser-buttons a').allInnerTexts()).toEqual(['Model', 'Photographer']);
+      await shot(page, '4-chooser', viewport);
 
-      // As the Model.
-      await click(page, page.locator('a', { hasText: 'Look at it as Model' }));
-      await page.locator('.participant-band').waitFor();
-      expect(await page.locator('.actor.current').innerText()).toContain('Model');
-      expect(await page.locator('.stage-headline').innerText()).toContain('Live');
-      expect(await page.locator('.proposed').innerText()).toMatch(/proposed word/i);
-      expect(await page.locator('.attention').innerText()).toContain('Set your value');
+      // As the Model: the next step is the value only she controls.
+      await click(page, page.locator('.chooser-buttons a', { hasText: 'Model' }));
+      expect(await page.locator('.people a[aria-current="page"]').innerText()).toBe('Model');
+      expect(await stage(page)).toBe('Live');
+      expect(await page.locator('.next h2').innerText()).toBe('Set the value only you control');
       await participantInvariants(page, viewport);
-      await shot(page, '4-live-model', viewport);
+      await shot(page, '5-live-model', viewport);
 
-      // Only the Model sets her coverage level.
+      await click(page, page.locator('.next button', { hasText: 'Set it' }));
       const coverage = item(page, 'Coverage level');
-      await coverage.locator('input').fill('[synthetic] Level 2');
+      await coverage.locator('input').fill('Fully clothed');
       await click(page, coverage.locator('button', { hasText: 'Set as Model' }));
-      await expect.poll(() => item(page, 'Coverage level').innerText()).toContain('Set to [synthetic] Level 2');
+      await expect.poll(() => item(page, 'Coverage level').locator('.term-value').innerText()).toBe('Fully clothed');
+      expect(await page.locator('.next h2').innerText()).toBe('Decide on a request about you');
 
-      // As the Photographer: no set, no decline; the open values sit in Simulation controls.
+      // As the Photographer: no set, no decline; the open values sit in the demo control.
       await switchTo(page, 'Photographer');
       expect(await page.locator('button', { hasText: /Decline as/ }).count()).toBe(0);
       const sim = page.locator('.sim-controls');
       expect(await sim.innerText()).toContain('Enter the value the two of them agreed — who enters it in the product is an open question for Cory.');
       expect(await sim.locator('li').count()).toBe(2);
       await participantInvariants(page, viewport);
-      await shot(page, '5-live-photographer', viewport);
+      await shot(page, '6-live-photographer', viewport);
       while (await page.locator('.sim-controls li').count()) {
         const row = page.locator('.sim-controls li').first();
-        await row.locator('input').fill('[synthetic] agreed');
+        await row.locator('input').fill('Agreed on the day');
         await click(page, row.locator('button', { hasText: 'Enter the agreed value' }));
       }
       expect(await page.locator('.sim-controls').count()).toBe(0);
 
       await tickEverything(page);
-      expect(await page.locator('.stage-headline').innerText()).toContain('Live');
+      expect(await stage(page)).toBe('Live');
+      // Done for now: a waiting state that says what the brief is waiting on.
+      expect(await page.locator('.next.waiting h2').innerText()).toBe('Waiting on the others');
+      expect(await page.locator('.waiting-list').innerText()).toMatch(/Model: \d+ terms? to tick/);
+      await shot(page, '7-waiting', viewport);
+
       await switchTo(page, 'Model');
       await tickEverything(page);
-      await expect.poll(() => page.locator('.stage-headline').innerText()).toContain('READY TO SIGN');
-      expect(await page.locator('.band-note').innerText()).toBe('Everything is green. The brief is READY TO SIGN.');
-      const milestone = await page.locator('.milestone.ready').innerText();
-      expect(milestone).toContain('Signing is the next step and is not built in this demo.');
-      expect(milestone).toContain('READY TO SIGN is the structural all-green rule; the required-term list is not yet drafted.');
-      expect(await page.locator('.brief-item.green').count()).toBe(await page.locator('.brief-item').count());
+      await expect.poll(() => stage(page)).toBe('Ready to sign');
+      await expect.poll(() => page.locator('#toast').innerText()).toBe('Everything is ticked — ready to sign.');
+      const ready = await page.locator('.ready').innerText();
+      expect(ready).toContain('Ready to sign');
+      expect(ready).toContain('Signing comes next. It isn’t part of this demo, so nothing here is signed.');
+      expect(await page.locator('.term.agreed').count()).toBe(await page.locator('.term').count());
       await participantInvariants(page, viewport);
-      await shot(page, '6-ready-model', viewport);
+      await shot(page, '8-ready', viewport);
 
       // The Photographer sees the same milestone.
       await switchTo(page, 'Photographer');
-      await expect.poll(() => page.locator('.stage-headline').innerText()).toContain('READY TO SIGN');
+      await expect.poll(() => stage(page)).toBe('Ready to sign');
 
       // Any untick returns to Live; a retick restores readiness.
       await click(page, item(page, 'Fee for the shoot').locator('button.untick'));
-      await expect.poll(() => page.locator('.stage-headline').innerText()).toContain('Live');
-      expect(await page.locator('.band-note').innerText()).toBe('No longer ready to sign.');
-      await shot(page, '7-no-longer-ready', viewport);
+      await expect.poll(() => stage(page)).toBe('Live');
+      await expect.poll(() => page.locator('#toast').innerText()).toBe('No longer ready to sign.');
       await click(page, item(page, 'Fee for the shoot').locator('button.tick'));
-      await expect.poll(() => page.locator('.stage-headline').innerText()).toContain('READY TO SIGN');
+      await expect.poll(() => stage(page)).toBe('Ready to sign');
 
-      // Mobile: the band stays stuck to the top while scrolling.
+      // Mobile: the person switch stays stuck under the top bar while scrolling.
       if (viewport === 'mobile') {
         await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
         await page.waitForTimeout(100);
-        const box = (await page.locator('.participant-band').boundingBox())!;
-        expect(box.y).toBeLessThanOrEqual(1);
-        await page.screenshot({ path: join(SHOTS, `journey-6-ready-scrolled-${viewport}.png`), animations: 'disabled' });
+        expect((await page.locator('.viewing').boundingBox())!.y).toBeLessThanOrEqual(60);
       }
 
-      // Reload keeps the stored state; the Shoots control returns to the entry screen.
+      // Reload keeps the stored state; the wordmark returns to the welcome screen.
       await page.reload();
       await idle(page);
-      expect(await page.locator('.stage-headline').innerText()).toContain('READY TO SIGN');
+      expect(await stage(page)).toBe('Ready to sign');
       await click(page, page.locator('#shoots-link'));
-      expect(await page.locator('h1').innerText()).toBe('Shoots');
+      expect(await page.locator('.hero h1').count()).toBe(1);
       expect(await page.locator('.shoot-list').innerText()).toContain(concept);
       await page.close();
     });
@@ -325,15 +364,18 @@ describe('participant journey', () => {
 
   it('declines a request as the Model: it disappears, numbering has no gap, and the shoot still reaches READY TO SIGN', async () => {
     const page = await openPage('desktop');
-    await click(page, page.locator('button[data-card="unresolved"]'));
-    await click(page, page.locator('a', { hasText: 'Look at it as Model' }));
-    const before = await page.locator('.brief-item').count();
-    expect(await page.locator('.attention').innerText()).toContain('Decide a request about you');
+    await fromMenu(page, 'Shared, with values still open');
+    await click(page, page.locator('.chooser-buttons a', { hasText: 'Model' }));
+    const before = await page.locator('.term').count();
+    const coverage = item(page, 'Coverage level');
+    await coverage.locator('input').fill('Level 1');
+    await click(page, coverage.locator('button', { hasText: 'Set as Model' }));
+    expect(await page.locator('.next').innerText()).toContain('Decide on a request about you');
     await click(page, item(page, 'album cover').locator('button', { hasText: 'Decline as Model' }));
     await expect.poll(() => page.locator('#toast').innerText()).toBe('Request removed.');
-    expect(await page.locator('.brief-item').count()).toBe(before - 1);
+    expect(await page.locator('.term').count()).toBe(before - 1);
     expect(await page.getByText('album cover').count()).toBe(0);
-    const numbers = (await page.locator('.brief-item .pos').allInnerTexts()).map(Number);
+    const numbers = (await page.locator('.term .pos').allInnerTexts()).map(Number);
     expect(numbers).toEqual(numbers.map((_, i) => i + 1));
     await participantInvariants(page, 'desktop');
     await shot(page, 'declined-model', 'desktop');
@@ -341,70 +383,73 @@ describe('participant journey', () => {
     // The Photographer sees no trace of it.
     await switchTo(page, 'Photographer');
     expect(await page.getByText('album cover').count()).toBe(0);
-    expect(await page.locator('.brief-item').count()).toBe(before - 1);
-
-    // The Model's open parameter blocks readiness until she sets it.
-    expect(await item(page, 'Coverage level').innerText()).toContain('Waiting for Model');
-    expect(await item(page, 'Coverage level').locator('input').count()).toBe(0);
+    expect(await page.locator('.term').count()).toBe(before - 1);
     while (await page.locator('.sim-controls li').count()) {
-      await page.locator('.sim-controls li input').first().fill('[synthetic] agreed');
+      await page.locator('.sim-controls li input').first().fill('Agreed on the day');
       await click(page, page.locator('.sim-controls li button').first());
     }
     await tickEverything(page);
     await switchTo(page, 'Model');
     await tickEverything(page);
-    expect(await page.locator('.stage-headline').innerText()).toContain('Live');
-    const coverage = item(page, 'Coverage level');
-    await coverage.locator('input').fill('[synthetic] Level 1');
-    await click(page, coverage.locator('button', { hasText: 'Set as Model' }));
-    await tickEverything(page);
-    await switchTo(page, 'Photographer');
-    await tickEverything(page);
-    await expect.poll(() => page.locator('.stage-headline').innerText()).toContain('READY TO SIGN');
+    await expect.poll(() => stage(page)).toBe('Ready to sign');
+    await page.close();
+  });
+
+  it('keeps an open parameter as the subject’s alone: the other person only sees it waiting', async () => {
+    const page = await openPage('mobile');
+    await fromMenu(page, 'Shared, with values still open');
+    await click(page, page.locator('.chooser-buttons a', { hasText: 'Photographer' }));
+    expect(await item(page, 'Coverage level').innerText()).toContain('Waiting for Model');
+    expect(await item(page, 'Coverage level').locator('input').count()).toBe(0);
+    await participantInvariants(page, 'mobile');
     await page.close();
   });
 
   it('shows the three-person fee case to each person with only their own fee and no readiness', async () => {
     const page = await openPage('mobile');
-    await click(page, page.locator('.entry-card', { hasText: 'Three-person fee case' }).locator('a'));
-    for (const row of await page.locator('.presence-list li').all()) await click(page, row.locator('button', { hasText: /^On site$/ }));
+    await fromMenu(page, 'Three people, two fees');
+    for (const row of await page.locator('.presence-row').all()) await click(page, row.locator('button', { hasText: /^On set$/ }));
     await click(page, page.locator('button.share'));
-    expect(await page.locator('.chooser-buttons a').allInnerTexts()).toEqual(['Look at it as Party A', 'Look at it as Party B', 'Look at it as Party C']);
-    await click(page, page.locator('a', { hasText: 'Look at it as Party B' }));
-    expect(await page.locator('.brief-item[data-layer="money"]').count()).toBe(1);
+    expect(await page.locator('.chooser-buttons a').allInnerTexts()).toEqual(['Party A', 'Party B', 'Party C']);
+    await click(page, page.locator('.chooser-buttons a', { hasText: 'Party B' }));
+    expect(await page.locator('.term[data-layer="money"]').count()).toBe(1);
     expect(await page.locator('#screen').innerText()).not.toContain('300');
-    expect(await page.locator('.milestone').innerText()).toContain('With more than two people this screen shows no overall readiness');
-    expect(await page.locator('.brief-item[data-layer="money"] .chip.private').innerText()).toBe('Private · only you and Party C see this');
+    expect(await page.locator('.readiness-note').innerText()).toBe('With more than two people, overall readiness isn’t shown.');
+    expect(await page.locator('.doc-section[data-layer="money"] header p').innerText()).toBe('Private money · only you and Party C');
     await participantInvariants(page, 'mobile');
     await shot(page, 'three-person-b', 'mobile');
     await switchTo(page, 'Party A');
-    expect(await page.locator('.brief-item[data-layer="money"]').count()).toBe(1);
-    expect(await page.locator('.brief-item[data-layer="money"]').innerText()).toContain('300');
+    expect(await page.locator('.term[data-layer="money"]').count()).toBe(1);
+    expect(await page.locator('.term[data-layer="money"]').innerText()).toContain('300');
     await switchTo(page, 'Party C');
-    expect(await page.locator('.brief-item[data-layer="money"]').count()).toBe(2);
+    expect(await page.locator('.term[data-layer="money"]').count()).toBe(2);
     await page.close();
   });
 
   it('shows the empty shoot, refuses a draft under a person’s screen, and opens the inspector', async () => {
     const page = await openPage('desktop');
-    await click(page, page.locator('.entry-card', { hasText: 'Empty shoot' }).locator('a'));
-    expect(await page.locator('h2', { hasText: 'Nobody is in this shoot yet' }).count()).toBe(1);
+    await fromMenu(page, 'Empty shoot');
+    expect(await page.locator('h2', { hasText: 'Nobody has joined this shoot yet' }).count()).toBe(1);
     expect(await page.locator('button.share').count()).toBe(0);
 
     await click(page, page.locator('#shoots-link'));
-    await click(page, page.locator('button[data-card="straightforward"]'));
+    await fromMenu(page, 'Two-person shoot, from the start');
     const draftUrl = page.url();
     const party = Object.keys(annotations.projects)[0]!; // any id: a draft is never shown as a person
-    await page.goto(`${draftUrl}/as/${party}`);
-    await idle(page);
-    // The 404 is logged by the browser; discount it.
-    const own = pageErrors.findIndex((e) => e.includes('404'));
-    if (own >= 0) pageErrors.splice(own, 1);
+    await expectRefusal(
+      page,
+      'desktop',
+      async () => {
+        await page.goto(`${draftUrl}/as/${party}`);
+        await idle(page);
+      },
+      404,
+    );
     expect(await page.locator('h1').innerText()).toBe('Nothing to show as this person');
 
-    await page.goto(`${base}/`);
+    await page.goto(`${base}/#/demo`);
     await idle(page);
-    await page.locator('a', { hasText: 'Open the inspector' }).click();
+    await page.locator('.menu-item', { hasText: 'Inspector' }).click();
     await page.locator('.sidebar h1', { hasText: 'Record Inspector' }).waitFor();
     expect(await page.locator('.banner').innerText()).toContain('Synthetic demo · invented people · nothing here is real.');
     await page.close();
@@ -427,7 +472,7 @@ describe('participant journey', () => {
     });
     await startServer(port);
     const after = await openPage('desktop');
-    expect(await after.locator('.shoots-so-far').innerText()).toContain('None yet.');
+    expect(await after.locator('.your-shoots').count()).toBe(0);
     await after.close();
   });
 

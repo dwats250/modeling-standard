@@ -18,6 +18,7 @@ const UI_DIR = new URL('./ui/', import.meta.url);
 const STATIC_FILES: Readonly<Record<string, { file: string; type: string }>> = {
   '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
   '/journey.js': { file: 'journey.js', type: 'text/javascript; charset=utf-8' },
+  '/journey.css': { file: 'journey.css', type: 'text/css; charset=utf-8' },
   '/inspector': { file: 'inspector.html', type: 'text/html; charset=utf-8' },
   '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
   '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8' },
