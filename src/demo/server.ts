@@ -15,7 +15,9 @@ import type { TestIssuer } from './test-issuer.ts';
  *
  * Forwarded to the application: the method, path and query, the body, and
  * exactly three request headers — `content-type`, `cookie` and `origin`.
- * Nothing else (no `X-Forwarded-*`, no `Host`). Returned: the status, the
+ * Nothing else (no `X-Forwarded-*`, no `Host`, no proxy identity headers such
+ * as Tailscale's `Tailscale-User-*`), so nothing a proxy or a client adds can
+ * change an origin, a host or a principal. Returned: the status, the
  * body, and exactly `content-type`, `x-request-id`, `location` and every
  * `set-cookie`.
  */
@@ -44,8 +46,15 @@ export interface DemoServerOptions {
   readonly app: FastifyInstance;
   /** The demo annotation store (labels for invented records), served read-only. */
   readonly annotations: AnnotationStore;
-  /** Host names/IPs accepted in the HTTP Host header. Defaults to loopback only. */
+  /** Host names/IPs accepted in the HTTP Host header, on this server's own port. Defaults to loopback only. */
   readonly allowedHosts?: readonly string[];
+  /**
+   * Staging (S13) only: the one exact authority (`host[:port]`, as the
+   * browser sends it to the public HTTPS origin) the Host header must be.
+   * Replaces the host-and-local-port rule, because the local TLS proxy in
+   * front of staging listens on a different port from this server.
+   */
+  readonly publicAuthority?: string;
   /** The local test identity provider, whose pages this server serves. */
   readonly testIssuer?: TestIssuer;
 }
@@ -90,6 +99,10 @@ export function isAllowedDemoAuthority(
 }
 
 function hostIsAllowed(options: DemoServerOptions, request: IncomingMessage): boolean {
+  if (options.publicAuthority !== undefined) {
+    const header = request.headers.host;
+    return typeof header === 'string' && header.toLowerCase() === options.publicAuthority.toLowerCase();
+  }
   return isAllowedDemoAuthority(request.headers.host, request.socket.localPort ?? -1, options.allowedHosts);
 }
 

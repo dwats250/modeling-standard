@@ -15,6 +15,10 @@
     "src/scripts/demo-reset.ts",
     "src/scripts/demo-export.ts",
     "src/scripts/demo-fresh.ts",
+    "src/scripts/staging.ts",
+    "src/scripts/staging-setup.ts",
+    "src/scripts/staging-seed.ts",
+    "src/scripts/staging-reset.ts",
     "src/scripts/check-migration-identifiers.ts"
   ]
 }

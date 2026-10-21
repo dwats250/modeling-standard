@@ -188,9 +188,19 @@ export function demoDatabaseTarget(configuredUrl: string): ExplicitDatabaseTarge
  * server: where reset runs DROP and CREATE DATABASE for the demo database.
  */
 export function demoAdminTarget(configuredUrl: string): ExplicitDatabaseTarget {
+  return syntheticAdminTarget(configuredUrl, DEMO_DATABASE);
+}
+
+/** A named synthetic database (the demo's or staging's), on a verified loopback server. */
+export function syntheticDatabaseTarget(configuredUrl: string, database: string): ExplicitDatabaseTarget {
+  return resolveLoopbackTarget(configuredUrl, database);
+}
+
+/** The migration role's own database, which must not be the synthetic one it creates or drops. */
+export function syntheticAdminTarget(configuredUrl: string, database: string): ExplicitDatabaseTarget {
   const target = resolveLoopbackTarget(configuredUrl);
-  if (target.database === DEMO_DATABASE) {
-    throw new DemoGuardError('Reset needs the migration role\'s own database, not the demo database.');
+  if (target.database === database) {
+    throw new DemoGuardError(`Reset needs the migration role's own database, not ${database}.`);
   }
   return target;
 }

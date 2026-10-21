@@ -26,7 +26,12 @@ const state = {
   valueDrafts: {},
   // Invitation links just created, per shoot. Memory only: shown once, never stored.
   invites: {},
+  // Where this page runs (GET /demo/environment): the local demo, or synthetic
+  // staging (S13) with Google sign-in and a keyed operator mode.
+  environment: { environment: 'local', providers: ['test'], operatorKeyRequired: false },
 };
+
+const onStaging = () => state.environment.environment === 'staging';
 
 // ---- Helpers ----
 
@@ -186,6 +191,31 @@ function setEngineeringNotes(on) {
 
 // ---- Demo annotations (labels; never stored in the product database) ----
 
+async function loadEnvironment() {
+  try {
+    state.environment = await api('GET', '/demo/environment');
+  } catch {
+    // Keep the local defaults: the server refuses anything it does not offer.
+  }
+  if (onStaging()) {
+    document.body.dataset.environment = 'staging';
+    document.title = 'Modeling Standard — synthetic staging';
+    const pill = document.querySelector('.demo-pill');
+    if (pill) {
+      pill.lastChild.textContent = 'Synthetic staging';
+      pill.title = 'Synthetic staging: invented shoots, not for real collaborations.';
+    }
+    // Proposed words (D05): staging is still synthetic, not real use.
+    document.querySelector('.topbar')?.after(
+      el('p', {
+        className: 'staging-band',
+        attrs: { role: 'note' },
+        text: 'Synthetic staging — invented shoots only. Not for real collaborations. Signing in is not verification.',
+      }),
+    );
+  }
+}
+
 async function loadAnnotations() {
   try {
     state.annotations = await api('GET', '/annotations.json');
@@ -274,6 +304,38 @@ async function enterOperatorMode() {
   await rerender(true);
 }
 
+/**
+ * Staging: operator mode needs the operator key. It is typed here, sent once
+ * in the body of the POST, and cleared from the field whatever the answer;
+ * it is never put in an address or stored in this browser.
+ */
+function operatorKeyForm() {
+  const input = el('input', {
+    className: 'input operator-key',
+    // No name, and a one-time-code hint, so a browser does not offer to save it as a password.
+    attrs: { type: 'password', id: 'operator-key', autocomplete: 'one-time-code', autocapitalize: 'off', spellcheck: 'false', maxlength: '256' },
+  });
+  const form = el('form', { className: 'operator-key-form' }, [
+    el('label', { className: 'small muted', text: 'Operator key', attrs: { for: 'operator-key' } }),
+    input,
+    el('button', { className: 'btn primary block enter-operator', text: 'Enter operator mode', attrs: { type: 'submit' } }),
+  ]);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const key = input.value;
+    input.value = '';
+    if (!key) return;
+    try {
+      await api('POST', '/demo/operator', { key });
+    } catch (error) {
+      toast(error.status === 403 ? 'That operator key was not accepted.' : refusal(error), 'error');
+      return;
+    }
+    await rerender(true);
+  });
+  return form;
+}
+
 /** This browser is neither the operator nor signed in. */
 function renderNoMode(root) {
   root.append(
@@ -281,7 +343,7 @@ function renderNoMode(root) {
       el('p', { className: 'eyebrow', text: 'Photo shoots' }),
       el('h1', { text: 'One brief that everyone on the shoot agrees to.' }),
       el('p', { className: 'lede', text: 'Invited to a shoot? Open the invitation link you were sent — it signs you in as yourself.' }),
-      button('Continue as the demo operator', enterOperatorMode, 'btn primary block enter-operator'),
+      state.environment.operatorKeyRequired ? operatorKeyForm() : button('Continue as the demo operator', enterOperatorMode, 'btn primary block enter-operator'),
       el('p', { className: 'small muted', text: 'A demo convenience: the operator composes shoots, shares them and sends invitations. It is not a person in any shoot.' }),
     ]),
     aboutLink(),
@@ -293,7 +355,7 @@ function renderParticipantHome(root) {
   root.append(
     el('section', { className: 'card', attrs: { 'data-mode': 'participant' } }, [
       el('p', { className: 'eyebrow', text: 'Signed in' }),
-      el('h1', { text: 'You’re signed in as a test participant' }),
+      el('h1', { text: onStaging() ? 'You’re signed in' : 'You’re signed in as a test participant' }),
       el('p', { className: 'muted', text: 'Open your invitation link to return to your shoot. The operator screens are not available while this browser is signed in.' }),
       button('Sign out', signOut, 'btn block sign-out'),
     ]),
@@ -412,7 +474,7 @@ function renderDemoMenu(root) {
           ]),
         ]),
       ]),
-      el('p', { className: 'small muted', text: 'To start over with only the examples: stop the server and run npm run demo:fresh.' }),
+      el('p', { className: 'small muted', text: onStaging() ? 'To start over with only the examples, the staging host’s owner stops staging and runs npm run staging:reset.' : 'To start over with only the examples: stop the server and run npm run demo:fresh.' }),
     ]),
   );
 }
@@ -424,21 +486,35 @@ function renderAbout(root) {
   root.append(
     el('div', { className: 'about' }, [
       el('header', { className: 'page-head' }, [
-        el('p', { className: 'eyebrow', text: 'Synthetic demo' }),
+        el('p', { className: 'eyebrow', text: onStaging() ? 'Synthetic staging' : 'Synthetic demo' }),
         el('h1', { text: 'About this demo' }),
-        el('p', { className: 'lede', text: 'Invented people, nothing here is real. This is the interactive demo running on one machine — not the read-only snapshot, and not a product release.' }),
+        el('p', {
+          className: 'lede',
+          text: onStaging()
+            ? 'Invented shoots, nothing here is real. This is synthetic staging: the interactive demo, reachable from devices on a private network and signing people in with Google — not a product release, and not for real collaborations.'
+            : 'Invented people, nothing here is real. This is the interactive demo running on one machine — not the read-only snapshot, and not a product release.',
+        }),
       ]),
       section('Signing in', [
         'Each invited person opens their own invitation link and signs in, then sees and acts only as themselves (D03, D12). Two people on two devices act separately.',
-        'Sign-in here is a local test identity provider that stands in for Google or Apple. It is not Google and not Apple, and it checks nothing about who you are: pick any invented name. No real sign-in has been tested.',
-        'Signing in is not verification. Whether a demonstration with invented people needs a verification step is an open question for Cory (D11); none happens here.',
-        'Test sign-ins are stored as if they were Google logins, because the account table admits only Google and Apple. No Google sign-in happened.',
+        ...(onStaging()
+          ? [
+              'Sign-in here is Google. Only the openid permission is asked for, and only the account’s Google subject identifier is kept: no name, email address or picture.',
+              'Signing in is not verification and says nothing about who a person is (D03). Whether a demonstration with invented shoots needs a verification step is an open question for Cory (D11); none happens here.',
+            ]
+          : [
+              'Sign-in here is a local test identity provider that stands in for Google or Apple. It is not Google and not Apple, and it checks nothing about who you are: pick any invented name. No real sign-in has been tested.',
+              'Signing in is not verification. Whether a demonstration with invented people needs a verification step is an open question for Cory (D11); none happens here.',
+              'Test sign-ins are stored as if they were Google logins, because the account table admits only Google and Apple. No Google sign-in happened.',
+            ]),
       ]),
       section('What is simulated', [
         'The demo operator is an explicit mode, chosen on the start screen. It composes, sets who is on site, shares, and sends invitations. Who does these in the product is still to be decided; sending invitations is an operator convenience here.',
         'Agreed values for “decide together” terms are entered by the operator. Who enters an agreed value in the product is an open question for Cory.',
         'The operator can also look at the brief as any person, with that person in the address. That is a labelled simulation, not a sign-in; a signed-in browser cannot use it.',
-        'On a shared Wi-Fi anyone who opens this demo can choose operator mode. That is acceptable only because everything is invented.',
+        onStaging()
+          ? 'On staging, operator mode needs the operator key. Staging is reachable only from devices on the private network it is served on, and everything on it is invented: it is not for real collaborations.'
+          : 'On a shared Wi-Fi anyone who opens this demo can choose operator mode. That is acceptable only because everything is invented.',
       ]),
       section('What “ready to sign” means here', [
         'Every term currently in the brief is settled and ticked by everyone who must tick it. It is a structural rule: the list of terms a shoot must contain is not drafted yet, so it does not mean the brief is complete.',
@@ -960,7 +1036,12 @@ function renderSignedIn(name) {
       el('strong', { className: 'me', text: name }),
       button('Sign out', signOut, 'text-btn sign-out'),
     ]),
-    el('p', { className: 'simulation-note', text: 'Test sign-in (a local stand-in for Google or Apple; nothing is verified). You see and act only as yourself.' }),
+    el('p', {
+      className: 'simulation-note',
+      text: onStaging()
+        ? 'Signed in with Google (not verification; nothing about who you are is checked). You see and act only as yourself.'
+        : 'Test sign-in (a local stand-in for Google or Apple; nothing is verified). You see and act only as yourself.',
+    }),
   ]);
 }
 
@@ -1212,9 +1293,9 @@ async function renderInvitation(root, credential) {
     );
     return;
   }
-  const signIn = async () => {
+  const signIn = async (provider) => {
     try {
-      const started = await api('POST', '/sign-in/start', { provider: 'test', invitation: credential });
+      const started = await api('POST', '/sign-in/start', { provider, invitation: credential });
       location.assign(started.authorizationUrl);
     } catch (error) {
       if (error.status === 404) {
@@ -1230,11 +1311,30 @@ async function renderInvitation(root, credential) {
       el('p', { className: 'eyebrow', text: 'Invitation' }),
       el('h1', { text: 'You’re invited to a shoot' }),
       el('p', { className: 'lede', text: 'Sign in to see the brief and agree it. You’ll see and act only as yourself.' }),
-      button('Continue with test sign-in', signIn, 'btn primary block start-sign-in'),
-      el('p', { className: 'small muted', text: 'Test sign-in stands in for Google or Apple in this demo. It is not Google or Apple and checks nothing about who you are.' }),
+      ...signInChoices(signIn),
     ]),
     aboutLink(),
   );
+}
+
+/** One button per sign-in the server offers. The Google wording is proposed (D05). */
+function signInChoices(signIn) {
+  const offered = state.environment.providers;
+  const choices = [];
+  if (offered.includes('google')) {
+    choices.push(
+      button('Continue with Google', () => signIn('google'), 'btn primary block start-sign-in', { 'data-provider': 'google' }),
+      el('p', { className: 'small muted', text: 'Google is only the door: it does not verify who you are, and only your Google account’s identifier is kept. Wording proposed, for review.' }),
+    );
+  }
+  if (offered.includes('test')) {
+    choices.push(
+      button('Continue with test sign-in', () => signIn('test'), 'btn primary block start-sign-in', { 'data-provider': 'test' }),
+      el('p', { className: 'small muted', text: 'Test sign-in stands in for Google or Apple in this demo. It is not Google or Apple and checks nothing about who you are.' }),
+    );
+  }
+  if (choices.length === 0) choices.push(el('p', { className: 'muted', text: 'No sign-in is available here.' }));
+  return choices;
 }
 
 function renderDeadInvitation(root) {
@@ -1339,5 +1439,6 @@ function rerender(scrollTop = false) {
 window.addEventListener('hashchange', () => void render(true));
 
 setEngineeringNotes(engineeringNotesOn());
+await loadEnvironment();
 await loadAnnotations();
 await render(true);

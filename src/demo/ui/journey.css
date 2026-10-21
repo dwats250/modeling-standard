@@ -92,6 +92,19 @@ a { color: inherit; }
   white-space: nowrap;
 }
 .demo-dot { width: 7px; height: 7px; border-radius: 50%; background: #c9962f; }
+/* Synthetic staging (S13): one quiet band under the top bar on every screen. */
+.staging-band {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--accent-soft);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+.operator-key-form { display: grid; gap: 8px; margin-top: 24px; }
+.operator-key-form .btn { margin-top: 4px; }
 .menu-link {
   display: inline-flex;
   align-items: center;
