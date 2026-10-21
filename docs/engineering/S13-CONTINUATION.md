@@ -90,6 +90,15 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
 - GitGuardian incident 38772493 not yet dismissed (check still failing on `2b9fa95`).
 - `CLAUDE.md` now has a Process ownership rule (after an S12 demo was stopped by a broad `pkill`; it was restarted with its data intact).
 
+## External setup progress (2026-10-21)
+
+- Google console steps: done by Dustin (reported). Client credentials **not yet in the env file**. Helper for his own shell: `~/.config/modeling-standard/set-google-client.sh` (outside the repository; reads the secret without echo, validates both shapes, rewrites the file mode 600, prints no value).
+- Tailscale HTTPS: enabled (`CertDomains` = `asher.tail457b97.ts.net`).
+- Serve: `tailscale serve --bg --https=8443 http://127.0.0.1:3130` added. Port 80 (Options Observatory) unchanged and answering 200; 8443 tailnet only; no Funnel.
+- Verified from Asher (`--resolve` to 100.64.34.84): certificate CN/SAN `asher.tail457b97.ts.net`, Let's Encrypt, valid to 2027-01-19, chain verifies. With a temporary probe of this task's own on 3130 (PID-stopped afterwards), Serve forwards `Host: asher.tail457b97.ts.net:8443` — the pinned authority — plus `X-Forwarded-*` and `Tailscale-User-*` headers, which staging does not read.
+- Staging database intact: 4 shoots, 0 accounts, 0 bindings. Not reset or reseeded.
+- Staging not started yet (waits for the credentials).
+
 ## Running now
 
 | What | Where | How to stop |
