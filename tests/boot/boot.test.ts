@@ -44,6 +44,13 @@ describe('boot', () => {
     expect(run.stderr + run.stdout).not.toContain('Secret-Value-42');
   });
 
+  it('exits non-zero, without echoing it, when PUBLIC_BASE_URL is plain HTTP off loopback', async () => {
+    const run = await runToExit({ DATABASE_URL: 'postgres://ms_runtime:pw@127.0.0.1:1/none', PUBLIC_BASE_URL: 'http://192.168.77.5:3000' });
+    expect(run.code).toBe(1);
+    expect(run.stderr).toContain('PUBLIC_BASE_URL');
+    expect(run.stderr + run.stdout).not.toContain('192.168.77.5');
+  });
+
   it('exits non-zero when the database is unreachable at boot', async () => {
     const run = await runToExit({ DATABASE_URL: 'postgres://ms_runtime:Pw-Not-Logged@127.0.0.1:1/none', LOG_LEVEL: 'fatal' });
     expect(run.code).toBe(1);
