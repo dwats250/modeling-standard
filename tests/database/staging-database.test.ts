@@ -26,7 +26,7 @@ import { withDatabase } from '../support/urls.ts';
 const ROOT = resolve(import.meta.dirname, '../..');
 const KEY = newToken().token;
 const CLIENT_ID = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
-const CLIENT_SECRET = 'GOCSPX-Staging-Test-Secret-77';
+const CLIENT_SECRET = 'fake-client-secret-Staging-Test-Secret-77';
 const work = mkdtempSync(join(tmpdir(), 'ms-staging-test-'));
 
 function stagingEnv(overrides: Record<string, string> = {}): Record<string, string> {

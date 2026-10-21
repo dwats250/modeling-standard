@@ -18,7 +18,7 @@ import { textDigest } from '../../src/infrastructure/tokens.ts';
  */
 
 const CLIENT_ID = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
-const CLIENT_SECRET = 'GOCSPX-Not-A-Real-Secret-4242';
+const CLIENT_SECRET = 'fake-client-secret-Not-A-Real-Secret-4242';
 const REDIRECT = 'https://staging.example.invalid:8443/sign-in/callback';
 
 let privateKey: CryptoKey;

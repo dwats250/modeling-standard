@@ -93,7 +93,7 @@ describe('boot', () => {
 
   it('exits non-zero, without echoing either value, when the Google client is incomplete or has no public origin (S13)', async () => {
     const id = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
-    const secret = 'GOCSPX-Boot-Secret-Value-42';
+    const secret = 'fake-client-secret-Boot-Secret-Value-42';
     for (const env of [
       { GOOGLE_CLIENT_ID: id, PUBLIC_BASE_URL: 'https://ms.example' },
       { GOOGLE_CLIENT_SECRET: secret, PUBLIC_BASE_URL: 'https://ms.example' },
@@ -130,7 +130,7 @@ describe('boot', () => {
         PORT: '0',
         PUBLIC_BASE_URL: 'https://ms.example',
         GOOGLE_CLIENT_ID: clientId,
-        GOOGLE_CLIENT_SECRET: 'GOCSPX-Boot-Secret-Value-42',
+        GOOGLE_CLIENT_SECRET: 'fake-client-secret-Boot-Secret-Value-42',
       },
     });
     let out = '';
@@ -157,11 +157,11 @@ describe('boot', () => {
       expect(url.searchParams.get('scope')).toBe('openid');
       expect(url.searchParams.get('client_id')).toBe(clientId);
       expect(url.searchParams.get('redirect_uri')).toBe('https://ms.example/sign-in/callback');
-      expect(url.toString()).not.toContain('GOCSPX-Boot-Secret-Value-42');
+      expect(url.toString()).not.toContain('fake-client-secret-Boot-Secret-Value-42');
       expect((await post('/sign-in/start', { provider: 'test', invitation: credential })).status).toBe(404);
       expect((await post('/demo/operator', {})).status).toBe(404);
       expect((await fetch(`${address}/demo/environment`)).status).toBe(404);
-      expect(out).not.toContain('GOCSPX-Boot-Secret-Value-42');
+      expect(out).not.toContain('fake-client-secret-Boot-Secret-Value-42');
     } finally {
       child.kill('SIGTERM');
     }

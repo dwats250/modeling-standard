@@ -41,7 +41,7 @@ describe('application configuration fails closed', () => {
 
   it('enables Google sign-in only with a complete, valid client and a public origin, never echoing either value (S13)', () => {
     const id = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
-    const secret = 'GOCSPX-Secret_Value-4242';
+    const secret = 'fake-client-secret-Secret_Value-4242';
     const base = { DATABASE_URL: validUrl, PUBLIC_BASE_URL: 'https://ms.example' };
     expect(loadAppConfig({ ...base, GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret }).google).toEqual({ clientId: id, clientSecret: secret });
     expect(loadAppConfig(base).google).toBeNull();

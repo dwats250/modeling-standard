@@ -13,7 +13,7 @@ import type { IdentityProvider } from '../../src/identity/provider.ts';
  */
 
 export const FAKE_CLIENT_ID = '123456789012-fakegoogleclient0000000000000000.apps.googleusercontent.com';
-export const FAKE_CLIENT_SECRET = 'GOCSPX-Fake-Secret-For-Tests-Only';
+export const FAKE_CLIENT_SECRET = 'fake-client-secret-Fake-Secret-For-Tests-Only';
 
 interface Pending {
   readonly subject: string;
