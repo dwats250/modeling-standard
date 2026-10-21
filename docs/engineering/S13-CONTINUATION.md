@@ -39,13 +39,13 @@ Speculative concerns hardened:
 - The key field no longer invites password saving.
 - The database role passwords were rotated.
 
-**Accepted and documented:** cookie tossing from the port-80 site on the same host name (`__Host-` names recommended before anything beyond synthetic staging; `S13-STAGING.md`, Trust boundary).
+**Cookie tossing from the port-80 site on the same host name:** first accepted as a residual risk, then closed in the follow-up below.
 
 ## Verification in this environment (isolated test database 127.0.0.1:5436)
 
 - `npm run check`: passed.
-- `npm test`: 35 files, 536 tests passed.
-- `npm run test:demo`: 4 files, 26 tests passed (Chrome, including `staging.test.ts` over HTTPS through a local TLS proxy).
+- `npm test`: 36 files, 545 tests passed (after the follow-up).
+- `npm run test:demo`: 4 files, 26 tests passed (Chrome, including `staging.test.ts` over HTTPS through a local TLS proxy and the same-host plain-HTTP cookie test).
 - `npm run build`: passed. `dist/` holds no demo, staging or test-issuer code.
 - Built artifact with a Google client configured:
   - `/health` returns ok;
@@ -67,6 +67,18 @@ Speculative concerns hardened:
 - **Not verified against real Google:** the Google client does not exist yet; the callback URI is unverified until the console accepts it.
 - **S12 two-phone LAN test:** still Dustin's to run on real phones.
 
+## Follow-up (2026-10-20, after the first push)
+
+**GitGuardian (PR #35, check "GitGuardian Security Checks", incident 38772493, "Generic High Entropy Secret").** It flags `tests/unit/google-provider.test.ts` line 21 in commit `80e4f77`. That line is the unit test's synthetic client secret: a readable phrase saying it is not real, written for the test, never a Google credential. No Google OAuth client existed then or exists now; the staging env file has no Google secret. The value was already re-represented in `06df8ff` (no Google-like prefix), and nothing in the current tree is flagged. The incident remains because GitGuardian scans every commit in the PR and `80e4f77` is shared history; it is not rewritten here. No revocation is needed. The repository has no GitGuardian configuration (no `.gitguardian.yaml`), so no established exception exists, and none was added. Closing the incident ("test credential" / false positive in the GitGuardian dashboard) is Dustin's to do; this session has no dashboard access.
+
+**CI `foundation` failure on `06df8ff`:** the staging browser test found the invitation screen 2 px wider than 390 under CI's fonts: the staging pill ("Synthetic staging") could not wrap. It now wraps on staging only; no overflow even at 320 locally.
+
+**`__Host-` cookies over HTTPS.** One setting (`secureCookies`: staging; production with an `https:` public origin) decides each cookie's wire form, written and read: `__Host-ms_session`, `__Host-ms_signin`, `__Host-ms_demo_operator`, `Secure`, `Path=/`, no `Domain`; bare names are never read over HTTPS. The plain-HTTP demo keeps bare names. The binding cookie's path moved from `/sign-in` to `/` (required by the prefix). Verified in Chrome: a plain-HTTP page on staging's host name cannot set the prefixed cookies, and the bare ones it does set change nothing.
+
+**Google Testing status.** Google documents that an app asking only basic identity scopes (`openid`) is exempt from the test-user list and from the 7-day authorization expiry. The runbook, acceptance step 9 and the plan now say so; staging's boundaries are the tailnet, the invitations and the operator key. No scope and no account list was added.
+
+**Test-isolation fix:** a participant-access test counted every sign-in attempt in the shared test database and raced the staging suite; it now counts only its own server's.
+
 ## Running now
 
 | What | Where | How to stop |
@@ -82,4 +94,4 @@ Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434),
 
 1. Dustin: the Google and Tailscale steps in `S13-STAGING.md`, then start staging in tmux and run the external acceptance checklist.
 2. Review and merge PR #34, then this branch (its PR is Dustin's and ChatGPT's to open).
-3. Before anything beyond synthetic staging: `__Host-` cookie names or a dedicated host name.
+3. Close GitGuardian incident 38772493 as a test credential in the GitGuardian dashboard (Dustin).

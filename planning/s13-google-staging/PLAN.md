@@ -91,7 +91,7 @@ Date: 2026-10-20
   3. Phone 2 does the same for the Photographer as test user 2.
   4. Each phone acts only as its own party, and both reach READY TO SIGN.
   5. Signing out leaves no mode.
-  6. A Google account that is not a listed test user is refused by Google.
+  6. A Google account that is not a listed test user: record what Google does (corrected 2026-10-20: with `openid` only, Google documents that such an account is expected to get through; see below).
   7. Reopening a link on another account gets `already_claimed`.
 
 ## Hosting: the smallest arrangement that fits
@@ -121,7 +121,7 @@ Alternatives, not recommended now:
    - App name and support email. **No logo**: a logo triggers brand verification.
    - Scopes: `openid` only.
    - Publishing status **Testing**.
-   - Test users: the Google accounts that will sign in (Dustin's, Cory's, and a second account for two-phone runs). The limit is 100. Consent for a test user expires after 7 days. That only means the consent screen reappears, because no refresh token is used. Whether an `openid`-only app in Testing shows an "unverified app" warning should be confirmed on the first run.
+   - Test users: the Google accounts that will sign in (Dustin's, Cory's, and a second account for two-phone runs). The limit is 100. *Corrected 2026-10-20:* Google documents that an app requesting only basic identity scopes (`openid`, `email`, `profile`) is exempt from the test-user list, shows those users no warning, and its authorizations do not expire after 7 days, so the list does not limit who can sign in to staging. Staging's boundaries are the tailnet, the invitations and the operator key (`docs/engineering/S13-STAGING.md`).
 2. **An OAuth client** of type Web application, with these authorized redirect URIs:
    - `https://asher.tail457b97.ts.net:8443/sign-in/callback` (staging);
    - `http://localhost:3130/sign-in/callback` (optional, for a local check on Asher; Google exempts loopback from https).
@@ -139,7 +139,7 @@ Alternatives, not recommended now:
 
 - **Host forwarded by Tailscale Serve.** Confirm the proxy preserves `Host`, then pin it. If it does not, pin on the forwarded authority only after checking that Serve overwrites rather than appends.
 - **Clock on Asher.** It is checked by `iat`/`exp` with 60 s of skew, so keep NTP on.
-- **Google refusals** (wrong redirect URI, not a test user, cancelled consent) all land on `/#/signin/failed`, and nothing is written.
+- **Google refusals** (wrong redirect URI, cancelled consent) all land on `/#/signin/failed`, and nothing is written.
 - **Real Google subjects stored on staging.** These are testers' accounts on synthetic data. `staging:reset` wipes them. This is not Gate 2, and no real collaboration may run there.
 - Do not change Tailscale Serve's existing port-80 configuration, the presentation demo (5432/3100), S10 (5433) or S12's test database (5434).
 
@@ -147,6 +147,7 @@ Alternatives, not recommended now:
 
 - Google OpenID Connect: issuers, endpoints, JWKS, nonce and RS256. https://developers.google.com/identity/openid-connect/openid-connect
 - Google OAuth for web server apps: redirect URI rules (https except loopback, no raw IP, TLD on the Public Suffix List, exact match). https://developers.google.com/identity/protocols/oauth2/web-server
-- Google Cloud help: Testing status is limited to 100 test users, and test authorizations expire after 7 days. https://support.google.com/cloud/answer/10311615
+- Google Cloud help, Manage App Audience: Testing status is limited to 100 test users and test authorizations expire after 7 days, except for apps requesting only basic identity scopes (openid, email, profile), whose users need not be listed and whose authorizations do not expire after 7 days. https://support.google.com/cloud/answer/15549945 (the earlier link, answer 10311615, is now the Branding page).
+- Google Identity, Using OAuth 2.0: Testing-status refresh tokens expire in 7 days unless only name, email and profile scopes are requested. https://developers.google.com/identity/protocols/oauth2
 - Public Suffix List: it contains `ts.net`. https://publicsuffix.org/list/public_suffix_list.dat
 - Asher, observed read-only: `tailscale status` and `tailscale serve status`.

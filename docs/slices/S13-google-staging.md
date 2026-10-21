@@ -30,7 +30,8 @@ Who composes, shares, invites and enters agreed values (operator acts on staging
 - **I-S13-3.** A Google ID token is accepted only if jose verifies it: RS256, Google's keys, issuer `https://accounts.google.com` or `accounts.google.com`, audience this client, `exp`, `iat`, `sub`, nonce equal to the attempt's, bounded skew and age (S12's `verifyIdToken`).
 - **I-S13-4.** Endpoints, issuers and the JWKS location are constants in source; the client secret appears only in the token request body.
 - **I-S13-5.** A callback without a code spends its attempt; the sign-in cookie is cleared only for the browser's own matched attempt.
-- **I-S13-6.** Staging listens on loopback; Host must equal the pinned public authority; Origin must equal the pinned public origin; no forwarding header is read; cookies are `Secure`.
+- **I-S13-6.** Staging listens on loopback; Host must equal the pinned public authority; Origin must equal the pinned public origin; no forwarding header is read; cookies are `__Host-` named, `Secure`, `Path=/`, no `Domain`, and only those names are read (never a bare-name fallback).
+- **I-S13-10.** Google's Testing status does not limit who signs in (`openid` is exempt from the test-user list); staging's boundaries are the tailnet, the invitations and the operator key. No application-level account list.
 - **I-S13-7.** Staging operator mode requires the operator key in the POST body, compared in constant time; the key is never a cookie, a URL part, a log line or stored by the page.
 - **I-S13-8.** Staging uses only `modeling_standard_staging` on a loopback server; starting never resets; seeding only fills an empty database; reset needs `--confirm modeling_standard_staging` and refuses while staging listens.
 - **I-S13-9.** The staging composition, the test provider and every staging script are outside the production build.
@@ -45,8 +46,8 @@ S11 (signatures, contracts, finalization). Apple. Real use. Funnel or any public
 
 ## Acceptance evidence
 
-`tests/unit/google-provider.test.ts`, `tests/http/staging.test.ts`, `tests/database/staging-database.test.ts`, `tests/demo-browser/staging.test.ts`, `tests/boot/boot.test.ts`, `tests/unit/config.test.ts`, the restated pins. External acceptance: `docs/engineering/S13-STAGING.md` § Acceptance. Detail and runbook: `docs/engineering/S13-STAGING.md`.
+`tests/unit/google-provider.test.ts`, `tests/http/staging.test.ts`, `tests/database/staging-database.test.ts`, `tests/demo-browser/staging.test.ts`, `tests/boot/boot.test.ts`, `tests/unit/config.test.ts`, `tests/unit/cookies.test.ts`, `tests/database/sessions.test.ts`, the restated pins. External acceptance: `docs/engineering/S13-STAGING.md` § Acceptance. Detail and runbook: `docs/engineering/S13-STAGING.md`.
 
 ## Change-locality check
 
-Apple: one more `IdentityProvider` (plus its form-post callback). `__Host-` cookie names: `src/http/cookies.ts` and the three cookie owners. Real hosting instead of Asher: a new public origin in the env file and a proxy; nothing in the application.
+Apple: one more `IdentityProvider` (plus its form-post callback). Cookie wire form: `src/http/cookies.ts`, one `secure` setting. Real hosting instead of Asher: a new public origin in the env file and a proxy; nothing in the application.
