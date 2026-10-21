@@ -1,6 +1,16 @@
 # Local synthetic demo
 
-A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), look at it as each person with server-enforced visibility and actions, and resolve it live to **READY TO SIGN**. It is not a product flow, not a credential mechanism, and not real-use approval (Gate 2). Signing is the next slice and is not built here.
+A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), invite each person by link, let each person sign in on their own device and act only as themselves (S12), and resolve it live to **READY TO SIGN**. It is not real-use approval (Gate 2). Sign-in is a local **test identity provider**, not Google or Apple, and verifies nothing. Signing is not built here.
+
+## Two people, two devices (S12)
+
+1. Start the demo (below), open it in one browser and choose **Continue as the demo operator**.
+2. Compose a shoot (or pick an example from the Demo menu), set who is on set, **Share the brief**, then **Create invitation links** on the shoot's screen. Each person's link is shown once. For phones, open the operator screen on the LAN address the demo prints, so the links carry it.
+3. Open each link on its own device or browser profile (not the operator's). The invitation page offers **Continue with test sign-in**; the test provider's page asks for an invented name (Test person A, B, C or any other). After sign-in the person lands on their own brief: "Signed in as Model", no switch to anyone else, only their own actions.
+4. Each person sets what only they control and ticks their terms. A decide-together value is entered by the operator (who enters it in the product is an open question), from the operator's labelled simulation of either person.
+5. Both screens reach **READY TO SIGN**. **Sign out** leaves a browser in no mode at all.
+
+A browser is in exactly one mode: operator (chosen explicitly), a signed-in person, or neither. A browser signed in as a person cannot use the operator screens; a person who signs out is not the operator. Reopening one's own link signs the same person back in; a link already accepted by someone else is refused.
 
 ## Run
 
@@ -17,7 +27,7 @@ npm run demo:export           # .demo/modeling-standard-demo.html — the read-o
 
 The individual steps remain: `npm run demo:reset`, `npm run demo`, `npm run demo:lan`.
 
-**LAN.** `--lan` prints every private IPv4 address of the machine. Use the one on your Wi-Fi (typically `192.168.x.x`); a `172.17–31.x.x` address is usually a Docker bridge. Requests are accepted only for those exact addresses and loopback. **The simulated person is part of the address** (`/#/shoots/<shoot>/as/<person>`), not a credential: anyone on the Wi-Fi who opens the demo can act as any person by editing the address. That is acceptable only because everything is synthetic.
+**LAN.** `--lan` prints every private IPv4 address of the machine. Use the one on your Wi-Fi (typically `192.168.x.x`); a `172.17–31.x.x` address is usually a Docker bridge. Requests are accepted only for those exact addresses and loopback, and a state-changing request only from exactly those origins. Cookies on the LAN are not `Secure` (plain HTTP), so a session travels in clear on the Wi-Fi; acceptable only because everything is synthetic. **Anyone on the Wi-Fi can choose operator mode**, and the operator's simulation puts the simulated person in the address (`/#/shoots/<shoot>/as/<person>`). Signed-in people use their own screen (`/#/brief/<shoot>`), where the person comes from the session.
 
 **Interactive demo vs snapshot.** The interactive demo is the server above (its banner says "Interactive demo on this machine — not the read-only snapshot"). The snapshot is one self-contained HTML file of the **inspector** (the whole stored record of every project, as the demo operator sees it), labelled "read-only synthetic snapshot" on every screen. It is not what any one person sees, has no participant screens, refuses every write, and makes no network request.
 
@@ -46,7 +56,9 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 ## How it is built
 
 - **Never in production.** Everything is in `src/demo/` and `src/scripts/demo*.ts`; `src/main.ts`, `src/app/create-app.ts` and `src/app/operation-list.ts` import nothing from it, `tsconfig.build.json` excludes it, and every demo route 404s in the production application (tested).
-- **One principal.** Every request is the fixed synthetic `demo-operator`, which stands for nobody and is never a party. All demo operations are protected, strict-input, strict-output, and creator-only (S01), registered through `createApp({ additionalOperations })`.
+- **Two kinds of principal.** The operator is the fixed synthetic `demo-operator`, which stands for nobody and is never a party; it exists only with the explicit operator cookie and no session cookie. Signed-in people are accounts (S12 sessions). Every protected demo operation refuses accounts and is creator-only (S01); the signed-in routes are the production ones (`/shoots/:projectId…`). Wiring: `src/demo/application.ts`, shared by `npm run demo` and the browser tests.
+- **Sign-in.** `src/demo/test-issuer.ts` (outside the build) serves `/test-idp/authorize` and `/test-idp/approve` through the demo server and signs real RS256 ID tokens, verified by the production path (jose). Its logins are stored as Google logins with a `test-issuer|` subject because the account table admits only Google and Apple; no Google sign-in happens.
+- **The proxy** forwards exactly `content-type`, `cookie` and `origin` to the app, and returns `content-type`, `x-request-id`, `location` and every `set-cookie`.
 - **Demo operations** (`createDemoOperations(annotations)`; the set is pinned in `tests/demo/simulator.test.ts`):
 
   | Purpose | Routes |
@@ -66,7 +78,8 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 
 ## Limitations (stated, not hidden)
 
-- **Simulation only.** One operator acts for every person, chosen by the address. In the product each person acts only for themselves, signed in (D03, D12); sign-in is not built.
+- **Test sign-in only.** The provider is a local stand-in; real Google or Apple sign-in is not built or tested, and nothing is verified (D11's synthetic-demo question is open). The operator can still simulate any person, labelled as a simulation.
+- **Operator acts.** Composing, presence, sharing, entering agreed values and sending invitations are operator acts; who does them in the product is open.
 - **Who composes, who shares, who enters a decide-together value** are open questions for Cory; here they are operator acts, labelled as such.
 - **READY TO SIGN is structural.** It means everything currently in the brief is resolved and green for everyone who must tick it; the required-term catalogue is not drafted, so it does not mean the brief is complete.
 - **No signing**, freeze, signatures or contract (S10–S11 are a later slice). **No no-means-no** term or placeholder (D04 wording is Cory's). **No walking away** from a collaboration.
@@ -79,6 +92,7 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 `npm run test:demo` (needs `CHROME_PATH`; see `.env.example`) runs two real-browser suites through `playwright-core`, each resetting `modeling_standard_demo`:
 
 - `tests/demo-browser/journey.test.ts` — the participant journey at 1280 and 390: the welcome screen's single primary action, the demo menu and every About statement; composer fields (exactly these rows) and per-field blank refusals; share refused then shared; chooser; each person's screen with the simulation label, band and proposed-word flag; the Model's open parameter; Simulation controls; group-check and deliberate ticks to READY TO SIGN with the catalogue caveat and "signing is the next step and is not built"; untick ("No longer ready to sign.") and retick; mobile band in the first half-screen and stuck while scrolling, controls at least 44 px; reload; the decline path with no numbering gap; the three-person case (only one's own fee, no readiness); the empty shoot; a draft refused under a person's screen; labels kept across a restart and cleared by reset; no history words, no stray text, no signing control, no horizontal scroll, no browser errors.
+- `tests/demo-browser/participants.test.ts` — S12 in a real browser: the operator invites; two separate 390-wide contexts accept their own links, sign in on the test provider's page, see only their own screen and controls, and resolve to READY TO SIGN; a signed-in phone is refused the operator screens; sign-out leaves no mode.
 - `tests/demo-browser/regression.test.ts` — the inspector at `/inspector`: fixtures, the walkthrough, the decisions view, the snapshot from `file://`, reset repeatability, every demo route 404 in production.
 
 Screenshots go to `test-results/demo/` (`journey-*` per stage and width; the inspector's existing set). They are evidence, not design approval.

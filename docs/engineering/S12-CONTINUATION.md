@@ -54,9 +54,53 @@ Work item: S12-A to S12-F of `planning/sprint-2026-10-21/EXECUTION-PACKAGE.md`, 
 | Increment | Status | Last passing check |
 |---|---|---|
 | Baseline on the isolated database | done | `npm run check`; `npm test` 30 files / 387 tests |
-| S12-A principal and boundary | — | — |
-| S12-B sessions | — | — |
-| S12-C sign-in and the door | — | — |
-| S12-D participant operations | — | — |
-| S12-E demo integration | — | — |
-| S12-F verification and delivery | — | — |
+| S12-A principal and boundary | done | restated pins; `tests/http/*` |
+| S12-B sessions | done | `tests/database/sessions.test.ts`; upgrade 0025 → current |
+| S12-C sign-in and the door | done | `tests/http/participant-access.test.ts` |
+| S12-D participant operations | done | same |
+| S12-E demo integration | done | `tests/demo-browser/participants.test.ts`; journey and regression suites |
+| S12-F verification and delivery | done | below |
+
+## Changes to the recorded decisions, made while building
+
+- **One account, one party per shoot**, in the S12 claim path only (advisory lock; no database rule). Found while building the invitation page: a browser signed in as one person opening another person's link would otherwise bind that party to the wrong account, leaving it unusable (the participant routes fail closed on two bindings). The page also asks before accepting with an existing sign-in.
+- **`GET /session`** added (public, answers only `{ signedIn }`), for that question without a console error.
+- **The test provider's page uses `Referrer-Policy: same-origin`**: under `no-referrer` a browser sends `Origin: null` with a form POST, and the approval was (correctly) refused.
+
+Everything else was built as recorded above.
+
+## Verification run in this environment (isolated database, 127.0.0.1:5434)
+
+- `npm run check`: passed (typecheck, lint, `db:drift`, `db:identifiers`: 28 migration files).
+- `npm test`: 32 files, 466 tests passed.
+- `npm run test:demo`: 3 files, 24 browser tests passed (Chrome at `/usr/bin/google-chrome`), including the two-context participant test at 390.
+- `npm run build`: passed; `dist/` contains no `src/demo`, no test issuer, no operator cookie code.
+- The built artifact, booted with `PUBLIC_BASE_URL=http://127.0.0.1:3021`: `/health` ok; `/shoots/<id>` 401; `POST /sign-in/start` 404 (no provider registered); a foreign Origin 403 `cross_origin`; `/session` `{"signedIn":false}`; `/test-idp/authorize` 404.
+- `npm run demo:fresh` on port 3120: reset 4 projects and served; no-mode `GET /demo/projects` 401; `POST /demo/operator` 200; then 200 with the projects.
+
+**Not verified here:** a real phone on the LAN (`--lan` was not run in this session; the two-device flow was exercised by two browser contexts and over HTTP); real Google or Apple sign-in (not built); the presentation demo on 5432/3100 was not started or touched.
+
+## Open seams hit (not answered)
+
+Who sends invitations; who composes, shares, sets presence and enters agreed values; the counterparty's displayed identity; whether a synthetic demo needs verification (D11); the words for a claimed link and "already in this shoot" (D05, package Q6). All remain operator acts or proposed words.
+
+## Handoff — open and do
+
+From a clean checkout of `stage-1/s12-participant-access`, with Docker:
+
+```
+docker run -d --name ms-s12-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres_local_only \
+  -p 127.0.0.1:5434:5432 -v "$PWD/db/provision.sql:/docker-entrypoint-initdb.d/provision.sql:ro" postgres:17
+sed -e 's/127.0.0.1:5432/127.0.0.1:5434/g' .env.example > .env     # first time only
+echo 'DEMO_PORT=3120' >> .env
+npm ci
+npm run demo:fresh -- --lan     # open the printed 192.168.x.x:3120 URL; Ctrl+C to stop
+```
+
+(With the ordinary database on 5432 and no other demo running, `cp .env.example .env` and `npm run demo:fresh -- --lan` on 3100 work the same.)
+
+Then: **Continue as the demo operator** → Demo menu → **Shared, with values still open** (or compose your own and share it) → **Create invitation links** → open the Model link on one phone and the Photographer link on another (or a private window) → **Continue with test sign-in** → pick an invented name → each lands on their own brief → the Model sets the coverage level → on the operator screen open the brief as either person and **Enter the agreed value** → each phone ticks its terms → both show **READY TO SIGN**. Try opening the Model's link on a third device: it is refused. **Sign out** on a phone: it is in no mode, not the operator.
+
+Checks: `npm run check`, `npm test`, `CHROME_PATH=/usr/bin/google-chrome npm run test:demo`, `npm run build`.
+
+**Recommended integration:** this branch into `main` on its own (S11 is deferred and builds on it later). PRs and merges are Dustin's and ChatGPT's.
