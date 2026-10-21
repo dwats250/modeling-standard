@@ -220,8 +220,13 @@ async function bindingsOf(projectId: string): Promise<{ party_id: string; accoun
   return withClient(inject('migrationUrl'), async (c) => (await c.query<{ party_id: string; account_id: string }>('select party_id, account_id from party_account_binding where project_id = $1 order by party_id', [projectId])).rows);
 }
 
+/** Sessions of test-provider accounts: this file's. Other files (S13 staging) sign in with other subjects in parallel. */
 async function sessionCount(): Promise<number> {
-  return withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from account_session')).rows[0]!.n);
+  return withClient(
+    inject('migrationUrl'),
+    async (c) =>
+      (await c.query<{ n: number }>("select count(*)::int as n from account_session s join account a on a.id = s.account_id where a.provider_subject like 'test-issuer|%'")).rows[0]!.n,
+  );
 }
 
 // ---- Acceptance ----
@@ -771,7 +776,7 @@ describe('production isolation (AC-15)', () => {
 
   it('nothing in the production entry points imports the test issuer or the demo', () => {
     const src = join(import.meta.dirname, '../../src');
-    for (const file of ['main.ts', 'app/create-app.ts', 'app/operation-list.ts', 'identity/operations.ts', 'identity/provider.ts', 'participants/operations.ts', 'sessions/session.ts']) {
+    for (const file of ['main.ts', 'app/create-app.ts', 'app/operation-list.ts', 'identity/operations.ts', 'identity/provider.ts', 'identity/google.ts', 'config/config.ts', 'participants/operations.ts', 'sessions/session.ts']) {
       expect({ file, demo: /from '.*demo\//.test(readFileSync(join(src, file), 'utf8')) }).toEqual({ file, demo: false });
     }
     const build = JSON.parse(readFileSync(join(import.meta.dirname, '../../tsconfig.build.json'), 'utf8'));

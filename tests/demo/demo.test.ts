@@ -66,14 +66,27 @@ describe('separation from production', () => {
 
   it('excludes demo code from the production build', async () => {
     const build = JSON.parse(await readFile('tsconfig.build.json', 'utf8')) as { exclude?: string[] };
-    expect(build.exclude).toEqual(expect.arrayContaining(['src/demo', 'src/scripts/demo.ts', 'src/scripts/demo-reset.ts']));
+    expect(build.exclude).toEqual(
+      expect.arrayContaining([
+        'src/demo',
+        'src/scripts/demo.ts',
+        'src/scripts/demo-reset.ts',
+        // Staging (S13) is a demo composition, not the product.
+        'src/scripts/staging.ts',
+        'src/scripts/staging-setup.ts',
+        'src/scripts/staging-seed.ts',
+        'src/scripts/staging-reset.ts',
+      ]),
+    );
   });
 
-  it('declares every demo operation as protected, except the explicit operator-mode switch', () => {
+  it('declares every demo operation as protected, except the explicit operator-mode switch and the environment', () => {
     // Operator mode is how a browser becomes the operator, so it cannot require
-    // being one; it is origin-checked and demo-only (S12).
+    // being one; it is origin-checked and demo-only (S12), and needs the
+    // operator key on staging (S13). The environment tells the screens which
+    // sign-in to offer before anyone is anybody, and says nothing secret.
     for (const op of demoOperations) {
-      const expected = op.name === 'demo.operator.enter' ? 'public' : 'protected';
+      const expected = op.name === 'demo.operator.enter' || op.name === 'demo.environment' ? 'public' : 'protected';
       expect({ name: op.name, kind: op.access.kind }).toEqual({ name: op.name, kind: expected });
     }
   });
