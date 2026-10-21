@@ -111,6 +111,14 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
   - Options Observatory still 200 on port 80.
 - **Not yet verified: real Google.** Google accepting the redirect URI and a real sign-in are exercised only by Dustin's phone run (acceptance steps in `S13-STAGING.md`).
 
+## Phone access blocker (2026-10-21, open)
+
+- The Pixel (`pixel-10-pro`, 100.84.119.8) is on the tailnet and pings Asher directly. Its Chrome reports `DNS_PROBE_FINISHED_NXDOMAIN` for `https://asher.tail457b97.ts.net:8443/`, in every browser and in incognito; Dustin reports Options Observatory loads and that the phone's DNS settings are not the cause.
+- On Asher: `Self.DNSName` matches `asher.tail457b97.ts.net` byte for byte. Tailscale's resolver (100.100.100.100) answers A 100.64.34.84, with empty AAAA and HTTPS answers. Public resolvers return NXDOMAIN, and the router (192.168.0.1) returns no address. Asher itself has `--accept-dns=false`, which is why checks from Asher use `curl --resolve` (that does not test DNS). The router resolves the short names `asher` and `asher.ht.home` to the LAN address 192.168.0.69.
+- No request from the phone reached staging, and Serve opened no connection to 3130 while the phone retried.
+- At Dustin's request the 8443 entry was removed and re-added (`tailscale serve --https=8443 off`, then `--bg --https=8443 http://127.0.0.1:3130`). Port 80 was untouched, and both answer 200 from Asher afterwards.
+- Unresolved: which exact URL the phone uses for Observatory (it matters: a working lookup of the full name would not return NXDOMAIN for the same name on another port), and whether the re-added entry changes anything for the phone.
+
 ## Running now
 
 | What | Where | How to stop |
