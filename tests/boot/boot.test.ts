@@ -151,7 +151,7 @@ describe('boot', () => {
         fetch(`${address}${path}`, { method: 'POST', headers: { origin: 'https://ms.example', 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const started = await post('/sign-in/start', { provider: 'google', invitation: credential });
       expect(started.status).toBe(200);
-      expect(started.headers.getSetCookie().find((c) => c.startsWith('ms_signin='))).toMatch(/; Secure$/);
+      expect(started.headers.getSetCookie().find((c) => c.startsWith('__Host-ms_signin='))).toMatch(/; Path=\/; HttpOnly; SameSite=Lax; Secure$/);
       const url = new URL(((await started.json()) as { authorizationUrl: string }).authorizationUrl);
       expect(`${url.origin}${url.pathname}`).toBe(GOOGLE_AUTHORIZATION_ENDPOINT);
       expect(url.searchParams.get('scope')).toBe('openid');

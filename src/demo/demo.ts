@@ -51,13 +51,13 @@ export const OPERATOR_COOKIE = 'ms_demo_operator';
  * Signing in and signing out clear the operator cookie, so a participant who
  * signs out is nobody, not the operator.
  */
-export function createDemoPrincipalResolver(db: Executor, operatorSecret: string): ResolvePrincipal {
+export function createDemoPrincipalResolver(db: Executor, operatorSecret: string, secure: boolean): ResolvePrincipal {
   const expected = tokenDigest(operatorSecret);
   if (!expected) throw new Error('the operator secret must be a canonical token');
   return async (request) => {
     const header = request.headers.cookie;
-    if (carriesSessionCookie(header)) return sessionPrincipal(db, header);
-    const values = cookieValues(header, OPERATOR_COOKIE);
+    if (carriesSessionCookie(header, secure)) return sessionPrincipal(db, header, secure);
+    const values = cookieValues(header, OPERATOR_COOKIE, secure);
     if (values.length !== 1) return null;
     const presented = tokenDigest(values[0]);
     return presented !== null && sameDigest(presented, expected) ? DEMO_OPERATOR : null;

@@ -38,12 +38,13 @@ try {
 // screens and has no operator, so nothing here creates a shoot or an
 // invitation. Cookie-bearing POSTs are accepted only from PUBLIC_BASE_URL's
 // origin; with none configured, from nowhere.
+const secureCookies = config.publicOrigin?.startsWith('https:') === true;
 const app = createApp({
   db: database.db,
   logger,
-  resolvePrincipal: createSessionResolver(database.db),
+  resolvePrincipal: createSessionResolver(database.db, secureCookies),
   allowedOrigins: config.publicOrigin === null ? [] : [config.publicOrigin],
-  secureCookies: config.publicOrigin?.startsWith('https:') === true,
+  secureCookies,
   identity: { providers: config.google === null ? [] : [createGoogleProvider(config.google)] },
 });
 

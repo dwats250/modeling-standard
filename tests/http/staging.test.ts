@@ -85,7 +85,7 @@ class Browser {
   request(method: 'GET' | 'POST' | 'PUT', path: string, options: { json?: unknown; headers?: Record<string, string>; origin?: string | null; raw?: string } = {}): Promise<Res> {
     const headers: Record<string, string> = { host: this.host, ...(options.headers ?? {}) };
     const cookie = this.cookieHeader(path.split('?')[0]!);
-    if (cookie) headers.cookie = cookie;
+    if (cookie && headers.cookie === undefined) headers.cookie = cookie;
     const origin = options.origin === undefined ? this.origin : options.origin;
     if (method !== 'GET' && origin !== null) headers.origin = origin;
     let body: string | undefined;
@@ -234,7 +234,7 @@ describe('operator mode needs the operator key, checked on the server', () => {
     expect((await b.get('/demo/projects')).status).toBe(401);
     const res = await b.post('/demo/operator', { key: OPERATOR_KEY });
     expect(res.status).toBe(200);
-    expect(res.setCookies.find((c) => c.startsWith('ms_demo_operator='))).toMatch(/; HttpOnly; SameSite=Strict; Secure$/);
+    expect(res.setCookies.find((c) => c.startsWith('__Host-ms_demo_operator='))).toMatch(/; Path=\/; HttpOnly; SameSite=Strict; Secure$/);
     expect(res.setCookies.join('\n')).not.toContain(OPERATOR_KEY);
     expect(res.body).not.toContain(OPERATOR_KEY);
     expect((await b.get('/demo/projects')).status).toBe(200);
@@ -255,15 +255,17 @@ describe('Google sign-in from an invitation (fake Google, real provider code and
     expect(url.searchParams.get('redirect_uri')).toBe(`${PUBLIC_ORIGIN}/sign-in/callback`);
     // The invitation credential never goes to Google.
     expect(authorizationUrl).not.toContain(shoot.modelLink);
-    expect(model.jar.get('ms_signin')).toBeDefined();
+    expect(model.jar.get('__Host-ms_signin')).toEqual({ value: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/), path: '/' });
 
     const modelSubject = newSubject();
     const { code, state } = google.approve(authorizationUrl, modelSubject);
     const done = await model.get(`/sign-in/callback?${new URLSearchParams({ code, state, scope: 'openid', authuser: '0', prompt: 'consent' }).toString()}`);
     expect(done.status).toBe(303);
     expect(done.location).toBe(`/#/brief/${shoot.projectId}`);
-    expect(done.setCookies.find((c) => c.startsWith('ms_session='))).toMatch(/; HttpOnly; SameSite=Lax; Secure$/);
-    expect(done.setCookies.find((c) => c.startsWith('ms_signin='))).toMatch(/Max-Age=0/);
+    expect(done.setCookies.find((c) => c.startsWith('__Host-ms_session='))).toMatch(/; Path=\/; HttpOnly; SameSite=Lax; Secure$/);
+    expect(done.setCookies.find((c) => c.startsWith('__Host-ms_signin='))).toMatch(/Max-Age=0; Path=\/;/);
+    // Every cookie staging sets is __Host- named, Secure, Path=/ and has no Domain.
+    for (const line of done.setCookies) expect(line).toMatch(/^__Host-ms_[a-z_]+=[A-Za-z0-9_-]*; Max-Age=\d+; Path=\/; HttpOnly; SameSite=(Lax|Strict); Secure$/);
     // The token request carried the PKCE verifier and the exact redirect URI.
     const sent = google.tokenRequests.at(-1)!;
     expect(sent.redirect_uri).toBe(`${PUBLIC_ORIGIN}/sign-in/callback`);
@@ -327,7 +329,7 @@ describe('Google sign-in from an invitation (fake Google, real provider code and
       }
       expect(res.status).toBe(303);
       expect(res.location).toBe('/#/signin/failed');
-      expect(res.setCookies.some((c) => c.startsWith('ms_session=') && !c.includes('Max-Age=0'))).toBe(false);
+      expect(res.setCookies.some((c) => c.includes('ms_session=') && !c.includes('Max-Age=0'))).toBe(false);
       expect(await accountsWithSubject(subject)).toEqual([]);
       // Spent: the same callback again fails too, even though Google would now answer.
       expect((await b.get(callback)).location).toBe('/#/signin/failed');
@@ -355,7 +357,7 @@ describe('Google sign-in from an invitation (fake Google, real provider code and
     const victim = new Browser();
     const res = await victim.get(callback);
     expect(res.location).toBe('/#/signin/failed');
-    expect(victim.jar.get('ms_session')).toBeUndefined();
+    expect(victim.jar.get('__Host-ms_session')).toBeUndefined();
     expect(await accountsWithSubject(subject)).toEqual([]);
     // And it is spent for the attacker too.
     expect((await attacker.get(callback)).location).toBe('/#/signin/failed');
@@ -386,7 +388,7 @@ describe('Google sign-in from an invitation (fake Google, real provider code and
     const callback = await callbackFor(b, shoot.modelLink, newSubject());
     expect((await b.get(callback)).location).toBe(`/#/brief/${shoot.projectId}`);
     const replay = new Browser();
-    replay.jar.set('ms_signin', b.jar.get('ms_signin') ?? { value: 'x'.repeat(43), path: '/sign-in' });
+    replay.jar.set('__Host-ms_signin', b.jar.get('__Host-ms_signin') ?? { value: 'x'.repeat(43), path: '/' });
     expect((await replay.get(callback)).location).toBe('/#/signin/failed');
   });
 
@@ -398,6 +400,73 @@ describe('Google sign-in from an invitation (fake Google, real provider code and
     expect(res.setCookies).toEqual([]);
     const after = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt where redirect_uri = $1', [`${PUBLIC_ORIGIN}/sign-in/callback`])).rows[0]!.n);
     expect(after).toBe(before);
+  });
+});
+
+describe('HTTPS cookies are __Host- named, and bare names are never read', () => {
+  /** A cookie a plain-HTTP site on the same host name could set: bare name, any path. */
+  const toss = (b: Browser, name: string, value: string) => b.jar.set(name, { value, path: '/' });
+
+  it('the operator cookie under its bare name, even with the right value, is not the operator', async () => {
+    const op = await operator();
+    const secret = op.jar.get('__Host-ms_demo_operator')!.value;
+    const b = new Browser();
+    toss(b, 'ms_demo_operator', secret);
+    expect((await b.get('/demo/projects')).status).toBe(401);
+    expect((await b.post('/demo/shoots/scenarios', { card: 'unresolved' })).status).toBe(401);
+  });
+
+  it('a session token under the bare name signs nobody in; a tossed bare session neither overrides nor ends a real one', async () => {
+    const op = await operator();
+    const shoot = await shootWithLinks(op);
+    const person = new Browser();
+    expect((await person.get(await callbackFor(person, shoot.modelLink, newSubject()))).location).toBe(`/#/brief/${shoot.projectId}`);
+    const token = person.jar.get('__Host-ms_session')!.value;
+
+    const bare = new Browser();
+    toss(bare, 'ms_session', token);
+    expect((await bare.get(`/shoots/${shoot.projectId}`)).status).toBe(401);
+
+    // Tossed into the person's browser: a session cookie the server would otherwise treat as a duplicate.
+    toss(person, 'ms_session', newToken().token);
+    expect((await person.get(`/shoots/${shoot.projectId}`)).json<{ partyId: string }>().partyId).toBe(shoot.modelPartyId);
+    // Tossed into the operator's: a bare session cookie does not turn the operator into nobody.
+    toss(op, 'ms_session', token);
+    expect((await op.get('/demo/projects')).status).toBe(200);
+
+    // Sign-out ends the real session and clears the prefixed cookie.
+    const out = await person.post('/sign-out');
+    expect(out.setCookies.find((c) => c.startsWith('__Host-ms_session='))).toMatch(/^__Host-ms_session=; Max-Age=0; Path=\/; HttpOnly; SameSite=Lax; Secure$/);
+    const reuse = new Browser();
+    reuse.jar.set('__Host-ms_session', { value: token, path: '/' });
+    expect((await reuse.get(`/shoots/${shoot.projectId}`)).status).toBe(401);
+  });
+
+  it('a sign-in binding under the bare name does not complete the callback, and spends the attempt', async () => {
+    const op = await operator();
+    const shoot = await shootWithLinks(op);
+    const b = new Browser();
+    const subject = newSubject();
+    const callback = await callbackFor(b, shoot.modelLink, subject);
+    const binding = b.jar.get('__Host-ms_signin')!;
+    b.jar.delete('__Host-ms_signin');
+    toss(b, 'ms_signin', binding.value);
+    expect((await b.get(callback)).location).toBe('/#/signin/failed');
+    b.jar.set('__Host-ms_signin', binding);
+    expect((await b.get(callback)).location).toBe('/#/signin/failed');
+    expect(await accountsWithSubject(subject)).toEqual([]);
+  });
+
+  it('a duplicated prefixed binding fails closed', async () => {
+    const op = await operator();
+    const shoot = await shootWithLinks(op);
+    const b = new Browser();
+    const subject = newSubject();
+    const callback = await callbackFor(b, shoot.modelLink, subject);
+    const binding = b.jar.get('__Host-ms_signin')!.value;
+    const res = await b.get(callback, { headers: { cookie: `__Host-ms_signin=${binding}; __Host-ms_signin=${binding}` } });
+    expect(res.location).toBe('/#/signin/failed');
+    expect(await accountsWithSubject(subject)).toEqual([]);
   });
 });
 

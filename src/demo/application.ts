@@ -72,19 +72,21 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
     providers: providers.map((p) => p.id),
     operatorKeyRequired: staging !== undefined,
   };
+  // The local demo is plain HTTP on loopback or a LAN, where a Secure cookie
+  // would never be sent back. Staging is HTTPS end to end at the browser, so
+  // its cookies are Secure and `__Host-` named, written and read.
+  const secureCookies = staging !== undefined;
   const app = createApp({
     db: options.db,
     logger: options.logger,
-    resolvePrincipal: createDemoPrincipalResolver(options.db, operatorSecret),
+    resolvePrincipal: createDemoPrincipalResolver(options.db, operatorSecret, secureCookies),
     additionalOperations: createDemoOperations(options.annotations, {
       secret: operatorSecret,
       ...(staging ? { key: staging.operatorKey } : {}),
       environment,
     }),
     allowedOrigins: origins,
-    // The local demo is plain HTTP on loopback or a LAN, where a Secure cookie
-    // would never be sent back. Staging is HTTPS end to end at the browser.
-    secureCookies: staging !== undefined,
+    secureCookies,
     identity: { providers, clearOnSessionChange: [clearCookie(OPERATOR_COOKIE)] },
   });
   await app.ready();

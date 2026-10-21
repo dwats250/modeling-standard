@@ -20,14 +20,14 @@ import { signInAttempt } from './tables.ts';
  *   a digest;
  * - the PKCE verifier, kept here in clear (it must be sent to the token
  *   endpoint) and never sent to the browser;
- * - the browser-binding secret, set as the `ms_signin` cookie on the browser
+ * - the browser-binding secret, set as the `ms_signin` cookie (`__Host-ms_signin`
+ *   over HTTPS, hence `Path=/` in both forms) on the browser
  *   that started the attempt and stored as a digest. A callback is honoured
  *   only from a browser that presents it, so a callback URL produced in one
  *   browser cannot sign in another.
  */
 
 export const SIGN_IN_COOKIE = 'ms_signin';
-export const SIGN_IN_COOKIE_PATH = '/sign-in';
 export const ATTEMPT_TTL_SECONDS = 10 * 60;
 
 export interface StartedAttempt {
@@ -93,9 +93,9 @@ export async function consumeSignInAttempt(db: Executor, state: unknown): Promis
 }
 
 export function signInCookie(binding: string): ResponseCookie {
-  return { name: SIGN_IN_COOKIE, value: binding, maxAge: ATTEMPT_TTL_SECONDS, path: SIGN_IN_COOKIE_PATH, sameSite: 'Lax' };
+  return { name: SIGN_IN_COOKIE, value: binding, maxAge: ATTEMPT_TTL_SECONDS, path: '/', sameSite: 'Lax' };
 }
 
 export function clearSignInCookie(): ResponseCookie {
-  return clearCookie(SIGN_IN_COOKIE, SIGN_IN_COOKIE_PATH);
+  return clearCookie(SIGN_IN_COOKIE);
 }

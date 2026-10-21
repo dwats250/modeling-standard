@@ -334,7 +334,7 @@ export function registerOperations(
         target,
         log: request.log,
         origin: allowedOrigin(request),
-        cookies: (name: string) => cookieValues(request.headers.cookie, name),
+        cookies: (name: string) => cookieValues(request.headers.cookie, name, deps.secureCookies === true),
       };
       const result: unknown = await op.run(input, context);
 

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises';
-import { request as httpRequest, type Server } from 'node:http';
+import { createServer as createHttpServer, request as httpRequest, type Server } from 'node:http';
 import { createServer as createHttpsServer, type Server as HttpsServer } from 'node:https';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -36,6 +36,11 @@ import { requireEnv } from '../support/urls.ts';
  * in with their own (fake) Google account and resolve the shoot to READY TO
  * SIGN acting only as themselves; a third browser is the operator, who
  * enters with the operator key. Screenshots go to test-results/demo/staging-*.
+ *
+ * A plain-HTTP site on the same host name (another port, as Options
+ * Observatory is on Asher) tries to toss cookies into the phones: the
+ * `__Host-` names are refused by the browser, and the bare names it can set
+ * are never read by staging.
  */
 
 const SHOTS = resolve('test-results/demo');
@@ -49,6 +54,10 @@ let database: DatabaseHandle;
 let staging: StagingApplication;
 let server: Server;
 let proxy: HttpsServer;
+let tosser: Server;
+let tosserBase: string;
+/** What the plain-HTTP site sets next: name → value. */
+const tossed = new Map<string, string>();
 let base: string;
 let browser: Browser;
 let google: FakeGoogle;
@@ -92,11 +101,24 @@ beforeAll(async () => {
     req.pipe(out);
   });
 
+  // The same host name over plain HTTP: it sets every cookie it is told to,
+  // by header and by script, prefixed or not.
+  tosser = createHttpServer((_req, res) => {
+    const lines = [...tossed].map(([name, value]) => `${name}=${value}; Path=/; Max-Age=600`);
+    const script = [...tossed].map(([name, value]) => `document.cookie = ${JSON.stringify(`${name}=${value}; path=/; max-age=600`)};`).join('\n');
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'set-cookie': lines });
+    res.end(`<!doctype html><title>other site</title><script>${script}</script><p>other site</p>`);
+  });
+  await new Promise<void>((done) => tosser.listen(0, '127.0.0.1', done));
+  tosserBase = `http://${PUBLIC_NAME}:${(tosser.address() as AddressInfo).port}`;
+
   browser = await chromium.launch({ executablePath, args: [`--host-resolver-rules=MAP ${PUBLIC_NAME} 127.0.0.1`] });
 });
 
 afterAll(async () => {
   await browser?.close();
+  tosser?.closeAllConnections();
+  await new Promise<void>((done) => tosser.close(() => done()));
   proxy?.closeAllConnections();
   await new Promise<void>((done) => proxy.close(() => done()));
   server?.closeAllConnections();
@@ -159,6 +181,20 @@ async function tickAll(page: Page): Promise<void> {
   while (await page.locator('.term button.tick').count()) await click(page, page.locator('.term button.tick').first());
 }
 
+/** The plain-HTTP site on the same host name sets `cookies` in this context, by header and by script. */
+async function toss(ctx: BrowserContext, cookies: Record<string, string>): Promise<void> {
+  tossed.clear();
+  for (const [name, value] of Object.entries(cookies)) tossed.set(name, value);
+  const page = await ctx.newPage();
+  await page.goto(`${tosserBase}/`);
+  await page.close();
+}
+
+/** This context's cookies for staging, by name. */
+async function stagingCookies(ctx: BrowserContext): Promise<Map<string, { value: string; secure: boolean; httpOnly: boolean; sameSite: string; path: string; domain: string }>> {
+  return new Map((await ctx.cookies(base)).map((c) => [c.name, c]));
+}
+
 /** Nothing this page stored or put in its address holds the operator key. */
 async function keyNowhere(page: Page): Promise<void> {
   const stored = await page.evaluate<string>('JSON.stringify([location.href, document.cookie, Object.entries(localStorage), Object.entries(sessionStorage), [...document.querySelectorAll("input")].map((i) => i.value)])');
@@ -183,6 +219,9 @@ describe('synthetic staging in a browser, behind an HTTPS proxy', () => {
     await click(operator.page, operator.page.locator('button.enter-operator'));
     expect(await operator.page.locator('.operator-mode').count()).toBe(1);
     await keyNowhere(operator.page);
+    const operatorCookie = (await stagingCookies(operator.ctx)).get('__Host-ms_demo_operator');
+    expect(operatorCookie).toMatchObject({ secure: true, httpOnly: true, sameSite: 'Strict', path: '/', domain: PUBLIC_NAME });
+    expect([...(await stagingCookies(operator.ctx)).keys()]).toEqual(['__Host-ms_demo_operator']);
     await shot(operator.page, 'operator-home');
 
     await operator.page.goto(`${base}/#/demo`);
@@ -207,6 +246,7 @@ describe('synthetic staging in a browser, behind an HTTPS proxy', () => {
       expect(await page.locator('button.start-sign-in').allInnerTexts()).toEqual(['Continue with Google']);
       await shot(page, `${who}-invitation`);
       await page.locator('button.start-sign-in').click();
+      // The browser binding cookie is __Host- named (seen on Google's side of the redirect).
       await page.waitForURL(new RegExp(`/#/brief/${projectId}$`));
       await idle(page);
       expect(await page.locator('.viewing.signed-in .me').innerText()).toBe(who === 'model' ? 'Model' : 'Photographer');
@@ -214,10 +254,50 @@ describe('synthetic staging in a browser, behind an HTTPS proxy', () => {
       expect(await page.locator('.sim-controls').count()).toBe(0);
       expect(await page.locator('.viewing.signed-in .simulation-note').innerText()).toMatch(/^Signed in with Google \(not verification/);
       expect(await page.locator('body').innerText()).not.toMatch(/test sign-in/i);
-      const cookies = await page.context().cookies(base);
-      expect(cookies.find((c) => c.name === 'ms_session')).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax' });
+      // Signed in: exactly one cookie, the __Host- session; the binding cookie was cleared by the callback.
+      const cookies = await stagingCookies(page.context());
+      expect([...cookies.keys()]).toEqual(['__Host-ms_session']);
+      expect(cookies.get('__Host-ms_session')).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/', domain: PUBLIC_NAME });
       await shot(page, `${who}-signed-in`);
     }
+
+    // The plain-HTTP site on the same name tries to take the model's phone
+    // over: prefixed cookies (refused by the browser) carrying the
+    // photographer's real session, and bare ones carrying the photographer's
+    // session and the operator's secret (set, but never read by staging).
+    const modelSession = (await stagingCookies(model.ctx)).get('__Host-ms_session')!.value;
+    const photographerSession = (await stagingCookies(photographer.ctx)).get('__Host-ms_session')!.value;
+    const evil = {
+      '__Host-ms_session': photographerSession,
+      '__Host-ms_demo_operator': operatorCookie!.value,
+      '__Host-ms_signin': newToken().token,
+      ms_session: photographerSession,
+      ms_demo_operator: operatorCookie!.value,
+      ms_signin: newToken().token,
+    };
+    await toss(model.ctx, evil);
+    const after = await stagingCookies(model.ctx);
+    expect(after.get('__Host-ms_session')?.value).toBe(modelSession);
+    expect(after.has('__Host-ms_demo_operator') || after.has('__Host-ms_signin')).toBe(false);
+    // The bare ones did land, and the browser sends them to staging too.
+    expect(after.get('ms_session')?.value).toBe(photographerSession);
+    expect(after.get('ms_demo_operator')?.value).toBe(operatorCookie!.value);
+    await model.page.reload();
+    await idle(model.page);
+    expect(await model.page.locator('.viewing.signed-in .me').innerText()).toBe('Model');
+    expect(await model.page.evaluate<number>(`fetch('/demo/projects').then((r) => r.status)`)).toBe(403);
+    pageErrors.splice(0); // that refused fetch is the expected console error
+
+    // A phone with no session, given only the bare cookies, is nobody: not the photographer, not the operator.
+    const stranger = await context('stranger');
+    await toss(stranger.ctx, evil);
+    expect([...(await stagingCookies(stranger.ctx)).keys()].sort()).toEqual(['ms_demo_operator', 'ms_session', 'ms_signin']);
+    await stranger.page.goto(`${base}/`);
+    await idle(stranger.page);
+    expect(await stranger.page.locator('[data-mode="none"]').count()).toBe(1);
+    expect(await stranger.page.evaluate<number[]>(`Promise.all(['/demo/projects', '/shoots/${projectId}'].map((u) => fetch(u).then((r) => r.status)))`)).toEqual([401, 401]);
+    expect(pageErrors.splice(0).every((e) => e.startsWith('stranger: ') && /401/.test(e))).toBe(true);
+    await stranger.ctx.close();
 
     // Only the Model sets the coverage level she controls.
     expect(await photographer.page.locator('button', { hasText: /^Set as/ }).count()).toBe(0);
@@ -260,6 +340,7 @@ describe('synthetic staging in a browser, behind an HTTPS proxy', () => {
     await idle(model.page);
     await click(model.page, model.page.locator('button.sign-out'));
     expect(await model.page.locator('[data-mode="none"]').count()).toBe(1);
+    expect((await stagingCookies(model.ctx)).has('__Host-ms_session')).toBe(false);
     // The start screen asks for the operator's list: refused while signed in
     // (403) and after signing out (401). Those are the expected console errors.
     const added = pageErrors.splice(0);
@@ -268,6 +349,13 @@ describe('synthetic staging in a browser, behind an HTTPS proxy', () => {
 
     // Every request reached staging through the public name.
     expect(new Set(proxiedHosts)).toEqual(new Set([`${PUBLIC_NAME}:${new URL(base).port}`]));
+    // Signing out ended the session itself, not only the cookie.
+    const reuse = await browser.newContext({ ignoreHTTPSErrors: true });
+    await reuse.addCookies([{ name: '__Host-ms_session', value: modelSession, url: `${base}/`, secure: true, httpOnly: true, sameSite: 'Lax' }]);
+    const reusePage = await reuse.newPage();
+    await reusePage.goto(`${base}/health`);
+    expect(await reusePage.evaluate<number>(`fetch('/shoots/${projectId}').then((r) => r.status)`)).toBe(401);
+    await reuse.close();
     for (const c of [operator, model, photographer]) await c.ctx.close();
   });
 

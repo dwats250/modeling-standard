@@ -62,7 +62,7 @@ describe('sessions', () => {
     const acct = await newAccount();
     const session = await createSession(db(), acct.id);
     expect(await findActiveSession(db(), session.token)).toEqual({ id: session.id, accountId: acct.id });
-    expect(await sessionPrincipal(db(), `ms_session=${session.token}`)).toEqual({ id: acct.id, kind: 'account' });
+    expect(await sessionPrincipal(db(), `ms_session=${session.token}`, false)).toEqual({ id: acct.id, kind: 'account' });
     const stored = await withClient(inject('migrationUrl'), (c) => c.query(`select row_to_json(s)::text as row from account_session s where id = $1`, [session.id]));
     expect(stored.rows[0].row).not.toContain(session.token);
     expect(stored.rows[0].row).not.toContain(Buffer.from(session.token, 'base64url').toString('hex'));
@@ -88,9 +88,25 @@ describe('sessions', () => {
       `ms_session=${ended.token}`,
       `ms_session=${expired.token}`,
     ]) {
-      expect({ header, principal: await sessionPrincipal(db(), header) }).toEqual({ header, principal: null });
+      expect({ header, principal: await sessionPrincipal(db(), header, false) }).toEqual({ header, principal: null });
     }
-    expect(await sessionPrincipal(db(), `theme=dark; ms_session=${live.token}`)).toEqual({ id: acct.id, kind: 'account' });
+    expect(await sessionPrincipal(db(), `theme=dark; ms_session=${live.token}`, false)).toEqual({ id: acct.id, kind: 'account' });
+  });
+
+  it('over HTTPS reads only __Host-ms_session: a bare, lower-cased or duplicated name is no principal', async () => {
+    const acct = await newAccount();
+    const live = await createSession(db(), acct.id);
+    for (const header of [
+      `ms_session=${live.token}`,
+      `__host-ms_session=${live.token}`,
+      `__Secure-ms_session=${live.token}`,
+      `__Host-ms_session=${live.token}; __Host-ms_session=${live.token}`,
+      `__Host-ms_session=${newToken().token}`,
+    ]) {
+      expect({ header, principal: await sessionPrincipal(db(), header, true) }).toEqual({ header, principal: null });
+    }
+    expect(await sessionPrincipal(db(), `ms_session=${newToken().token}; __Host-ms_session=${live.token}`, true)).toEqual({ id: acct.id, kind: 'account' });
+    expect(await sessionPrincipal(db(), `__Host-ms_session=${live.token}`, false)).toBeNull();
   });
 
   it('ends once, at database time; an ended session cannot be reopened or ended again, even by direct SQL', async () => {
