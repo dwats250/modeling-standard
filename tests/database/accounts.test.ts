@@ -376,10 +376,15 @@ describe('what the S06 tables hold', () => {
     expect(offending).toEqual([]);
   });
 
-  it('adds no HTTP operation: there is no sign-in, account or binding route', () => {
+  it('adds no HTTP operation: the only sign-in, account or binding routes are S12\'s', () => {
+    // S06 itself adds none. S12 adds sign-in from an invitation, sign-out and
+    // the claim; there is still no account, login or binding route as such.
     expect(
-      operations.filter((op) => /account|login|sign|auth|oauth|bind|invit|google|apple/i.test(`${op.name} ${op.path}`)),
-    ).toEqual([]);
+      operations
+        .filter((op) => /account|login|sign|auth|oauth|bind|invit|google|apple/i.test(`${op.name} ${op.path}`))
+        .map((op) => op.name)
+        .sort(),
+    ).toEqual(['invitation.claim', 'sign-in.callback', 'sign-in.start', 'sign-out']);
   });
 });
 

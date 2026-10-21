@@ -195,12 +195,30 @@ describe('reading a project', () => {
 });
 
 describe('creating a project grants no authority over anyone else', () => {
-  it('exposes no operation that acts on a party, an invitation, a signature or a payment', () => {
+  it('exposes no operation that acts on another party, a signature or a payment', () => {
+    // S12 adds sign-in, sign-out, the invitation claim and the signed-in
+    // participant's own-party routes; none acts on a signature or a payment,
+    // and none takes a party in its input.
     const productOperations = operations.filter((op) => !op.path.startsWith('/stage0') && op.path !== '/health');
     expect(productOperations.map((op) => `${op.method} ${op.path}`).sort()).toEqual([
       'GET /projects/:id',
+      'GET /session',
+      'GET /shoots/:projectId',
+      'GET /sign-in/callback',
+      'POST /invitations/claim',
       'POST /projects',
+      'POST /shoots/:projectId/group-check',
+      'POST /shoots/:projectId/items/:itemId/decline',
+      'POST /shoots/:projectId/items/:itemId/parameter',
+      'POST /shoots/:projectId/items/:itemId/tick',
+      'POST /shoots/:projectId/items/:itemId/untick',
+      'POST /sign-in/start',
+      'POST /sign-out',
     ]);
+    for (const op of productOperations) {
+      const keys = [...Object.keys(op.input.params.shape), ...Object.keys(op.input.query.shape), ...Object.keys(op.input.body.shape)];
+      expect({ op: op.name, keys: keys.filter((k) => /party/i.test(k)) }).toEqual({ op: op.name, keys: [] });
+    }
   });
 
   it('declares no excluded semantic in either project operation input or output', () => {

@@ -1,9 +1,9 @@
 import { sql } from 'drizzle-orm';
 import { createApp } from './app/create-app.ts';
 import { createLogger } from './app/logger.ts';
-import { resolveNoPrincipal } from './authorization/access.ts';
 import { ConfigError, loadAppConfig } from './config/config.ts';
 import { openDatabase } from './infrastructure/database/client.ts';
+import { createSessionResolver } from './sessions/session.ts';
 
 /**
  * Process entry point: the only place that reads the environment. Validates
@@ -30,9 +30,17 @@ try {
   process.exit(1);
 }
 
-// Stage 0 has no credential mechanism, so no request ever carries a principal
-// and every protected operation is denied. That is deliberate.
-const app = createApp({ db: database.db, logger, resolvePrincipal: resolveNoPrincipal });
+// The only principal source is the session cookie (S12). No identity
+// provider is registered, so no session can be created yet: every protected
+// operation is still denied in production. Cookie-bearing POSTs are accepted
+// only from PUBLIC_BASE_URL's origin; with none configured, from nowhere.
+const app = createApp({
+  db: database.db,
+  logger,
+  resolvePrincipal: createSessionResolver(database.db),
+  allowedOrigins: config.publicOrigin === null ? [] : [config.publicOrigin],
+  secureCookies: config.publicOrigin?.startsWith('https:') === true,
+});
 
 const shutdown = async (signal: string): Promise<void> => {
   logger.info({ signal }, 'shutting down');

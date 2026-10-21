@@ -34,8 +34,39 @@ const postgresUrl = z
     { error: 'must be a postgres:// URL that names a database' },
   );
 
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/**
+ * The public origin the application is served at, if any. HTTPS, or HTTP on
+ * a loopback host only (local development). An origin only: no path, query,
+ * fragment or credentials. It is the one origin a cookie-bearing POST is
+ * accepted from, and it decides whether cookies are marked Secure.
+ */
+const publicBaseUrl = z
+  .string()
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined) return null;
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'must be an absolute URL' });
+      return z.NEVER;
+    }
+    const originOnly = url.username === '' && url.password === '' && (url.pathname === '/' || url.pathname === '') && url.search === '' && url.hash === '';
+    const secure = url.protocol === 'https:';
+    const localHttp = url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname);
+    if (!originOnly || !(secure || localHttp)) {
+      ctx.addIssue({ code: 'custom', message: 'must be an https:// origin (or http:// on a loopback host), with no path' });
+      return z.NEVER;
+    }
+    return url.origin;
+  });
+
 const appConfigSchema = z.object({
   DATABASE_URL: postgresUrl,
+  PUBLIC_BASE_URL: publicBaseUrl,
   HOST: z.string().min(1, { error: 'must not be empty' }).default('127.0.0.1'),
   PORT: z
     .string()
@@ -59,6 +90,8 @@ export interface AppConfig {
   readonly host: string;
   readonly port: number;
   readonly logLevel: z.infer<typeof appConfigSchema>['LOG_LEVEL'];
+  /** The public origin (`PUBLIC_BASE_URL`), or null when none is configured. */
+  readonly publicOrigin: string | null;
 }
 
 export interface MigrationConfig {
@@ -85,6 +118,7 @@ export function loadAppConfig(env: Env): AppConfig {
     host: parsed.HOST,
     port: parsed.PORT,
     logLevel: parsed.LOG_LEVEL,
+    publicOrigin: parsed.PUBLIC_BASE_URL,
   };
 }
 

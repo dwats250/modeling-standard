@@ -1,11 +1,20 @@
 // The participant journey for the local synthetic demo: welcome, the
-// composer, the draft, and each person's live brief. Plain browser
-// JavaScript, no build step. Every value from the server is written with
-// textContent, never as HTML.
+// composer, the draft, each person's live brief, invitations and sign-in.
+// Plain browser JavaScript, no build step. Every value from the server is
+// written with textContent, never as HTML.
 //
-// Every screen is a simulation by the demo operator. The person being
-// simulated is part of the address (#/shoots/<shoot>/as/<person>), never a
-// credential; the server filters what that person may see and do.
+// A browser is in one of three modes, decided by the server from its
+// cookies, never by this page:
+// - the demo operator (an explicit choice on the start screen), who
+//   composes, shares, invites, settles agreed values and can simulate any
+//   person (#/shoots/<shoot>/as/<person>; the person is part of the address,
+//   never a credential);
+// - a signed-in test participant (#/brief/<shoot>), who opened an
+//   invitation link (#/i/<credential>) and signed in with the local test
+//   identity provider, and sees and acts only as their own person;
+// - neither.
+// An invitation credential is read from the address fragment and kept in
+// memory only; it is never stored in this browser or put in another URL.
 
 const state = {
   annotations: { projects: {} },
@@ -15,6 +24,8 @@ const state = {
   acted: null,
   // Text typed into a value box survives the re-render after another act.
   valueDrafts: {},
+  // Invitation links just created, per shoot. Memory only: shown once, never stored.
+  invites: {},
 };
 
 // ---- Helpers ----
@@ -143,6 +154,11 @@ const REFUSALS = {
   fixed_once_shared: 'A shared brief is fixed: nothing is added or reworded.',
   not_found: 'That has changed — the screen is up to date now.',
   invalid_input: 'Check what was entered.',
+  already_claimed: 'This invitation has already been accepted with a different sign-in.',
+  already_in_shoot: 'This sign-in already belongs to another person in this shoot.',
+  cross_origin: 'This request did not come from this demo’s own page.',
+  unauthenticated: 'This browser is not signed in.',
+  forbidden: 'This browser cannot do that.',
 };
 
 function refusal(error) {
@@ -236,11 +252,62 @@ function aboutLink(text = 'About this demo') {
 
 // ---- Screen: Welcome ----
 
+/** Leaves any mode: ends a test sign-in and leaves operator mode. */
+async function signOut() {
+  try {
+    await api('POST', '/sign-out', {});
+    toast('Signed out.');
+  } catch (error) {
+    toast(refusal(error), 'error');
+  }
+  location.hash = '#/';
+  await rerender(true);
+}
+
+async function enterOperatorMode() {
+  try {
+    await api('POST', '/demo/operator', {});
+  } catch (error) {
+    toast(refusal(error), 'error');
+    return;
+  }
+  await rerender(true);
+}
+
+/** This browser is neither the operator nor signed in. */
+function renderNoMode(root) {
+  root.append(
+    el('section', { className: 'hero mode-choice', attrs: { 'data-mode': 'none' } }, [
+      el('p', { className: 'eyebrow', text: 'Photo shoots' }),
+      el('h1', { text: 'One brief that everyone on the shoot agrees to.' }),
+      el('p', { className: 'lede', text: 'Invited to a shoot? Open the invitation link you were sent — it signs you in as yourself.' }),
+      button('Continue as the demo operator', enterOperatorMode, 'btn primary block enter-operator'),
+      el('p', { className: 'small muted', text: 'A demo convenience: the operator composes shoots, shares them and sends invitations. It is not a person in any shoot.' }),
+    ]),
+    aboutLink(),
+  );
+}
+
+/** This browser is a signed-in test participant: the operator screens are not for it. */
+function renderParticipantHome(root) {
+  root.append(
+    el('section', { className: 'card', attrs: { 'data-mode': 'participant' } }, [
+      el('p', { className: 'eyebrow', text: 'Signed in' }),
+      el('h1', { text: 'You’re signed in as a test participant' }),
+      el('p', { className: 'muted', text: 'Open your invitation link to return to your shoot. The operator screens are not available while this browser is signed in.' }),
+      button('Sign out', signOut, 'btn block sign-out'),
+    ]),
+    aboutLink(),
+  );
+}
+
 async function renderWelcome(root) {
   let projects = [];
   try {
     projects = (await api('GET', '/demo/projects')).projects;
-  } catch {
+  } catch (error) {
+    if (error.status === 401) return renderNoMode(root);
+    if (error.status === 403) return renderParticipantHome(root);
     projects = [];
   }
   const mine = projects.filter((p) => ['composed', 'scenario'].includes(annotationFor(p.id)?.kind));
@@ -274,6 +341,10 @@ async function renderWelcome(root) {
           ),
         ])
       : null,
+    el('p', { className: 'small muted operator-mode' }, [
+      el('span', { text: 'You are the demo operator in this browser. ' }),
+      button('Leave operator mode', signOut, 'text-btn leave-operator'),
+    ]),
     aboutLink(),
   );
 }
@@ -357,11 +428,17 @@ function renderAbout(root) {
         el('h1', { text: 'About this demo' }),
         el('p', { className: 'lede', text: 'Invented people, nothing here is real. This is the interactive demo running on one machine — not the read-only snapshot, and not a product release.' }),
       ]),
+      section('Signing in', [
+        'Each invited person opens their own invitation link and signs in, then sees and acts only as themselves (D03, D12). Two people on two devices act separately.',
+        'Sign-in here is a local test identity provider that stands in for Google or Apple. It is not Google and not Apple, and it checks nothing about who you are: pick any invented name. No real sign-in has been tested.',
+        'Signing in is not verification. Whether a demonstration with invented people needs a verification step is an open question for Cory (D11); none happens here.',
+        'Test sign-ins are stored as if they were Google logins, because the account table admits only Google and Apple. No Google sign-in happened.',
+      ]),
       section('What is simulated', [
-        'One demo operator plays every person. The person you are viewing as is part of the address, not a sign-in. In the product each person signs in and acts only for themselves (D03, D12); sign-in is not built.',
-        'Composing, setting who is on site and sharing are done by the demo operator. Who does these in the product is still to be decided.',
-        'Agreed values for “decide together” terms are entered from a separate demo control. Who enters an agreed value in the product is an open question for Cory.',
-        'On a shared Wi-Fi anyone who opens this demo can act as any person by changing the address. That is acceptable only because everything is invented.',
+        'The demo operator is an explicit mode, chosen on the start screen. It composes, sets who is on site, shares, and sends invitations. Who does these in the product is still to be decided; sending invitations is an operator convenience here.',
+        'Agreed values for “decide together” terms are entered by the operator. Who enters an agreed value in the product is an open question for Cory.',
+        'The operator can also look at the brief as any person, with that person in the address. That is a labelled simulation, not a sign-in; a signed-in browser cannot use it.',
+        'On a shared Wi-Fi anyone who opens this demo can choose operator mode. That is acceptable only because everything is invented.',
       ]),
       section('What “ready to sign” means here', [
         'Every term currently in the brief is settled and ticked by everyone who must tick it. It is a structural rule: the list of terms a shoot must contain is not drafted yet, so it does not mean the brief is complete.',
@@ -371,7 +448,7 @@ function renderAbout(root) {
       section('What this demo does not show', [
         'The no-means-no term — its wording is Cory’s to write (D04).',
         'Whether a brief holds every required term — the required-term catalogue is not drafted yet.',
-        'Real sign-in (D03).',
+        'Real Google or Apple sign-in (D03), and verification (D11).',
         'What signing looks like (D04).',
         'Walking away from a collaboration.',
       ]),
@@ -380,7 +457,7 @@ function renderAbout(root) {
         'Which section each term sits in (on set, the shoot, fee) is a demo choice, not the term catalogue.',
         'Stored demo text is marked “[synthetic]”; documents show it without repeating the mark on every line.',
       ]),
-      el('p', { className: 'ref', text: 'Decisions referenced: D02 lifecycle, D03 participation credential, D04 terms and signing, D05 vocabulary, D10 what each party sees, D12 who may act.' }),
+      el('p', { className: 'ref', text: 'Decisions referenced: D02 lifecycle, D03 participation credential, D04 terms and signing, D05 vocabulary, D10 what each party sees, D11 adult assurance, D12 who may act.' }),
       link('Back to start', '#/', 'btn block'),
     ]),
   );
@@ -628,7 +705,7 @@ async function renderShoot(root, projectId) {
     return;
   }
   if (brief.phase === 'live') {
-    root.append(renderChooser(projectId, cast, label));
+    root.append(renderChooser(projectId, cast, label), renderInviteCard(projectId, cast, label));
     return;
   }
   if (cast.length === 0) {
@@ -689,8 +766,58 @@ async function renderShoot(root, projectId) {
       el('p', { className: 'small muted', text: answered ? 'Ready to share. Open values stay open until the two of them settle them.' : 'Answer for each person, then share.' }),
     ]),
     renderDraftDocument(brief, label),
+    renderInviteCard(projectId, cast, label),
     aboutLink('Composed by the demo operator — about this demo'),
   );
+}
+
+/** Invitation links, one per person: an operator convenience, shown once and kept in memory only. */
+function renderInviteCard(projectId, cast, label) {
+  const card = el('section', { className: 'card invite', attrs: { 'aria-label': 'Invitations' } }, [
+    el('p', { className: 'eyebrow', text: 'Invitations' }),
+    el('h2', { text: 'Invite each person' }),
+    el('p', { className: 'small muted', text: 'Each person opens their own link on their own device and signs in; then they see and act only as themselves. Sending invitations is an operator convenience here — who sends them in the product is an open question.' }),
+  ]);
+  const links = state.invites[projectId];
+  if (!links) {
+    card.append(
+      button(
+        'Create invitation links',
+        async () => {
+          try {
+            const created = await api('POST', `/demo/shoots/${projectId}/invitations`, {});
+            state.invites[projectId] = created.invitations;
+          } catch (error) {
+            toast(refusal(error), 'error');
+          }
+          await rerender();
+        },
+        'btn primary block create-invites',
+      ),
+    );
+    return card;
+  }
+  const rows = [...links]
+    .sort((a, b) => byLabel(label)(a.partyId, b.partyId))
+    .map(({ partyId, credential }) => {
+      const url = `${location.origin}/#/i/${credential}`;
+      const input = el('input', { className: 'input invite-link', attrs: { type: 'text', readonly: '', value: url, 'aria-label': `Invitation link for ${label(partyId)}`, 'data-party': partyId } });
+      const copy = button('Copy', async () => {
+        input.select();
+        try {
+          await navigator.clipboard.writeText(url);
+          toast('Link copied.');
+        } catch {
+          toast('Selected — copy it with your device’s copy command.');
+        }
+      }, 'btn small');
+      return el('li', { className: 'invite-row' }, [el('span', { className: 'who', text: label(partyId) }), el('div', { className: 'invite-copy' }, [input, copy])]);
+    });
+  card.append(
+    el('ul', { className: 'invite-list' }, rows),
+    el('p', { className: 'small muted', text: 'Shown once, here. Reloading this page forgets them; create new ones if you need to. A link that someone has already accepted stays theirs.' }),
+  );
+  return card;
 }
 
 /** The draft as composed, read-only. */
@@ -736,17 +863,43 @@ function renderChooser(projectId, cast, label) {
 
 // ---- Screen: one person's live brief ----
 
-async function renderParticipant(root, projectId, partyId) {
+/** The operator's labelled simulation of one person: the person is in the address. */
+function simulatedRoute(projectId, partyId) {
+  return { base: `/demo/shoots/${projectId}/as/${partyId}`, simulated: true };
+}
+
+/** A signed-in participant's own brief: the person is whoever this browser signed in as. */
+function signedInRoute(projectId) {
+  return { base: `/shoots/${projectId}`, simulated: false };
+}
+
+async function renderParticipant(root, projectId, route) {
   let view;
   try {
-    view = await api('GET', `/demo/shoots/${projectId}/as/${partyId}`);
+    view = await api('GET', route.base);
   } catch (error) {
     if (error.status === 404) {
       root.append(
+        el('section', { className: 'card' }, route.simulated
+          ? [
+              el('h1', { text: 'Nothing to show as this person' }),
+              el('p', { className: 'muted', text: 'Either this shoot is not shared yet, or that person is not one of its people.' }),
+              link('Back to the shoot', `#/shoots/${projectId}`, 'btn block'),
+            ]
+          : [
+              el('h1', { text: 'Nothing to show yet' }),
+              el('p', { className: 'muted', text: 'This shoot’s brief has not been shared yet, or this sign-in is not one of its people.' }),
+              button('Check again', () => rerender(), 'btn block'),
+              button('Sign out', signOut, 'text-btn sign-out'),
+            ]),
+      );
+      return;
+    }
+    if (!route.simulated && error.status === 401) {
+      root.append(
         el('section', { className: 'card' }, [
-          el('h1', { text: 'Nothing to show as this person' }),
-          el('p', { className: 'muted', text: 'Either this shoot is not shared yet, or that person is not one of its people.' }),
-          link('Back to the shoot', `#/shoots/${projectId}`, 'btn block'),
+          el('h1', { text: 'You’re not signed in' }),
+          el('p', { className: 'muted', text: 'Open your invitation link to sign in and come back to this shoot.' }),
         ]),
       );
       return;
@@ -768,7 +921,7 @@ async function renderParticipant(root, projectId, partyId) {
 
   const act = async (path, body, success) => {
     try {
-      await api('POST', `/demo/shoots/${projectId}/as/${me}${path}`, body ?? {});
+      await api('POST', `${route.base}${path}`, body ?? {});
       if (success) toast(success);
     } catch (error) {
       toast(refusal(error), 'error');
@@ -783,19 +936,32 @@ async function renderParticipant(root, projectId, partyId) {
       : `${view.progress.green} of ${view.progress.total} terms agreed${view.progress.open ? ` · ${view.progress.open} still open` : ''}`;
 
   root.append(
-    renderViewing(view, cast, label, projectId),
+    route.simulated ? renderViewing(view, cast, label, projectId) : renderSignedIn(label(me)),
     el('header', { className: 'shoot-head' }, [
       el('h1', { text: shootTitle(projectId) }),
       progressSteps(stage),
       el('p', { className: 'status-line', text: status }),
       view.ready === undefined ? el('p', { className: 'small muted readiness-note', text: 'With more than two people, overall readiness isn’t shown.' }) : null,
-      eng(`project ${projectId} · simulated party ${me}`),
+      eng(`project ${projectId} · ${route.simulated ? 'simulated' : 'signed-in'} party ${me}`),
     ]),
     stage === 'ready' ? renderReady() : renderNextStep(view, label, act, projectId),
     renderDocument(view, label, act),
-    ...[renderDemoControl(view, projectId)].filter(Boolean),
+    // Entering an agreed value is the operator's (who does it is open); a participant never sees the control.
+    ...(route.simulated ? [renderDemoControl(view, projectId)].filter(Boolean) : []),
     aboutLink(),
   );
+}
+
+/** The signed-in participant's band: who they are here, and the way out. No switch to anyone else. */
+function renderSignedIn(name) {
+  return el('div', { className: 'viewing signed-in', attrs: { 'data-mode': 'participant' } }, [
+    el('div', { className: 'viewing-row' }, [
+      el('span', { className: 'viewing-label', text: 'Signed in as' }),
+      el('strong', { className: 'me', text: name }),
+      button('Sign out', signOut, 'text-btn sign-out'),
+    ]),
+    el('p', { className: 'simulation-note', text: 'Test sign-in (a local stand-in for Google or Apple; nothing is verified). You see and act only as yourself.' }),
+  ]);
 }
 
 function renderViewing(view, cast, label, projectId) {
@@ -1011,6 +1177,99 @@ function renderDemoControl(view, projectId) {
   ]);
 }
 
+// ---- Screens: an invitation, and how a sign-in ended ----
+
+/**
+ * An invitation link (#/i/<credential>). A browser already signed in is asked
+ * before the invitation is accepted with that sign-in (it may be someone
+ * else's link); otherwise the page offers the test sign-in, which starts from
+ * this invitation and comes back to the brief. The credential goes only into
+ * the body of those two requests.
+ */
+async function renderInvitation(root, credential) {
+  let signedIn = false;
+  try {
+    await api('GET', '/session');
+    signedIn = true;
+  } catch (error) {
+    if (error.status !== 401 && error.status !== 403) throw error;
+  }
+  if (signedIn) {
+    const accept = async () => {
+      try {
+        const claimed = await api('POST', '/invitations/claim', { credential });
+        location.replace(`#/brief/${claimed.projectId}`);
+      } catch (error) {
+        root.replaceChildren();
+        if (error.status === 404) renderDeadInvitation(root);
+        else if (error.status === 409) renderSignInOutcome(root, error.code === 'already_in_shoot' ? 'already-in-shoot' : 'already-claimed');
+        else toast(refusal(error), 'error');
+      }
+    };
+    root.append(
+      el('section', { className: 'hero invitation', attrs: { 'data-mode': 'invitation-signed-in' } }, [
+        el('p', { className: 'eyebrow', text: 'Invitation' }),
+        el('h1', { text: 'You’re invited to a shoot' }),
+        el('p', { className: 'lede', text: 'This browser is already signed in. Accept this invitation as yourself, or sign out if the link is for someone else.' }),
+        button('Accept the invitation', accept, 'btn primary block accept-invitation'),
+        button('Sign out', signOut, 'btn block sign-out'),
+      ]),
+      aboutLink(),
+    );
+    return;
+  }
+  const signIn = async () => {
+    try {
+      const started = await api('POST', '/sign-in/start', { provider: 'test', invitation: credential });
+      location.assign(started.authorizationUrl);
+    } catch (error) {
+      if (error.status === 404) {
+        root.replaceChildren();
+        renderDeadInvitation(root);
+        return;
+      }
+      toast(refusal(error), 'error');
+    }
+  };
+  root.append(
+    el('section', { className: 'hero invitation', attrs: { 'data-mode': 'invitation' } }, [
+      el('p', { className: 'eyebrow', text: 'Invitation' }),
+      el('h1', { text: 'You’re invited to a shoot' }),
+      el('p', { className: 'lede', text: 'Sign in to see the brief and agree it. You’ll see and act only as yourself.' }),
+      button('Continue with test sign-in', signIn, 'btn primary block start-sign-in'),
+      el('p', { className: 'small muted', text: 'Test sign-in stands in for Google or Apple in this demo. It is not Google or Apple and checks nothing about who you are.' }),
+    ]),
+    aboutLink(),
+  );
+}
+
+function renderDeadInvitation(root) {
+  root.append(
+    el('section', { className: 'card', attrs: { 'data-outcome': 'dead-link' } }, [
+      el('h1', { text: 'This invitation link doesn’t work' }),
+      el('p', { className: 'muted', text: 'Check that the whole link was copied. If the demo was reset, ask for a new link.' }),
+    ]),
+  );
+}
+
+// Proposed words for Cory's review in context (D05; package question Q6).
+const OUTCOMES = {
+  'already-claimed': ['This invitation has already been accepted', 'It was accepted with a different sign-in. If it’s yours, sign in the way you did the first time.'],
+  'already-in-shoot': ['You’re already in this shoot', 'This sign-in already belongs to another person in this shoot, so it can’t accept this invitation too. If the link is for someone else, pass it on.'],
+  failed: ['Sign-in didn’t finish', 'Nothing was changed. Open your invitation link again to try once more.'],
+};
+
+function renderSignInOutcome(root, outcome) {
+  const [title, text] = OUTCOMES[outcome] ?? OUTCOMES.failed;
+  root.append(
+    el('section', { className: 'card', attrs: { 'data-outcome': outcome } }, [
+      el('h1', { text: title }),
+      el('p', { className: 'muted', text }),
+      el('p', { className: 'small muted', text: 'These words are proposed, for review.' }),
+    ]),
+  );
+}
+
 // ---- Routing ----
 
 let generation = 0;
@@ -1032,27 +1291,49 @@ async function renderScreen(scrollTop) {
   const hash = location.hash || '#/';
   let match;
   try {
-    if ((match = /^#\/shoots\/([0-9a-f-]{36})\/as\/([0-9a-f-]{36})$/i.exec(hash))) await renderParticipant(next, match[1].toLowerCase(), match[2].toLowerCase());
+    if ((match = /^#\/shoots\/([0-9a-f-]{36})\/as\/([0-9a-f-]{36})$/i.exec(hash))) await renderParticipant(next, match[1].toLowerCase(), simulatedRoute(match[1].toLowerCase(), match[2].toLowerCase()));
+    else if ((match = /^#\/brief\/([0-9a-f-]{36})$/i.exec(hash))) await renderParticipant(next, match[1].toLowerCase(), signedInRoute(match[1].toLowerCase()));
+    else if ((match = /^#\/i\/([A-Za-z0-9_-]{1,128})$/.exec(hash))) await renderInvitation(next, match[1]);
+    else if ((match = /^#\/signin\/(failed|already-claimed|already-in-shoot)$/.exec(hash))) renderSignInOutcome(next, match[1]);
     else if ((match = /^#\/shoots\/([0-9a-f-]{36})$/i.exec(hash))) await renderShoot(next, match[1].toLowerCase());
     else if (hash === '#/shoots/new') renderCompose(next);
     else if (hash === '#/demo') renderDemoMenu(next);
     else if (hash === '#/about') renderAbout(next);
     else await renderWelcome(next);
   } catch (error) {
-    next.replaceChildren(
-      el('section', { className: 'state error' }, [
-        el('p', { text: error.status === 404 ? 'That shoot does not exist (the demo may have been reset).' : `Could not load this screen. ${refusal(error)}` }),
-      ]),
-      link('Back to start', '#/', 'btn block'),
-    );
+    if (error.status === 401) {
+      next.replaceChildren();
+      renderNoMode(next);
+    } else if (error.status === 403) {
+      next.replaceChildren();
+      renderParticipantHome(next);
+    } else {
+      next.replaceChildren(
+        el('section', { className: 'state error' }, [
+          el('p', { text: error.status === 404 ? 'That shoot does not exist (the demo may have been reset).' : `Could not load this screen. ${refusal(error)}` }),
+        ]),
+        link('Back to start', '#/', 'btn block'),
+      );
+    }
   }
   // A late response for a screen navigated away from is dropped.
   if (mine !== generation) return;
   const y = window.scrollY;
   screen.replaceChildren(next);
-  document.body.dataset.screen = hash.includes('/as/') ? 'participant' : hash.startsWith('#/shoots/') ? 'shoot' : hash.slice(2) || 'welcome';
+  document.body.dataset.screen = hash.includes('/as/')
+    ? 'participant'
+    : hash.startsWith('#/brief/')
+      ? 'brief'
+      : hash.startsWith('#/i/')
+        ? 'invitation'
+        : hash.startsWith('#/signin/')
+          ? 'signin'
+          : hash.startsWith('#/shoots/')
+            ? 'shoot'
+            : hash.slice(2) || 'welcome';
   // The route this screen shows; with data-busy, tells when navigation has caught up.
-  document.body.dataset.route = hash;
+  // An invitation's credential is never echoed into the page's attributes.
+  document.body.dataset.route = hash.startsWith('#/i/') ? '#/i/' : hash;
   window.scrollTo(0, scrollTop ? 0 : y);
 }
 

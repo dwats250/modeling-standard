@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
+import { syntheticOnly, type Policy, type Principal } from '../authorization/access.ts';
 import type { Executor } from '../infrastructure/database/client.ts';
 import { defineOperation } from '../http/operations.ts';
 import { syntheticResource } from './tables.ts';
@@ -46,11 +46,14 @@ function toDto(row: SyntheticResourceRow): z.output<typeof syntheticResourceDto>
 
 // ---- Policies (next to the behaviour they govern) ----
 
-/** Any present principal may create a resource; it becomes the owner. */
-const anyPrincipalMayCreate: Policy<{ label: string }> = () => true;
+/**
+ * A synthetic (test or demo) principal may create a resource; it becomes the
+ * owner. A signed-in account may not: this is a Stage 0 fixture.
+ */
+const syntheticPrincipalMayCreate: Policy<{ label: string }> = (principal) => syntheticOnly(principal);
 
 /** Only the owner may read a resource. */
-const ownerOnly: Policy<SyntheticResourceRow> = (principal: SyntheticPrincipal, target) =>
+const ownerOnly: Policy<SyntheticResourceRow> = (principal: Principal, target) =>
   target.ownerPrincipalId === principal.id;
 
 // ---- Operations ----
@@ -76,11 +79,11 @@ export const createSyntheticResourceOperation = defineOperation({
     kind: 'protected',
     // The object acted on is the proposed resource itself.
     load: async (input) => input.body,
-    policy: anyPrincipalMayCreate,
+    policy: syntheticPrincipalMayCreate,
   },
   run: async (input, { db, principal }) => {
     // Protected operations always run with a principal; the boundary enforces it.
-    const owner = principal as SyntheticPrincipal;
+    const owner = principal as Principal;
     const row = await insertSyntheticResource(db, { ownerPrincipalId: owner.id, label: input.body.label });
     return toDto(row);
   },

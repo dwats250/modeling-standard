@@ -360,8 +360,10 @@ describe('what S07 stores and exposes', () => {
     expect([...names, ...definitionNames].filter((name) => EXCLUDED_SEMANTICS.some((w) => name.includes(w)))).toEqual([]);
   });
 
-  it('adds no HTTP operation: there is no invitation, claim or link route', () => {
-    expect(operations.filter((op) => /invit|claim|link|credential|token/i.test(`${op.name} ${op.path}`))).toEqual([]);
+  it('adds no HTTP operation: the only invitation route is S12\'s claim', () => {
+    expect(
+      operations.filter((op) => /invit|claim|link|credential|token/i.test(`${op.name} ${op.path}`)).map((op) => `${op.method} ${op.path}`),
+    ).toEqual(['POST /invitations/claim']);
   });
 
   it('leaks nothing into the project record or the S06 account record', async () => {

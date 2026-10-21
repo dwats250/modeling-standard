@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type pg from 'pg';
@@ -16,8 +16,11 @@ import {
   tickBriefItem,
   getBriefGreenState,
 } from '../../src/briefs/live.ts';
+import { consumeSignInAttempt, startSignInAttempt } from '../../src/identity/attempt.ts';
 import { openDatabase } from '../../src/infrastructure/database/client.ts';
 import { migrationsFolder, runMigrations } from '../../src/infrastructure/database/migrate.ts';
+import { resolveDirectInvitation } from '../../src/invitations/invitation.ts';
+import { createSession, findActiveSession } from '../../src/sessions/session.ts';
 import { createScratchDatabase, journal, migrateThrough, type ScratchDatabase } from '../support/migration-boundary.ts';
 import { CHECK_VIOLATION, withClient } from '../support/sql.ts';
 
@@ -40,6 +43,7 @@ const T0018 = '0018_direct_invitation_stamp_and_grants';
 const T0020 = '0020_live_brief_scope_and_grants';
 const T0022 = '0022_live_resolution_guards_and_grants';
 const T0024 = '0024_signing_guards_and_grants';
+const T0025 = '0025_share_read_committed_only';
 
 const ROW_TABLES = [
   'project',
@@ -946,6 +950,64 @@ describe('populated migration upgrades', () => {
         });
         expect(await shareIn(await draft(), 'repeatable read')).toEqual({ code: CHECK_VIOLATION, constraint: 'live_brief_share_read_committed_only' });
         expect(await shareIn(await draft(), 'read committed')).toBeNull();
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
+    'populated 0025 → current: every row survives, the S12 tables arrive empty with their grants, and a pre-existing invitation and account sign in',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0025);
+        const credentialBytes = randomBytes(32);
+        const s = await asRuntime(db, async (c) => {
+          const base = await populateS01S02(c);
+          const account = await c.query<{ id: string }>(`insert into account (login_provider, provider_subject) values ('google', 'upgrade-subject') returning id`);
+          await c.query('insert into party_account_binding (project_id, party_id, account_id) values ($1, $2, $3)', [base.projectId, base.partyIds[0], account.rows[0]!.id]);
+          const invitation = await c.query<{ id: string }>('insert into direct_invitation (project_id, party_id, credential_digest) values ($1, $2, $3) returning id', [
+            base.projectId,
+            base.partyIds[1],
+            createHash('sha256').update(credentialBytes).digest(),
+          ]);
+          await c.query('insert into live_brief (project_id) values ($1)', [base.projectId]);
+          return { ...base, accountId: account.rows[0]!.id, invitationId: invitation.rows[0]!.id };
+        });
+
+        const boundary = journal().entries.findIndex((e) => e.tag === T0025) + 1;
+        const before = await asOwner(db, async (c) => ({ rows: await rowsOf(c), books: await bookkeeping(c) }));
+        expect(before.rows['direct_invitation']).toHaveLength(1);
+
+        await runMigrations(db.migrationUrl);
+
+        await asOwner(db, async (c) => {
+          expect(await rowsOf(c)).toEqual(before.rows);
+          for (const table of ['account_session', 'sign_in_attempt']) {
+            expect({ table, rows: (await c.query(`select count(*)::int as n from ${table}`)).rows[0].n }).toEqual({ table, rows: 0 });
+          }
+          expect(await runtimePrivileges(c, 'account_session')).toEqual(['INSERT', 'SELECT']);
+          expect(await runtimePrivileges(c, 'sign_in_attempt')).toEqual(['DELETE', 'INSERT', 'SELECT']);
+          const books = await bookkeeping(c);
+          expect(books.slice(0, boundary)).toEqual(before.books);
+          expect(books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(journal().entries.length));
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+        // A second run is a no-op.
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => expect((await bookkeeping(c)).length).toBe(journal().entries.length));
+
+        // The pre-existing invitation admits a sign-in attempt; the pre-existing account opens a session.
+        const handle = openDatabase(db.runtimeUrl, createLogger('silent'));
+        try {
+          const invitation = await resolveDirectInvitation(handle.db, credentialBytes.toString('base64url'));
+          expect(invitation?.id).toBe(s.invitationId);
+          const attempt = await startSignInAttempt(handle.db, { provider: 'test', redirectUri: 'http://127.0.0.1:1/sign-in/callback', invitationId: s.invitationId });
+          expect((await consumeSignInAttempt(handle.db, attempt.state))?.invitationId).toBe(s.invitationId);
+          const session = await createSession(handle.db, s.accountId);
+          expect(await findActiveSession(handle.db, session.token)).toEqual({ id: session.id, accountId: s.accountId });
+        } finally {
+          await handle.close();
+        }
       });
     },
     UPGRADE_TIMEOUT,

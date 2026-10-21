@@ -18,7 +18,7 @@ export const PRINCIPAL_HEADER = 'x-test-principal';
 /** Test-only principal source. Never used by `src/`. */
 export const headerPrincipal: ResolvePrincipal = (request) => {
   const value = request.headers[PRINCIPAL_HEADER];
-  return typeof value === 'string' && value.length > 0 ? { id: value } : null;
+  return typeof value === 'string' && value.length > 0 ? { id: value, kind: 'synthetic' } : null;
 };
 
 export class LogCapture extends Writable {

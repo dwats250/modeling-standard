@@ -2,15 +2,22 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 import type { AnnotationStore } from './annotations.ts';
+import type { TestIssuer } from './test-issuer.ts';
 
 /**
  * The demo's front door. It serves the demo's static pages (the participant
- * journey at `/`, the record inspector at `/inspector`) and its demo
- * annotations (`/annotations.json`), and passes
- * every other request, unchanged, to the real application with
- * `app.inject`. The Fastify application therefore keeps its rule that every
- * route is an operation with declared access; nothing here adds a route to
- * it, reads the database, or decides anything about access.
+ * journey at `/`, the record inspector at `/inspector`), its demo
+ * annotations (`/annotations.json`) and the local test identity provider's
+ * two pages (`/test-idp/*`), and passes every other request to the real
+ * application with `app.inject`. The Fastify application therefore keeps its
+ * rule that every route is an operation with declared access; nothing here
+ * adds a route to it, reads the database, or decides anything about access.
+ *
+ * Forwarded to the application: the method, path and query, the body, and
+ * exactly three request headers — `content-type`, `cookie` and `origin`.
+ * Nothing else (no `X-Forwarded-*`, no `Host`). Returned: the status, the
+ * body, and exactly `content-type`, `x-request-id`, `location` and every
+ * `set-cookie`.
  */
 
 const UI_DIR = new URL('./ui/', import.meta.url);
@@ -39,6 +46,8 @@ export interface DemoServerOptions {
   readonly annotations: AnnotationStore;
   /** Host names/IPs accepted in the HTTP Host header. Defaults to loopback only. */
   readonly allowedHosts?: readonly string[];
+  /** The local test identity provider, whose pages this server serves. */
+  readonly testIssuer?: TestIssuer;
 }
 
 async function readBody(request: IncomingMessage): Promise<Buffer | null> {
@@ -106,6 +115,15 @@ async function handle(options: DemoServerOptions, request: IncomingMessage, resp
     return;
   }
 
+  if (url.pathname.startsWith('/test-idp/') && options.testIssuer) {
+    const formBody = method === 'POST' ? await readBody(request) : null;
+    if (method === 'POST' && formBody === null) {
+      send(response, 413, 'application/json; charset=utf-8', '{"error":{"code":"payload_too_large"}}');
+      return;
+    }
+    if (await options.testIssuer.handle(request, response, formBody)) return;
+  }
+
   if (method !== 'GET' && method !== 'POST') {
     send(response, 405, 'application/json; charset=utf-8', '{"error":{"code":"method_not_allowed"}}');
     return;
@@ -117,21 +135,28 @@ async function handle(options: DemoServerOptions, request: IncomingMessage, resp
     return;
   }
 
-  const contentType = request.headers['content-type'];
+  const forwarded: Record<string, string> = {};
+  for (const name of ['content-type', 'cookie', 'origin'] as const) {
+    const value = request.headers[name];
+    if (typeof value === 'string') forwarded[name] = value;
+  }
   const injected = await options.app.inject({
     method,
     url: `${url.pathname}${url.search}`,
-    headers: contentType ? { 'content-type': contentType } : {},
+    headers: forwarded,
     ...(body !== null && body.length > 0 ? { payload: body } : {}),
   });
 
-  const headers: Record<string, string> = { ...SECURITY_HEADERS };
-  for (const name of ['content-type', 'x-request-id']) {
+  const headers: Record<string, string | string[]> = { ...SECURITY_HEADERS };
+  for (const name of ['content-type', 'x-request-id', 'location']) {
     const value = injected.headers[name];
     if (typeof value === 'string') headers[name] = value;
   }
+  // Every Set-Cookie, each as its own header line.
+  const cookies = injected.headers['set-cookie'];
+  if (cookies !== undefined) headers['set-cookie'] = Array.isArray(cookies) ? cookies : [String(cookies)];
   response.writeHead(injected.statusCode, headers);
-  response.end(injected.rawPayload);
+  response.end(injected.statusCode === 303 ? undefined : injected.rawPayload);
 }
 
 export function createDemoServer(options: DemoServerOptions): Server {

@@ -20,7 +20,22 @@ describe('application configuration fails closed', () => {
       host: '127.0.0.1',
       port: 3000,
       logLevel: 'info',
+      publicOrigin: null,
     });
+  });
+
+  it('accepts PUBLIC_BASE_URL only as an https origin, or http on loopback, and never echoes it', () => {
+    expect(loadAppConfig({ DATABASE_URL: validUrl, PUBLIC_BASE_URL: 'https://ms.example' }).publicOrigin).toBe('https://ms.example');
+    expect(loadAppConfig({ DATABASE_URL: validUrl, PUBLIC_BASE_URL: 'https://ms.example/' }).publicOrigin).toBe('https://ms.example');
+    expect(loadAppConfig({ DATABASE_URL: validUrl, PUBLIC_BASE_URL: 'http://127.0.0.1:3000' }).publicOrigin).toBe('http://127.0.0.1:3000');
+    expect(loadAppConfig({ DATABASE_URL: validUrl, PUBLIC_BASE_URL: 'http://localhost:3000' }).publicOrigin).toBe('http://localhost:3000');
+    for (const bad of ['http://192.168.1.5:3000', 'http://ms.example', 'https://ms.example/path', 'https://u:p@ms.example', 'https://ms.example?x=1', 'javascript:alert(1)', 'not a url Secret-42']) {
+      const problems = problemsOf(() => loadAppConfig({ DATABASE_URL: validUrl, PUBLIC_BASE_URL: bad }));
+      expect(problems).toHaveLength(1);
+      expect(problems[0]).toMatch(/^PUBLIC_BASE_URL: /);
+      expect(problems.join(' ')).not.toContain('Secret-42');
+      expect(problems.join(' ')).not.toContain('192.168');
+    }
   });
 
   it('rejects a missing DATABASE_URL, naming the setting', () => {

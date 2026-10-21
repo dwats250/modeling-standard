@@ -1,26 +1,73 @@
 import { createRequire } from 'node:module';
 import { networkInterfaces } from 'node:os';
-import type { ResolvePrincipal, SyntheticPrincipal } from '../authorization/access.ts';
-import type { ExplicitDatabaseTarget } from '../infrastructure/database/client.ts';
+import type { ResolvePrincipal, Principal } from '../authorization/access.ts';
+import { cookieValues } from '../http/cookies.ts';
+import type { Executor, ExplicitDatabaseTarget } from '../infrastructure/database/client.ts';
+import { sameDigest, tokenDigest } from '../infrastructure/tokens.ts';
+import { carriesSessionCookie, sessionPrincipal } from '../sessions/session.ts';
 
 /**
  * The local synthetic demo: shared constants and guards.
  *
  * The demo exists to show what is built, with invented records, on a
- * developer machine. It is not a credential mechanism and not a product
- * flow. D03 is decided (Google or Apple sign-in to an account) but no
- * sign-in is built, so the demo has exactly one principal, a fixed synthetic operator that stands for nobody. That
- * operator never acts as a party: it creates projects (S01: the creator is
- * an audit and authorization fact, not a party) and reads its own records.
+ * developer machine. It is not a product flow. It has two kinds of
+ * principal:
+ *
+ * - the demo operator, a fixed synthetic principal that stands for nobody.
+ *   It composes, shares, settles and invites (operator acts, because who does
+ *   those is not ruled), and never acts as a party;
+ * - signed-in test participants (S12): accounts signed in through the local
+ *   test identity provider, each acting only as its own party.
+ *
+ * A browser is one or the other, never both, and never the operator by
+ * accident (see `createDemoPrincipalResolver`).
  */
 
 /** The only database the demo will touch. Reset drops and recreates it. */
 export const DEMO_DATABASE = 'modeling_standard_demo';
 
-export const DEMO_OPERATOR: SyntheticPrincipal = Object.freeze({ id: 'demo-operator' });
+export const DEMO_OPERATOR: Principal = Object.freeze({ id: 'demo-operator', kind: 'synthetic' });
 
-/** Every request to the demo server is the demo operator. */
+/**
+ * Every request is the demo operator. For the demo's reset, export and the
+ * tests that drive operator acts directly; the demo server itself uses
+ * `createDemoPrincipalResolver`.
+ */
 export const demoOperatorPrincipal: ResolvePrincipal = () => DEMO_OPERATOR;
+
+/** The cookie that puts one browser in operator mode (an explicit demo convenience). */
+export const OPERATOR_COOKIE = 'ms_demo_operator';
+
+/**
+ * The demo server's principal source. It fails closed:
+ *
+ * - a request carrying a session cookie is that session's account or nobody
+ *   (malformed, duplicated, unknown, expired or ended) — never the operator;
+ * - a request without one is the operator only if it carries exactly one
+ *   operator cookie equal (in constant time) to this server's secret, which
+ *   is set only by the explicit "operator mode" action;
+ * - anything else is nobody.
+ *
+ * Signing in and signing out clear the operator cookie, so a participant who
+ * signs out is nobody, not the operator.
+ */
+export function createDemoPrincipalResolver(db: Executor, operatorSecret: string): ResolvePrincipal {
+  const expected = tokenDigest(operatorSecret);
+  if (!expected) throw new Error('the operator secret must be a canonical token');
+  return async (request) => {
+    const header = request.headers.cookie;
+    if (carriesSessionCookie(header)) return sessionPrincipal(db, header);
+    const values = cookieValues(header, OPERATOR_COOKIE);
+    if (values.length !== 1) return null;
+    const presented = tokenDigest(values[0]);
+    return presented !== null && sameDigest(presented, expected) ? DEMO_OPERATOR : null;
+  };
+}
+
+/** The exact origins a browser uses for the hosts the demo accepts, on its port. */
+export function demoOrigins(allowedHosts: readonly string[], port: number): string[] {
+  return allowedHosts.map((host) => `http://${host.includes(':') ? `[${host}]` : host}:${port}`);
+}
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 

@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
+import { syntheticOnly, type Policy, type Principal } from '../authorization/access.ts';
 import type { Executor } from '../infrastructure/database/client.ts';
 import { defineOperation } from '../http/operations.ts';
 import { project } from './tables.ts';
@@ -56,14 +56,19 @@ function toDto(row: ProjectRow): z.output<typeof projectDto> {
 
 // ---- Policies (next to the behaviour they govern) ----
 
-/** Any present principal may create a project; it is recorded as the creator. */
-const anyPrincipalMayCreate: Policy<object> = () => true;
+/**
+ * A synthetic (test or demo) principal may create a project; it is recorded
+ * as the creator. A signed-in account may not: who creates a project is not
+ * ruled for participants (S12), so it is refused rather than allowed by
+ * default.
+ */
+const syntheticPrincipalMayCreate: Policy<object> = (principal) => syntheticOnly(principal);
 
 /**
  * Only the creator may read a project through this slice. This is the
  * minimum access needed to exercise S01, not a visibility rule for parties.
  */
-export const creatorOnly: Policy<ProjectRow> = (principal: SyntheticPrincipal, target) =>
+export const creatorOnly: Policy<ProjectRow> = (principal: Principal, target) =>
   target.createdByPrincipalId === principal.id;
 
 // ---- Operations ----
@@ -82,11 +87,11 @@ export const createProjectOperation = defineOperation({
     kind: 'protected',
     // The object acted on is the proposed project itself.
     load: async (input) => input.body,
-    policy: anyPrincipalMayCreate,
+    policy: syntheticPrincipalMayCreate,
   },
   run: async (_input, { db, principal }) => {
     // Protected operations always run with a principal; the boundary enforces it.
-    const creator = principal as SyntheticPrincipal;
+    const creator = principal as Principal;
     const row = await insertProject(db, { createdByPrincipalId: creator.id });
     return toDto(row);
   },

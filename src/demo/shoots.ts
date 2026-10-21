@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { SyntheticPrincipal } from '../authorization/access.ts';
+import type { Principal } from '../authorization/access.ts';
 import { addBriefItem, openLiveBrief, type BriefItemSpec } from '../briefs/brief.ts';
 import { declineBriefRequest, setDraftPartyPresence, shareLiveBrief } from '../briefs/live.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
@@ -7,7 +7,7 @@ import { createPairwiseAgreement } from '../projects/agreement.ts';
 import { addProjectParty } from '../projects/party.ts';
 import { insertProject } from '../projects/project.ts';
 import type { AnnotationStore } from './annotations.ts';
-import { guarded } from './simulator.ts';
+import { guarded } from '../participants/refusals.ts';
 import { buildWalkthroughDraft, walkthroughAnnotation } from './walkthrough.ts';
 
 /**
@@ -131,7 +131,7 @@ export function composeShootOperation(annotations: AnnotationStore) {
     output: castOutput,
     access: anyOperatorMayCreate,
     run: async (input, { db, principal }) => {
-      const self = principal as SyntheticPrincipal;
+      const self = principal as Principal;
       const created = await guarded(() =>
         db.transaction(async (tx) => {
           const project = await insertProject(tx, { createdByPrincipalId: self.id });
@@ -175,7 +175,7 @@ export function startScenarioCardOperation(annotations: AnnotationStore) {
     output: castOutput,
     access: anyOperatorMayCreate,
     run: async (input, { db, principal }) => {
-      const self = principal as SyntheticPrincipal;
+      const self = principal as Principal;
       const card = input.body.card;
       const { projectId, draft } = await guarded(() =>
         db.transaction(async (tx) => {

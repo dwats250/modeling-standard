@@ -5,7 +5,8 @@ import type { ResolvePrincipal } from '../authorization/access.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { registerOperations, type AnyOperation } from '../http/operations.ts';
 import { AppError, type ErrorBody } from './errors.ts';
-import { operations } from './operation-list.ts';
+import type { IdentityOptions } from '../identity/operations.ts';
+import { createOperationList } from './operation-list.ts';
 
 /**
  * Everything the application needs from outside. Production (`src/main.ts`)
@@ -23,6 +24,15 @@ export interface AppDependencies {
    * synthetic demo (`src/demo/`) passes any; `src/main.ts` never does.
    */
   readonly additionalOperations?: readonly AnyOperation[];
+  /**
+   * The exact origins a cookie-bearing or browser POST may come from (see
+   * `registerOperations`). Read at request time. Default: none.
+   */
+  readonly allowedOrigins?: readonly string[];
+  /** Mark cookies `Secure`: the app is served over HTTPS. */
+  readonly secureCookies?: boolean;
+  /** Identity providers and session settings for sign-in. Default: no provider. */
+  readonly identity?: IdentityOptions;
 }
 
 const clientErrorCodes: Record<number, string> = {
@@ -72,7 +82,12 @@ export function createApp(deps: AppDependencies): FastifyInstance {
     return reply.code(404).send(payload);
   });
 
-  registerOperations(app, [...operations, ...(deps.additionalOperations ?? [])], { db: deps.db, resolvePrincipal: deps.resolvePrincipal });
+  registerOperations(app, [...createOperationList(deps.identity), ...(deps.additionalOperations ?? [])], {
+    db: deps.db,
+    resolvePrincipal: deps.resolvePrincipal,
+    ...(deps.allowedOrigins === undefined ? {} : { allowedOrigins: deps.allowedOrigins }),
+    ...(deps.secureCookies === undefined ? {} : { secureCookies: deps.secureCookies }),
+  });
 
   return app;
 }

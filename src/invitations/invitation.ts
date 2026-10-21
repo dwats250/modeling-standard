@@ -134,6 +134,16 @@ export async function resolveDirectInvitation(
 }
 
 /**
+ * The invitation with this id, or undefined. For a caller that already
+ * resolved the credential once (S12: a sign-in attempt records the
+ * invitation's id, never its credential). Not authorization to read anything.
+ */
+export async function findDirectInvitation(db: Executor, id: string): Promise<DirectInvitationRecord | undefined> {
+  const [row] = await db.select(recordColumns).from(directInvitation).where(eq(directInvitation.id, id)).limit(1);
+  return row;
+}
+
+/**
  * Claims a direct invitation for a sign-in account, in one transaction:
  * resolves the credential, checks the account exists, and binds the account
  * to the invitation's party through S06.
