@@ -40,7 +40,7 @@ import { verifyIdToken, type IdentityProvider } from './provider.ts';
  */
 
 export interface IdentityOptions {
-  /** Registered providers. Production registers none in this slice. */
+  /** Registered providers. Production registers Google only when it is fully configured (S13). */
   readonly providers: readonly IdentityProvider[];
   readonly sessionTtlSeconds?: number;
   /**
@@ -118,22 +118,30 @@ export function createIdentityOperations(options: IdentityOptions): readonly Any
     output: z.strictObject({}),
     access: publicAccess('the identity provider returns the browser here; the attempt, its browser binding and the ID token are checked before anything is written'),
     run: async (input, { db, cookies, log }): Promise<BrowserResult<Record<string, never>>> => {
+      // The browser's own binding cookie is cleared only once its attempt is
+      // found and matched: a stray or cross-site visit to this URL (no state,
+      // an unknown state, or someone else's attempt) leaves a sign-in this
+      // browser has in progress alone.
+      const refuse = (location: string): BrowserResult<Record<string, never>> => ({ kind: 'redirect', location });
       const done = (location: string, extra: readonly ResponseCookie[] = []): BrowserResult<Record<string, never>> => ({
         kind: 'redirect',
         location,
         cookies: [clearSignInCookie(), ...extra],
       });
       const { code, state } = input.query;
-      if (code === undefined || state === undefined) return done(SIGN_IN_FAILED_PATH);
+      if (state === undefined) return refuse(SIGN_IN_FAILED_PATH);
 
-      // Consumed first and atomically: whatever happens next, this state is spent.
+      // Consumed first and atomically: whatever happens next, this state is
+      // spent — including when the provider sends the browser back without a
+      // code (the person cancelled, or the provider refused).
       const attempt = await consumeSignInAttempt(db, state);
-      if (!attempt) return done(SIGN_IN_FAILED_PATH);
+      if (!attempt) return refuse(SIGN_IN_FAILED_PATH);
 
       // Only the browser that started the attempt may finish it.
       const bindings = cookies(SIGN_IN_COOKIE);
       const presented = bindings.length === 1 ? tokenDigest(bindings[0]) : null;
-      if (presented === null || !sameDigest(presented, attempt.bindingDigest)) return done(SIGN_IN_FAILED_PATH);
+      if (presented === null || !sameDigest(presented, attempt.bindingDigest)) return refuse(SIGN_IN_FAILED_PATH);
+      if (code === undefined) return done(SIGN_IN_FAILED_PATH);
 
       const provider = providerNamed(attempt.provider);
       if (!provider) return done(SIGN_IN_FAILED_PATH);

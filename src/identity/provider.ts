@@ -13,10 +13,10 @@ import { sameDigest, textDigest } from '../infrastructure/tokens.ts';
  * ID token. Every ID token, from every provider, is verified by
  * `verifyIdToken` below with the provider's issuer, audience and keys.
  *
- * Production registers no provider in this slice; the only provider that
- * exists is the demo's local test issuer (`src/demo/test-issuer.ts`), which
- * is outside the build. Issuers are constants of a provider, never
- * configuration.
+ * Production registers Google (`google.ts`, S13) only when its client is
+ * fully configured, and otherwise none. The demo's local test issuer
+ * (`src/demo/test-issuer.ts`) is outside the build. Issuers are constants of
+ * a provider, never configuration.
  */
 
 export interface AuthorizationRequest {
@@ -36,7 +36,8 @@ export interface CodeExchange {
 }
 
 export interface TokenVerification {
-  readonly issuer: string;
+  /** The issuer, or every spelling the provider documents for it. */
+  readonly issuer: string | readonly string[];
   readonly audience: string;
   readonly keys: JWTVerifyGetKey;
 }
@@ -79,7 +80,7 @@ export async function verifyIdToken(token: string, verification: TokenVerificati
   let payload: JWTPayload;
   try {
     ({ payload } = await jwtVerify(token, verification.keys, {
-      issuer: verification.issuer,
+      issuer: typeof verification.issuer === 'string' ? verification.issuer : [...verification.issuer],
       audience: verification.audience,
       algorithms: ['RS256'],
       requiredClaims: ['sub', 'iat', 'exp', 'nonce'],

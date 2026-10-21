@@ -64,22 +64,42 @@ const publicBaseUrl = z
     return url.origin;
   });
 
-const appConfigSchema = z.object({
-  DATABASE_URL: postgresUrl,
-  PUBLIC_BASE_URL: publicBaseUrl,
-  HOST: z.string().min(1, { error: 'must not be empty' }).default('127.0.0.1'),
-  PORT: z
-    .string()
-    .regex(/^\d{1,5}$/, { error: 'must be an integer between 0 and 65535' })
-    .transform(Number)
-    .pipe(z.number().max(65535, { error: 'must be an integer between 0 and 65535' }))
-    .default(3000),
-  LOG_LEVEL: z
-    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'], {
-      error: 'must be one of fatal, error, warn, info, debug, trace, silent',
-    })
-    .default('info'),
-});
+/**
+ * Google sign-in (S13): a Web application OAuth client. Both values or
+ * neither; with them, PUBLIC_BASE_URL is required (it is where Google sends
+ * the browser back). Messages never echo either value.
+ */
+const GOOGLE_CLIENT_ID = /^[0-9]{1,32}-[a-z0-9]{1,64}\.apps\.googleusercontent\.com$/;
+const GOOGLE_CLIENT_SECRET = /^[A-Za-z0-9_-]{16,128}$/;
+
+const appConfigSchema = z
+  .object({
+    DATABASE_URL: postgresUrl,
+    PUBLIC_BASE_URL: publicBaseUrl,
+    GOOGLE_CLIENT_ID: z.string().regex(GOOGLE_CLIENT_ID, { error: 'must be a Google OAuth client id (…apps.googleusercontent.com)' }).optional(),
+    GOOGLE_CLIENT_SECRET: z.string().regex(GOOGLE_CLIENT_SECRET, { error: 'must be a Google OAuth client secret (letters, digits, _ and -)' }).optional(),
+    HOST: z.string().min(1, { error: 'must not be empty' }).default('127.0.0.1'),
+    PORT: z
+      .string()
+      .regex(/^\d{1,5}$/, { error: 'must be an integer between 0 and 65535' })
+      .transform(Number)
+      .pipe(z.number().max(65535, { error: 'must be an integer between 0 and 65535' }))
+      .default(3000),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'], {
+        error: 'must be one of fatal, error, warn, info, debug, trace, silent',
+      })
+      .default('info'),
+  })
+  .superRefine((env, ctx) => {
+    const id = env.GOOGLE_CLIENT_ID !== undefined;
+    const secret = env.GOOGLE_CLIENT_SECRET !== undefined;
+    if (id !== secret) {
+      ctx.addIssue({ code: 'custom', path: [id ? 'GOOGLE_CLIENT_SECRET' : 'GOOGLE_CLIENT_ID'], message: 'is required when the other Google setting is set' });
+    } else if (id && env.PUBLIC_BASE_URL === null) {
+      ctx.addIssue({ code: 'custom', path: ['PUBLIC_BASE_URL'], message: 'is required when Google sign-in is configured' });
+    }
+  });
 
 const migrationConfigSchema = z.object({
   MIGRATION_DATABASE_URL: postgresUrl,
@@ -92,6 +112,8 @@ export interface AppConfig {
   readonly logLevel: z.infer<typeof appConfigSchema>['LOG_LEVEL'];
   /** The public origin (`PUBLIC_BASE_URL`), or null when none is configured. */
   readonly publicOrigin: string | null;
+  /** The Google OAuth client, only when completely configured; otherwise null (no Google sign-in). */
+  readonly google: { readonly clientId: string; readonly clientSecret: string } | null;
 }
 
 export interface MigrationConfig {
@@ -119,6 +141,10 @@ export function loadAppConfig(env: Env): AppConfig {
     port: parsed.PORT,
     logLevel: parsed.LOG_LEVEL,
     publicOrigin: parsed.PUBLIC_BASE_URL,
+    google:
+      parsed.GOOGLE_CLIENT_ID !== undefined && parsed.GOOGLE_CLIENT_SECRET !== undefined
+        ? { clientId: parsed.GOOGLE_CLIENT_ID, clientSecret: parsed.GOOGLE_CLIENT_SECRET }
+        : null,
   };
 }
 
