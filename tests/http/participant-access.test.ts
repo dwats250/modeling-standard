@@ -743,6 +743,17 @@ describe('ID tokens are verified by jose against the provider (amendment 6)', ()
   });
 });
 
+describe('the signed-in check', () => {
+  it('says only whether this browser is signed in', async () => {
+    const op = await operator();
+    const shoot = await liveShootWithLinks(op);
+    const a = await signedIn(shoot.modelLink, uniqueName('Model'));
+    expect((await new Client().get('/session')).json()).toEqual({ signedIn: false });
+    expect((await op.get('/session')).json()).toEqual({ signedIn: false });
+    expect((await a.client.get('/session')).body).toBe('{"signedIn":true}');
+  });
+});
+
 describe('production isolation (AC-15)', () => {
   it('the production application registers no identity provider: sign-in starts nowhere', async () => {
     const prod = createApp({ db: database.db, logger: createLogger('silent'), resolvePrincipal: () => null, allowedOrigins: ['https://ms.example'] });

@@ -1187,13 +1187,7 @@ function renderDemoControl(view, projectId) {
  * the body of those two requests.
  */
 async function renderInvitation(root, credential) {
-  let signedIn = false;
-  try {
-    await api('GET', '/session');
-    signedIn = true;
-  } catch (error) {
-    if (error.status !== 401 && error.status !== 403) throw error;
-  }
+  const { signedIn } = await api('GET', '/session');
   if (signedIn) {
     const accept = async () => {
       try {

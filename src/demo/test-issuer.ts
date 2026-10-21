@@ -79,7 +79,10 @@ const escape = (text: string) => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]
 const SECURITY_HEADERS = {
   'content-security-policy': "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; form-action 'self'",
   'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer',
+  // Not no-referrer: under it a browser sends `Origin: null` with the form's
+  // POST, and the approval would be refused. same-origin still sends nothing
+  // to any other origin.
+  'referrer-policy': 'same-origin',
   'cache-control': 'no-store',
 };
 
@@ -165,7 +168,7 @@ export async function createTestIssuer(options: TestIssuerOptions): Promise<Test
     response.writeHead(status, { ...SECURITY_HEADERS, 'content-type': 'text/html; charset=utf-8' });
     response.end(
       `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
-        `<title>${escape(title)}</title><link rel="stylesheet" href="/journey.css"></head>` +
+        `<title>${escape(title)}</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/journey.css"></head>` +
         `<body class="journey"><main class="screen"><div class="screen-body">${body}</div></main></body></html>`,
     );
   }

@@ -218,14 +218,14 @@ export function createIdentityOperations(options: IdentityOptions): readonly Any
     },
   });
 
-  /** Whether this browser is signed in. Says nothing about the account. */
+  /** Whether this browser is signed in as an account. Says nothing about which. */
   const session = defineOperation({
     name: 'session.read',
     method: 'GET',
     path: '/session',
-    output: z.strictObject({}),
-    access: { kind: 'protected', load: async () => ({}), policy: accountOnly },
-    run: async () => ({}),
+    output: z.strictObject({ signedIn: z.boolean() }),
+    access: publicAccess('says only whether this browser carries a valid session, so an invitation page can ask before accepting with it'),
+    run: async (_input, { principal }) => ({ signedIn: principal?.kind === 'account' }),
   });
 
   return [start, callback, signOut, claim, session];

@@ -102,7 +102,7 @@ describe('the production operation list', () => {
     expect(() => validateOperations(operations)).not.toThrow();
   });
 
-  it('classifies every operation explicitly; only health, sign-in and sign-out are public', () => {
+  it('classifies every operation explicitly; only health, sign-in, sign-out and the signed-in check are public', () => {
     // Adding a public operation must be a deliberate, reviewed change to this list.
     const classification = Object.fromEntries(operations.map((op) => [op.name, op.access.kind]));
     expect(classification).toEqual({
@@ -115,7 +115,7 @@ describe('the production operation list', () => {
       'sign-in.callback': 'public',
       'sign-out': 'public',
       'invitation.claim': 'protected',
-      'session.read': 'protected',
+      'session.read': 'public',
       'participant.read': 'protected',
       'participant.tick': 'protected',
       'participant.untick': 'protected',
