@@ -103,6 +103,8 @@ a { color: inherit; }
   line-height: 1.4;
   text-align: center;
 }
+/* Its longer pill may wrap, so the top bar fits a narrow phone with any font. */
+body[data-environment="staging"] .demo-pill { white-space: normal; line-height: 1.15; text-align: center; }
 .operator-key-form { display: grid; gap: 8px; margin-top: 24px; }
 .operator-key-form .btn { margin-top: 4px; }
 .menu-link {
