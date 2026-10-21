@@ -79,6 +79,17 @@ Speculative concerns hardened:
 
 **Test-isolation fix:** a participant-access test counted every sign-in attempt in the shared test database and raced the staging suite; it now counts only its own server's.
 
+## Status check (2026-10-21)
+
+Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:3130 once HTTPS is enabled, and starting staging in tmux `ms-staging`. Checked first; prerequisites still missing, so neither was done:
+
+- Google client: not configured (`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` still commented out in the env file).
+- Tailscale HTTPS certificates: not enabled (`CertDomains` empty).
+- Serve before any change (keep exactly): `TCP 80 HTTP`, `asher.tail457b97.ts.net:80` `/` → `/home/dustin/Projects/options-observatory/dashboard`; Observatory answers 200.
+- Asher does not resolve its own `ts.net` name; verify from Asher with `curl --resolve asher.tail457b97.ts.net:8443:100.64.34.84 …`.
+- GitGuardian incident 38772493 not yet dismissed (check still failing on `2b9fa95`).
+- `CLAUDE.md` now has a Process ownership rule (after an S12 demo was stopped by a broad `pkill`; it was restarted with its data intact).
+
 ## Running now
 
 | What | Where | How to stop |
