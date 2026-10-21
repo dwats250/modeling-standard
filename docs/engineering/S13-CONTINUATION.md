@@ -97,7 +97,19 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
 - Serve: `tailscale serve --bg --https=8443 http://127.0.0.1:3130` added. Port 80 (Options Observatory) unchanged and answering 200; 8443 tailnet only; no Funnel.
 - Verified from Asher (`--resolve` to 100.64.34.84): certificate CN/SAN `asher.tail457b97.ts.net`, Let's Encrypt, valid to 2027-01-19, chain verifies. With a temporary probe of this task's own on 3130 (PID-stopped afterwards), Serve forwards `Host: asher.tail457b97.ts.net:8443` — the pinned authority — plus `X-Forwarded-*` and `Tailscale-User-*` headers, which staging does not read.
 - Staging database intact: 4 shoots, 0 accounts, 0 bindings. Not reset or reseeded.
-- Staging not started yet (waits for the credentials).
+- Google credentials entered by Dustin with the helper: both present, both valid shapes, file mode 600 (values never read into output).
+- **Staging started** in tmux `ms-staging` (`npm run staging`, cwd this worktree; PID 2985264 at start), listening on 127.0.0.1:3130 only. Not reset or reseeded.
+- Verified from Asher through Serve (`https://asher.tail457b97.ts.net:8443`):
+  - page 200, certificate verifies; no HSTS header;
+  - `/demo/environment`: staging, providers `google` only, operator key required;
+  - Host: anything but the pinned authority is 421 (including a forged `X-Forwarded-Host`);
+  - Origin: a foreign or missing Origin on the operator POST is 403;
+  - operator key: missing or wrong is 403 (logged as "operator key refused"); the right one is 200 and sets `__Host-ms_demo_operator` (`Path=/; HttpOnly; SameSite=Strict; Secure`) and clears `__Host-ms_session`;
+  - the operator cookie works only under its `__Host-` name (bare name 401);
+  - test identity provider absent (`/test-idp/authorize` 404, `provider: test` 404); Google start with an unknown invitation 404;
+  - the log holds neither the client secret nor the operator key;
+  - Options Observatory still 200 on port 80.
+- **Not yet verified: real Google.** Google accepting the redirect URI and a real sign-in are exercised only by Dustin's phone run (acceptance steps in `S13-STAGING.md`).
 
 ## Running now
 
@@ -107,6 +119,8 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
 | Staging Postgres | 127.0.0.1:5435, `ms-staging-postgres` | `sg docker -c "docker stop ms-staging-postgres"` |
 | S13 test Postgres (disposable) | 127.0.0.1:5436, `ms-s13-postgres` | `sg docker -c "docker rm -f ms-s13-postgres"` |
 | S13 work shell | tmux `ms-s13` | — |
+| **Staging** | `https://asher.tail457b97.ts.net:8443/` (tailnet), 127.0.0.1:3130, tmux `ms-staging` | `tmux kill-session -t ms-staging` |
+| Tailscale Serve 8443 → 3130 | tailnet only | `tailscale serve --https=8443 off` (never `reset`) |
 
 Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434), Options Observatory on Tailscale Serve port 80, and the other worktrees.
 
