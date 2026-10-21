@@ -61,3 +61,11 @@ ChatGPT and Dustin own the PR and merge layer.
 - Do not modify another agent's branch or worktree.
 - Do not assume another agent's unmerged work exists unless the task explicitly says to build on it.
 - `main` is the shared baseline.
+
+## Process ownership
+
+- Never use broad process-name or command-line matching to stop processes (for example `pkill -f`, `killall`, or killing every node/npm/chrome process).
+- Stop a service through its dedicated service manager, exact tmux session, or a PID captured when this task started it.
+- Before stopping anything, verify its identity, owner, working directory and purpose. A listener's port alone is not proof of ownership.
+- Preserve unrelated sessions and services. If ownership is uncertain, investigate; do not kill speculatively.
+- Cleanup must target only resources created or explicitly assigned to the current task. Do not restart another service to simplify cleanup.
