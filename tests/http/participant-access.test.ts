@@ -350,7 +350,8 @@ describe('invitation behaviour (AC-4, AC-5)', () => {
 
   it('an invitation-shaped string that is not an invitation starts nothing: no attempt, no cookie, no account', async () => {
     const client = new Client();
-    const attemptsBefore = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt')).rows[0]!.n);
+    // Other suites start attempts in the same database concurrently: count only this server's.
+    const attemptsBefore = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt where redirect_uri = $1', [`${base}/sign-in/callback`])).rows[0]!.n);
     const baseline = generic404(await client.post('/sign-in/start', { provider: 'test', invitation: newToken().token }));
     for (const invitation of ['x', `${newToken().token}=`, newToken().token.toUpperCase(), 'a'.repeat(43), ' '.repeat(10)]) {
       const res = await client.post('/sign-in/start', { provider: 'test', invitation });
@@ -358,7 +359,7 @@ describe('invitation behaviour (AC-4, AC-5)', () => {
       expect(res.setCookies).toEqual([]);
     }
     expect(generic404(await client.post('/sign-in/start', { provider: 'google', invitation: newToken().token }))).toBe(baseline);
-    const attemptsAfter = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt')).rows[0]!.n);
+    const attemptsAfter = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt where redirect_uri = $1', [`${base}/sign-in/callback`])).rows[0]!.n);
     expect(attemptsAfter).toBe(attemptsBefore);
     expect(client.jar.size).toBe(0);
   });
