@@ -1,6 +1,8 @@
 # S13 (proposed): Google sign-in and synthetic staging
 
-Status: PLAN. Not authorized and not built. Slice number S13 is a proposal (S11 stays deferred and keeps its number).
+Status: BUILT as S13 on `stage-1/s13-google-staging` (2026-10-20; see `docs/slices/S13-google-staging.md`). Below is the plan as written before the build; where the build differs, the slice and `docs/engineering/S13-STAGING.md` are authoritative.
+
+Original status: PLAN. Not authorized and not built. Slice number S13 is a proposal (S11 stays deferred and keeps its number).
 Base: `stage-1/s12-participant-access` at `da8003ed5683b2c6bcac5a3798d0bad6fb28ce5f` (PR #34, open). The build starts from `main` once PR #34 is merged, or from that commit if Dustin says to build on it unmerged.
 Date: 2026-10-20
 

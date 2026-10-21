@@ -1,5 +1,7 @@
 # Local synthetic demo
 
+(Synthetic staging — the same demo over HTTPS for tailnet phones, with Google sign-in and a keyed operator mode — is S13: `docs/engineering/S13-STAGING.md`.)
+
 A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), invite each person by link, let each person sign in on their own device and act only as themselves (S12), and resolve it live to **READY TO SIGN**. It is not real-use approval (Gate 2). Sign-in is a local **test identity provider**, not Google or Apple, and verifies nothing. Signing is not built here.
 
 ## Two people, two devices (S12)
