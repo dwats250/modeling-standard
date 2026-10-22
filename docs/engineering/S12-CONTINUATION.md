@@ -103,4 +103,4 @@ Then: **Continue as the demo operator** → Demo menu → **Shared, with values 
 
 Checks: `npm run check`, `npm test`, `CHROME_PATH=/usr/bin/google-chrome npm run test:demo`, `npm run build`.
 
-**Recommended integration:** this branch into `main` on its own (S11 is deferred and builds on it later). PRs and merges are Dustin's and ChatGPT's.
+**Recommended integration:** this branch into `main` on its own (S11 is deferred and builds on it later). Dustin owns the PR and merge steps.
