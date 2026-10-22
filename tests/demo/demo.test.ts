@@ -69,8 +69,13 @@ describe('separation from production', () => {
     expect(build.exclude).toEqual(expect.arrayContaining(['src/demo', 'src/scripts/demo.ts', 'src/scripts/demo-reset.ts']));
   });
 
-  it('declares every demo operation as protected', () => {
-    for (const op of demoOperations) expect({ name: op.name, kind: op.access.kind }).toEqual({ name: op.name, kind: 'protected' });
+  it('declares every demo operation as protected, except the explicit operator-mode switch', () => {
+    // Operator mode is how a browser becomes the operator, so it cannot require
+    // being one; it is origin-checked and demo-only (S12).
+    for (const op of demoOperations) {
+      const expected = op.name === 'demo.operator.enter' ? 'public' : 'protected';
+      expect({ name: op.name, kind: op.access.kind }).toEqual({ name: op.name, kind: expected });
+    }
   });
 });
 

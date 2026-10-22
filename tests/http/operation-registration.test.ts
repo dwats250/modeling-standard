@@ -102,7 +102,7 @@ describe('the production operation list', () => {
     expect(() => validateOperations(operations)).not.toThrow();
   });
 
-  it('classifies every operation explicitly, and only health is public', () => {
+  it('classifies every operation explicitly; only health, sign-in, sign-out and the signed-in check are public', () => {
     // Adding a public operation must be a deliberate, reviewed change to this list.
     const classification = Object.fromEntries(operations.map((op) => [op.name, op.access.kind]));
     expect(classification).toEqual({
@@ -111,7 +111,23 @@ describe('the production operation list', () => {
       'stage0.syntheticResource.read': 'protected',
       'project.create': 'protected',
       'project.read': 'protected',
+      'sign-in.start': 'public',
+      'sign-in.callback': 'public',
+      'sign-out': 'public',
+      'invitation.claim': 'protected',
+      'session.read': 'public',
+      'participant.read': 'protected',
+      'participant.tick': 'protected',
+      'participant.untick': 'protected',
+      'participant.decline': 'protected',
+      'participant.parameter': 'protected',
+      'participant.group-check': 'protected',
     });
+  });
+
+  it('only sign-in and sign-out use the browser response kind (cookies, redirects)', () => {
+    // Every other operation answers with its declared JSON output and nothing else.
+    expect(operations.filter((op) => op.response === 'browser').map((op) => op.name).sort()).toEqual(['sign-in.callback', 'sign-in.start', 'sign-out']);
   });
 });
 

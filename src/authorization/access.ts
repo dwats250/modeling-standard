@@ -4,29 +4,37 @@ import type { Executor } from '../infrastructure/database/client.ts';
 /**
  * The authorization boundary's vocabulary. Deliberately small:
  *
- * - A principal is an opaque identifier. D03 has since decided that a
- *   participant signs in with Google or Apple to an account (S06,
- *   `src/accounts/`), so an authenticated production principal is intended
- *   to represent an internal account id. No authentication adapter exists
- *   yet: in production nothing produces a principal, so every protected
- *   operation is denied. Synthetic principals remain test- and demo-only.
+ * - A principal is an opaque identifier with a kind. An `account` principal
+ *   is a signed-in sign-in account (D03; S06 accounts, S12 sessions): its id
+ *   is `account.id`. A `synthetic` principal is test- or demo-only (the test
+ *   header resolver, the demo operator) and stands for nobody. Sign-in is the
+ *   door, not identity (D03): an account principal is not a verified person.
  * - Every operation declares its access: public (with a stated reason) or
  *   protected (with a loader for the object acted on and a policy over it).
  *   There is no third option and no default.
  */
 
-export interface SyntheticPrincipal {
+export interface Principal {
   readonly id: string;
+  readonly kind: 'account' | 'synthetic';
 }
 
-/** Turns a request into a principal, or null. The only source of principals. */
-export type ResolvePrincipal = (request: FastifyRequest) => SyntheticPrincipal | null;
+/**
+ * Turns a request into a principal, or null. The only source of principals.
+ * It must fail closed: anything it cannot positively resolve is null.
+ */
+export type ResolvePrincipal = (request: FastifyRequest) => Principal | null | Promise<Principal | null>;
 
-/** Production resolver for Stage 0: no credential mechanism exists yet. */
+/** A resolver that never produces a principal: every protected operation is denied. */
 export const resolveNoPrincipal: ResolvePrincipal = () => null;
 
 /** A policy decides whether a principal may act on a specific loaded target. */
-export type Policy<Target> = (principal: SyntheticPrincipal, target: Target) => boolean;
+export type Policy<Target> = (principal: Principal, target: Target) => boolean;
+
+/** Only synthetic (test or demo) principals; a signed-in account is refused. */
+export function syntheticOnly(principal: Principal): boolean {
+  return principal.kind === 'synthetic';
+}
 
 export interface PublicAccess {
   readonly kind: 'public';
@@ -36,8 +44,11 @@ export interface PublicAccess {
 
 export interface ProtectedAccess<Input, Target> {
   readonly kind: 'protected';
-  /** Loads the object being acted on. `undefined` means it does not exist. */
-  readonly load: (input: Input, db: Executor) => Promise<Target | undefined>;
+  /**
+   * Loads the object being acted on. `undefined` means it does not exist (or,
+   * for a principal-dependent loader, does not exist for this principal).
+   */
+  readonly load: (input: Input, db: Executor, principal: Principal) => Promise<Target | undefined>;
   readonly policy: Policy<Target>;
 }
 
@@ -58,11 +69,11 @@ export type AuthorizationOutcome<Target> =
  */
 export async function authorize<Input, Target>(
   access: ProtectedAccess<Input, Target>,
-  principal: SyntheticPrincipal,
+  principal: Principal,
   input: Input,
   db: Executor,
 ): Promise<AuthorizationOutcome<Target>> {
-  const target = await access.load(input, db);
+  const target = await access.load(input, db, principal);
   if (target === undefined) return { allowed: false, reason: 'not_found' };
   if (access.policy(principal, target) !== true) return { allowed: false, reason: 'forbidden' };
   return { allowed: true, target };

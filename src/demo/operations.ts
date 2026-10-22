@@ -1,12 +1,16 @@
 import { z } from 'zod';
-import type { Policy, SyntheticPrincipal } from '../authorization/access.ts';
+import { AppError } from '../app/errors.ts';
+import { publicAccess, syntheticOnly, type Policy, type Principal } from '../authorization/access.ts';
 import { findLiveBriefForProject } from '../briefs/brief.ts';
 import { getBriefGreenState, isReady, listBriefPresence } from '../briefs/live.ts';
-import { defineOperation, type AnyOperation } from '../http/operations.ts';
+import { defineBrowserOperation, defineOperation, type AnyOperation } from '../http/operations.ts';
+import { createDirectInvitation } from '../invitations/invitation.ts';
+import { SESSION_COOKIE, clearSessionCookie, endSession } from '../sessions/session.ts';
 import { listPairwiseAgreements } from '../projects/agreement.ts';
 import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, listProjectsCreatedBy } from '../projects/project.ts';
 import type { AnnotationStore } from './annotations.ts';
+import { OPERATOR_COOKIE } from './demo.ts';
 import { participantOperations } from './participant.ts';
 import { createShootOperations } from './shoots.ts';
 import { createSimulatorOperations } from './simulator.ts';
@@ -49,7 +53,7 @@ export const listDemoProjectsOperation = defineOperation({
     policy: anyPrincipalMayListOwn,
   },
   run: async (_input, { db, principal }) => {
-    const self = principal as SyntheticPrincipal;
+    const self = principal as Principal;
     const rows = await listProjectsCreatedBy(db, self.id);
     const projects = [];
     for (const row of rows) {
@@ -142,16 +146,101 @@ export const readDemoProjectRecordOperation = defineOperation({
 });
 
 /**
- * Every demo operation: the inspector's reads, the simulator, the composer
- * and scenario cards, and the participant screens. The operations that write
- * demo labels are given the annotation store they write to.
+ * Invite: one direct invitation per party of a shoot the operator created,
+ * each credential returned once (S07). An operator convenience, labelled as
+ * such: who sends invitations is not ruled. The page builds each link on its
+ * own origin with the credential in the fragment (`/#/i/<credential>`), so it
+ * never appears in a request line or a log. Allowed in any phase: a person
+ * who claims before the brief is shared sees nothing until it is.
  */
-export function createDemoOperations(annotations: AnnotationStore): readonly AnyOperation[] {
+export const inviteDemoPartiesOperation = defineOperation({
+  name: 'demo.shoots.invite',
+  method: 'POST',
+  path: '/demo/shoots/:projectId/invitations',
+  successStatus: 201,
+  input: { params: z.strictObject({ projectId: z.uuid() }) },
+  output: z.strictObject({ invitations: z.array(z.strictObject({ partyId: z.uuid(), credential: z.string() })) }),
+  access: {
+    kind: 'protected',
+    load: (input, db) => findProject(db, input.params.projectId),
+    policy: creatorOnly,
+  },
+  run: async (_input, { db, target }) => {
+    const invitations = await db.transaction(async (tx) => {
+      const out = [];
+      for (const party of await listProjectParties(tx, target.id)) {
+        const created = await createDirectInvitation(tx, { projectId: target.id, partyId: party.id });
+        out.push({ partyId: party.id, credential: created.credential });
+      }
+      return out;
+    });
+    return { invitations };
+  },
+});
+
+const OPERATOR_COOKIE_SECONDS = 12 * 60 * 60;
+
+/**
+ * Operator mode: the explicit demo convenience that makes this browser the
+ * demo operator. It ends any session this browser carries and sets the
+ * operator cookie to the server's per-process secret. Without this action a
+ * browser is never the operator.
+ */
+function enterOperatorModeOperation(operatorSecret: string | undefined) {
+  return defineBrowserOperation({
+    name: 'demo.operator.enter',
+    method: 'POST',
+    path: '/demo/operator',
+    output: z.strictObject({}),
+    access: publicAccess('the demo convenience that makes this browser the synthetic demo operator; origin-checked; demo only'),
+    run: async (_input, { db, cookies }) => {
+      if (operatorSecret === undefined) throw new AppError(404, 'not_found');
+      for (const token of cookies(SESSION_COOKIE)) await endSession(db, token);
+      return {
+        kind: 'json',
+        body: {},
+        cookies: [clearSessionCookie(), { name: OPERATOR_COOKIE, value: operatorSecret, maxAge: OPERATOR_COOKIE_SECONDS, path: '/', sameSite: 'Strict' }],
+      };
+    },
+  });
+}
+
+/** Refused before any lookup: a signed-in account is never the operator. */
+const NOT_OPERATOR = Symbol('not the demo operator');
+
+/**
+ * Every protected demo operation admits only a synthetic principal. A signed-in
+ * account gets the same 403 whatever it names, before anything is loaded.
+ */
+function operatorOnly(op: AnyOperation): AnyOperation {
+  if (op.access.kind !== 'protected') return op;
+  const inner = op.access;
+  return {
+    ...op,
+    access: {
+      kind: 'protected',
+      load: (input: Parameters<typeof inner.load>[0], db: Parameters<typeof inner.load>[1], principal: Principal) =>
+        syntheticOnly(principal) ? inner.load(input, db, principal) : Promise.resolve(NOT_OPERATOR),
+      policy: (principal: Principal, target: unknown) => target !== NOT_OPERATOR && syntheticOnly(principal) && inner.policy(principal, target),
+    },
+  };
+}
+
+/**
+ * Every demo operation: the inspector's reads, the simulator, the composer
+ * and scenario cards, the operator's participant simulation, Invite, and the
+ * explicit operator-mode action. The operations that write demo labels are
+ * given the annotation store they write to. Every protected one refuses a
+ * signed-in account.
+ */
+export function createDemoOperations(annotations: AnnotationStore, operator: { secret?: string } = {}): readonly AnyOperation[] {
   return [
     listDemoProjectsOperation,
     readDemoProjectRecordOperation,
     ...createSimulatorOperations(annotations),
     ...createShootOperations(annotations),
     ...participantOperations,
-  ];
+    inviteDemoPartiesOperation,
+    enterOperatorModeOperation(operator.secret),
+  ].map(operatorOnly);
 }

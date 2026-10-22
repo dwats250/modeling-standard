@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0 and S01, S02 and S06 to S09 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09 and S12 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -44,9 +44,11 @@ describe('runtime and migration credentials', () => {
       brief_item: ['SELECT', 'INSERT', 'DELETE'],
       brief_party_presence: ['SELECT', 'INSERT'],
       brief_tick: ['SELECT', 'INSERT', 'DELETE'],
+      account_session: ['SELECT', 'INSERT'],
+      sign_in_attempt: ['SELECT', 'INSERT', 'DELETE'],
     };
-    // Column-level UPDATE only (S08, S09); no table may be updated wholesale.
-    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence']);
+    // Column-level UPDATE only (S08, S09, S12); no table may be updated wholesale.
+    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence', 'account_session']);
     await withClient(inject('runtimeUrl'), async (c) => {
       const tables = await c.query<{ table_name: string }>(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -95,6 +97,9 @@ describe('runtime and migration credentials', () => {
         ['live_brief', ['fingerprint', 'phase']],
         ['brief_party_presence', ['on_site']],
         ['brief_tick', []],
+        // S12: a session can only be ended.
+        ['account_session', ['ended_at']],
+        ['sign_in_attempt', []],
       ] as const) {
         const { rows } = await c.query<{ column_name: string }>(
           `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1

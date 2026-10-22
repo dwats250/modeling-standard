@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { AppError } from '../app/errors.ts';
-import type { SyntheticPrincipal } from '../authorization/access.ts';
-import { BriefActionRefusedError, briefOfItem, findLiveBrief } from '../briefs/brief.ts';
+import type { Principal } from '../authorization/access.ts';
+import { briefOfItem, findLiveBrief } from '../briefs/brief.ts';
 import {
   declineBriefRequest,
   groupCheckBriefItems,
@@ -15,6 +14,7 @@ import {
 import type { Executor } from '../infrastructure/database/client.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
 import { creatorOnly, findProject, insertProject } from '../projects/project.ts';
+import { guarded } from '../participants/refusals.ts';
 import type { AnnotationStore } from './annotations.ts';
 import { buildWalkthroughDraft, walkthroughAnnotation } from './walkthrough.ts';
 
@@ -66,52 +66,13 @@ async function loadItem(db: Executor, itemId: string): Promise<ItemTarget | unde
 const briefAccess = {
   kind: 'protected' as const,
   load: (input: { params: { id: string } }, db: Executor) => loadBrief(db, input.params.id),
-  policy: (principal: SyntheticPrincipal, target: BriefTarget) => creatorOnly(principal, target.project),
+  policy: (principal: Principal, target: BriefTarget) => creatorOnly(principal, target.project),
 };
 const itemAccess = {
   kind: 'protected' as const,
   load: (input: { params: { id: string } }, db: Executor) => loadItem(db, input.params.id),
-  policy: (principal: SyntheticPrincipal, target: ItemTarget) => creatorOnly(principal, target.project),
+  policy: (principal: Principal, target: ItemTarget) => creatorOnly(principal, target.project),
 };
-
-/** Database refusals the walkthrough can meet, by constraint, as stable codes. */
-const CONSTRAINT_CODES: Readonly<Record<string, string>> = {
-  live_brief_share_requires_wording: 'wording_not_materialized',
-  live_brief_share_requires_presence: 'presence_missing',
-  brief_tick_requires_approver: 'not_an_approver',
-  brief_tick_requires_settled: 'still_pending',
-  brief_tick_requires_live: 'not_live',
-  brief_item_live_rigid: 'fixed_once_shared',
-  brief_item_live_no_insert: 'fixed_once_shared',
-  brief_item_live_no_delete: 'fixed_once_shared',
-  brief_item_live_universal_kept: 'universal_kept',
-  brief_party_presence_live_fixed: 'not_draft',
-  // S10: a brief being signed is fixed (the demo never freezes one).
-  brief_item_signing_fixed: 'not_live',
-  brief_tick_signing_fixed: 'not_live',
-  pairwise_agreement_signing_fixed: 'not_live',
-};
-
-export function asConflict(error: unknown): never {
-  if (error instanceof AppError) throw error;
-  if (error instanceof BriefActionRefusedError) throw new AppError(409, error.reason);
-  const e = error as { code?: unknown; constraint?: unknown; cause?: { code?: unknown; constraint?: unknown } };
-  const code = typeof e.code === 'string' ? e.code : e.cause?.code;
-  const raw = typeof e.constraint === 'string' ? e.constraint : e.cause?.constraint;
-  const constraint = typeof raw === 'string' ? raw : '';
-  if (constraint in CONSTRAINT_CODES) throw new AppError(409, CONSTRAINT_CODES[constraint]!);
-  if (code === '23503') throw new AppError(409, 'not_in_project');
-  if (code === '23514') throw new AppError(409, 'rejected_by_database');
-  throw error;
-}
-
-export async function guarded<T>(fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (error) {
-    return asConflict(error);
-  }
-}
 
 const idParams = z.strictObject({ id: z.uuid() });
 const idOutput = z.strictObject({ id: z.uuid() });
@@ -140,7 +101,7 @@ export function startScenarioOperation(annotations: AnnotationStore) {
     run: async (_input, { db, principal }) => {
       // A fresh project with the synthetic photographer and model, their pair,
       // and the walkthrough's draft brief, as fixture construction.
-      const self = principal as SyntheticPrincipal;
+      const self = principal as Principal;
       const { project, draft } = await db.transaction(async (tx) => {
         const project = await insertProject(tx, { createdByPrincipalId: self.id });
         return { project, draft: await buildWalkthroughDraft(tx, project.id) };

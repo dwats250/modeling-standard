@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
+import { createDemoApplication } from '../../src/demo/application.ts';
 import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
 import { collectSnapshot, renderSnapshotHtml } from '../../src/demo/export.ts';
 import type { FixtureAnnotations } from '../../src/demo/fixtures.ts';
@@ -18,6 +19,7 @@ import { createDemoOperations } from '../../src/demo/operations.ts';
 import { resetDemoDatabase } from '../../src/demo/reset.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
+import { enterOperatorMode } from '../support/demo-browser.ts';
 import { requireEnv } from '../support/urls.ts';
 
 /**
@@ -56,6 +58,7 @@ async function openPage(viewport: keyof typeof VIEWPORTS, url = `${base}/inspect
   page.on('console', (m) => {
     if (m.type() === 'error') pageErrors.push(`${viewport}: ${m.text()}`);
   });
+  await enterOperatorMode(page, base);
   await page.goto(url);
   return page;
 }
@@ -89,12 +92,14 @@ async function startServer(port = 0): Promise<void> {
   const logger = createLogger('warn');
   database = openDatabase(demoDatabaseTarget(requireEnv('DATABASE_URL')), logger);
   const store = new AnnotationStore(join(fixtureDir, ANNOTATIONS_FILE));
+  // The operation list, for the production-isolation check; the server runs the real demo wiring.
   demoOperations = createDemoOperations(store);
-  app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
-  await app.ready();
-  server = createDemoServer({ app, annotations: store });
+  const demo = await createDemoApplication({ db: database.db, logger, annotations: store });
+  app = demo.app;
+  server = createDemoServer({ app, annotations: store, testIssuer: demo.issuer });
   await new Promise<void>((done) => server.listen(port, '127.0.0.1', done));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  demo.origins.push(base);
 }
 
 async function stopServer(): Promise<void> {
@@ -507,7 +512,11 @@ describe('demo regression', () => {
 
   it('exports a portable snapshot that renders from disk with no network and no writes', async () => {
     const fixture = JSON.parse(await (await fetch(`${base}/annotations.json`)).text()) as unknown;
-    const html = await renderSnapshotHtml(await collectSnapshot(app, fixture));
+    // As `npm run demo:export` does: an operator-only app on the demo database, never the server's.
+    const exportApp = createApp({ db: database.db, logger: createLogger('silent'), resolvePrincipal: demoOperatorPrincipal, additionalOperations: demoOperations });
+    await exportApp.ready();
+    const html = await renderSnapshotHtml(await collectSnapshot(exportApp, fixture));
+    await exportApp.close();
     const file = join(fixtureDir, 'snapshot.html');
     await writeFile(file, html);
 

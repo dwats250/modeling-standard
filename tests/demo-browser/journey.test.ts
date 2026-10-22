@@ -6,15 +6,15 @@ import { join, resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { chromium, type Browser, type Locator, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import { ANNOTATIONS_FILE, AnnotationStore } from '../../src/demo/annotations.ts';
-import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
+import { createDemoApplication } from '../../src/demo/application.ts';
+import { demoDatabaseTarget } from '../../src/demo/demo.ts';
 import type { FixtureAnnotations } from '../../src/demo/fixtures.ts';
-import { createDemoOperations } from '../../src/demo/operations.ts';
 import { resetDemoDatabase } from '../../src/demo/reset.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
+import { enterOperatorMode } from '../support/demo-browser.ts';
 import { requireEnv } from '../support/urls.ts';
 
 /**
@@ -67,11 +67,12 @@ async function startServer(port = 0): Promise<void> {
   const logger = createLogger('warn');
   database = openDatabase(demoDatabaseTarget(requireEnv('DATABASE_URL')), logger);
   const store = new AnnotationStore(join(demoDir, ANNOTATIONS_FILE));
-  app = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: createDemoOperations(store) });
-  await app.ready();
-  server = createDemoServer({ app, annotations: store });
+  const demo = await createDemoApplication({ db: database.db, logger, annotations: store });
+  app = demo.app;
+  server = createDemoServer({ app, annotations: store, testIssuer: demo.issuer });
   await new Promise<void>((done) => server.listen(port, '127.0.0.1', done));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  demo.origins.push(base);
 }
 
 async function stopServer(): Promise<void> {
@@ -89,6 +90,7 @@ async function openPage(viewport: Viewport, hash = '#/'): Promise<Page> {
   page.on('console', (m) => {
     if (m.type() === 'error') pageErrors.push(`${viewport}: ${m.text()}`);
   });
+  await enterOperatorMode(page, base);
   await page.goto(`${base}/${hash}`);
   await idle(page);
   return page;
@@ -211,12 +213,15 @@ describe('participant journey', () => {
         'It is a structural rule: the list of terms a shoot must contain is not drafted yet',
         'Signing is the next step and is not built in this demo',
         'The no-means-no term — its wording is Cory’s to write (D04).',
-        'Real sign-in (D03).',
+        'Real Google or Apple sign-in (D03), and verification (D11).',
+        'It is not Google and not Apple, and it checks nothing about who you are',
+        'Signing in is not verification.',
         'What signing looks like (D04).',
         'Walking away from a collaboration.',
         '“Live” in particular is a candidate word, not a chosen one.',
         'Which section each term sits in (on set, the shoot, fee) is a demo choice, not the term catalogue.',
-        'anyone who opens this demo can act as any person by changing the address',
+        'anyone who opens this demo can choose operator mode',
+        'a signed-in browser cannot use it',
       ]) {
         expect({ statement, shown: about.includes(statement) }).toEqual({ statement, shown: true });
       }

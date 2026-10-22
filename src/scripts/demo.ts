@@ -1,11 +1,10 @@
 import { resolve } from 'node:path';
 import { sql } from 'drizzle-orm';
-import { createApp } from '../app/create-app.ts';
 import { createLogger } from '../app/logger.ts';
 import { ConfigError, loadAppConfig } from '../config/config.ts';
-import { DemoGuardError, demoDatabaseTarget, demoListenTarget, demoOperatorPrincipal } from '../demo/demo.ts';
+import { createDemoApplication } from '../demo/application.ts';
+import { DemoGuardError, demoDatabaseTarget, demoListenTarget, demoOrigins } from '../demo/demo.ts';
 import { ANNOTATIONS_FILE, AnnotationStore } from '../demo/annotations.ts';
-import { createDemoOperations } from '../demo/operations.ts';
 import { createDemoServer } from '../demo/server.ts';
 import { openDatabase, type DatabaseTarget } from '../infrastructure/database/client.ts';
 
@@ -43,17 +42,13 @@ try {
 }
 
 const annotations = new AnnotationStore(resolve(process.cwd(), '.demo', ANNOTATIONS_FILE));
-const app = createApp({
-  db: database.db,
-  logger,
-  resolvePrincipal: demoOperatorPrincipal,
-  additionalOperations: createDemoOperations(annotations),
-});
-await app.ready();
+const { app, issuer, origins } = await createDemoApplication({ db: database.db, logger, annotations });
+// The exact origins a browser POST may come from: the hosts the Host check accepts, on this port.
+origins.push(...demoOrigins(listen.allowedHosts, port));
 
-const server = createDemoServer({ app, annotations, allowedHosts: listen.allowedHosts });
+const server = createDemoServer({ app, annotations, allowedHosts: listen.allowedHosts, testIssuer: issuer });
 server.listen(port, listen.listenHost, () => {
-  process.stdout.write('Synthetic demo (invented people; nothing here is real):\n');
+  process.stdout.write('Synthetic demo (invented people; nothing here is real; sign-in is a local test provider, not Google or Apple):\n');
   for (const host of listen.urls) process.stdout.write(`  http://${host}:${port}/\n`);
   process.stdout.write('Stop it with Ctrl+C.\n');
 });

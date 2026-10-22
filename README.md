@@ -12,7 +12,8 @@ This repository intentionally begins with product planning rather than applicati
 - **Integrated:** a local synthetic demo with a record inspector and a two-person walkthrough from draft to READY TO SIGN, a portable read-only snapshot and an end-to-end browser regression in CI (`docs/engineering/DEMO.md`). It runs only on loopback against the demo database, with invented records.
 - **Decided, not built:** participation credential (D03), agreement topology and lifecycle (D02), what each party sees (D10) and Cory's authorization of pre-launch real use (D06) are now DECIDED for photo shoots, and D04 is largely answered. Apart from the S06 account binding, the S07 invitation-link substrate, the S08 brief topology and the S09 live brief, none of that is implemented yet: deciding a semantic does not build it.
 - **Still open:** no-means-no wording and the visible signing act (D04), remaining public vocabulary (D05), the document trigger table and counsel review (D08), counsel-dependent retention and erasure (D09), and synthetic-demo verification (D11). See `decisions/README.md`.
-- **Gated:** no real participant flow exists. Production has no principal, so every protected operation is refused. Real use (Gate 2) is not open: D06 authorizes it in principle, but its prerequisites, including counsel-dependent D08/D09 items and the participant flow itself, are unmet.
+- **Built on `stage-1/s12-participant-access` (not yet merged):** S12 participant access — sessions, sign-in that starts only from a direct invitation and is bound to the starting browser, the claim, and signed-in routes where a person acts only as their own party (`docs/engineering/S12-PARTICIPANT-ACCESS.md`). The only identity provider is the demo's local test provider; no real Google or Apple sign-in is built or tested, and nothing verifies anyone.
+- **Gated:** no real participant flow exists. Production resolves only sessions and registers no identity provider, so no one can sign in and every protected operation is refused. Real use (Gate 2) is not open: D06 authorizes it in principle, but its prerequisites, including counsel-dependent D08/D09 items and the participant flow itself, are unmet.
 
 ## Product authority
 
@@ -24,8 +25,8 @@ Cory's vision is the sole product authority. Nothing in this repository is a pro
 - **Dustin** owns technical orchestration, implementation authorization, repository control and merge authority.
 - Agents and tools may support planning, implementation, coordination or review only within the task they are explicitly given.
 - Agents do not resolve Cory-owned product seams. An open product question stays open until Cory answers it; "configurable later" does not authorize a default now.
-- Claude follows the narrower repository contract in `CLAUDE.md`: build, test, commit, push, hand off and stop. It does not own pull requests or merges.
-- **Dustin and ChatGPT** own the pull-request review and merge-preparation layer; Dustin remains the human merge authority.
+- The implementation session follows the narrower repository contract in `CLAUDE.md`: build, test, commit, push, hand off and stop. It does not own pull requests or merges.
+- **Dustin** owns the pull-request review and merge-preparation layer and remains the human merge authority.
 - Human review occurs at material product boundaries and at every merge.
 
 This is the whole operating model. Tool-specific instructions may narrow an agent's behavior but may not expand its authority. The prototype repository's `GOVERNANCE.md`, `PROJECT-ROLES.md` and `CLAUDE.md` describe a migration-era arrangement and do not govern this repository; they remain historical evidence only.

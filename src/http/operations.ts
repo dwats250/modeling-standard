@@ -5,9 +5,10 @@ import {
   authorize,
   type Access,
   type ResolvePrincipal,
-  type SyntheticPrincipal,
+  type Principal,
 } from '../authorization/access.ts';
 import type { Database } from '../infrastructure/database/client.ts';
+import { cookieValues, serializeCookie, type ResponseCookie } from './cookies.ts';
 
 /**
  * Operations are the only way behaviour becomes reachable over HTTP.
@@ -22,7 +23,16 @@ import type { Database } from '../infrastructure/database/client.ts';
  *      onRequest hook, i.e. before the body is read or parsed;
  *   3. strict input: undeclared fields are rejected, never silently dropped;
  *   4. authorization on the loaded target;
- *   5. strict output: a response is the declared shape or a 500, never a row.
+ *   5. strict output: a response is the declared shape or a 500, never a row;
+ *   6. exact-origin protection: a POST to a browser operation, or any POST
+ *      carrying a cookie, must name one explicitly allowed origin in its
+ *      Origin header, checked before the body is read.
+ *
+ * An operation declares its response kind. `json` (the default) returns the
+ * declared output and nothing else. `browser` (sign-in, sign-out, the demo's
+ * explicit operator switch) returns either JSON or a redirect to a fixed
+ * same-origin path, and may ask the boundary to set structured cookies. No
+ * operation sets a header itself.
  *
  * It also refuses any route not created here. (Hooks and not-found handlers
  * are a different Fastify mechanism; ESLint confines them to src/app/create-app.ts
@@ -41,10 +51,26 @@ export interface OperationInput<Params, Query, Body> {
 
 export interface OperationContext<Target> {
   readonly db: Database;
-  readonly principal: SyntheticPrincipal | null;
+  readonly principal: Principal | null;
   /** The authorized target for protected operations; undefined for public ones. */
   readonly target: Target;
   readonly log: FastifyBaseLogger;
+  /** The request's Origin, only when it is one of the allowed origins; otherwise null. */
+  readonly origin: string | null;
+  /** Every value the request's Cookie header carries for `name`. */
+  readonly cookies: (name: string) => string[];
+}
+
+/** What a `browser` operation returns: JSON or a same-origin redirect, with cookies. */
+export type BrowserResult<Output> =
+  | { readonly kind: 'json'; readonly body: Output; readonly cookies?: readonly ResponseCookie[] }
+  | { readonly kind: 'redirect'; readonly location: string; readonly cookies?: readonly ResponseCookie[] };
+
+/** A same-origin path: one leading slash, then not a slash; only visible ASCII, no backslash. */
+const SAME_ORIGIN_PATH = /^\/(?![/\\])[!-[\]-~]*$/;
+
+export function isSameOriginPath(location: string): boolean {
+  return SAME_ORIGIN_PATH.test(location);
 }
 
 type InputOf<P extends StrictObject, Q extends StrictObject, B extends StrictObject> = OperationInput<
@@ -64,10 +90,12 @@ export interface Operation<
   readonly method: 'GET' | 'POST';
   readonly path: string;
   readonly successStatus: 200 | 201;
+  /** `json`: `run` returns the output. `browser`: `run` returns a BrowserResult. */
+  readonly response: 'json' | 'browser';
   readonly input: { readonly params: P; readonly query: Q; readonly body: B };
   readonly output: z.ZodType<Output>;
   readonly access: Access<InputOf<P, Q, B>, Target>;
-  readonly run: (input: InputOf<P, Q, B>, ctx: OperationContext<Target>) => Promise<Output>;
+  readonly run: (input: InputOf<P, Q, B>, ctx: OperationContext<Target>) => Promise<Output | BrowserResult<Output>>;
 }
 
 // The heterogeneous operation list needs an existential type; `any` here is
@@ -103,9 +131,47 @@ export function defineOperation<
     method: definition.method,
     path: definition.path,
     successStatus: definition.successStatus ?? 200,
+    response: 'json',
     input: {
       // When a part is omitted its type parameter is the StrictObject default,
       // so the "no fields" schema is exactly that type.
+      params: definition.input?.params ?? (noFields() as P),
+      query: definition.input?.query ?? (noFields() as Q),
+      body: definition.input?.body ?? (noFields() as B),
+    },
+    output: definition.output,
+    access: definition.access,
+    run: definition.run,
+  };
+}
+
+/**
+ * A browser-facing operation: its `run` returns JSON or a same-origin
+ * redirect, with structured cookies. Every POST to one must carry an allowed
+ * Origin, cookie or not.
+ */
+export function defineBrowserOperation<
+  Output,
+  Target = undefined,
+  P extends StrictObject = StrictObject,
+  Q extends StrictObject = StrictObject,
+  B extends StrictObject = StrictObject,
+>(definition: {
+  name: string;
+  method: 'GET' | 'POST';
+  path: string;
+  input?: { params?: P; query?: Q; body?: B };
+  output: z.ZodType<Output>;
+  access: Access<InputOf<P, Q, B>, Target>;
+  run: (input: InputOf<P, Q, B>, ctx: OperationContext<Target>) => Promise<BrowserResult<Output>>;
+}): Operation<P, Q, B, Output, Target> {
+  return {
+    name: definition.name,
+    method: definition.method,
+    path: definition.path,
+    successStatus: 200,
+    response: 'browser',
+    input: {
       params: definition.input?.params ?? (noFields() as P),
       query: definition.input?.query ?? (noFields() as Q),
       body: definition.input?.body ?? (noFields() as B),
@@ -140,6 +206,7 @@ export function validateOperations(operations: readonly AnyOperation[]): void {
     else names.add(op.name);
 
     if (op?.method !== 'GET' && op?.method !== 'POST') problems.push(`${label}: method must be GET or POST`);
+    if (op?.response !== 'json' && op?.response !== 'browser') problems.push(`${label}: response must be "json" or "browser"`);
     if (typeof op?.path !== 'string' || !op.path.startsWith('/')) problems.push(`${label}: path must start with /`);
     const route = `${String(op?.method)} ${String(op?.path)}`;
     if (routes.has(route)) problems.push(`${label}: duplicate route ${route}`);
@@ -183,6 +250,14 @@ function invalidInput(location: string, error: z.ZodError): AppError {
 export interface OperationDependencies {
   readonly db: Database;
   readonly resolvePrincipal: ResolvePrincipal;
+  /**
+   * The exact origins (`scheme://host[:port]`) a cookie-bearing or browser
+   * POST may come from. Read at request time, so a server that learns its
+   * port after listening can fill it in. Empty: every such POST is refused.
+   */
+  readonly allowedOrigins?: readonly string[];
+  /** Mark cookies `Secure` (the app is served over HTTPS). */
+  readonly secureCookies?: boolean;
 }
 
 /**
@@ -208,17 +283,26 @@ export function registerOperations(
   });
 
   // The principal resolved for each request, before its body is parsed.
-  const principals = new WeakMap<FastifyRequest, SyntheticPrincipal | null>();
+  const principals = new WeakMap<FastifyRequest, Principal | null>();
+
+  /** The request's Origin if it is exactly one of the allowed origins. Forwarded headers are never read. */
+  const allowedOrigin = (request: FastifyRequest): string | null => {
+    const origin = request.headers.origin;
+    return typeof origin === 'string' && (deps.allowedOrigins ?? []).includes(origin) ? origin : null;
+  };
 
   for (const operation of operations) {
     const op = operation as ErasedOperation;
 
     // Runs before body parsing: an unauthenticated request to a protected
-    // operation gets 401 without the server reading its body, validating its
-    // input, or touching the database.
+    // operation gets 401, and a cross-origin state-changing request gets
+    // 403, without the server reading its body, validating its input, or
+    // touching the database beyond resolving the principal.
     const onRequest = async (request: FastifyRequest): Promise<void> => {
-      const principal = deps.resolvePrincipal(request);
+      const principal = await deps.resolvePrincipal(request);
       if (op.access.kind === 'protected' && principal === null) throw new AppError(401, 'unauthenticated');
+      const needsOrigin = op.method === 'POST' && (op.response === 'browser' || request.headers.cookie !== undefined);
+      if (needsOrigin && allowedOrigin(request) === null) throw new AppError(403, 'cross_origin');
       principals.set(request, principal);
     };
 
@@ -244,23 +328,53 @@ export function registerOperations(
         target = outcome.target;
       }
 
-      const result: unknown = await op.run(input, { db: deps.db, principal, target, log: request.log });
+      const context = {
+        db: deps.db,
+        principal,
+        target,
+        log: request.log,
+        origin: allowedOrigin(request),
+        cookies: (name: string) => cookieValues(request.headers.cookie, name),
+      };
+      const result: unknown = await op.run(input, context);
 
-      const output = op.output.safeParse(result);
-      if (!output.success) {
-        // Log where the mismatch is, never the values that caused it.
-        request.log.error(
-          { operation: op.name, issues: output.error.issues.map((i) => ({ code: i.code, path: i.path.map(String) })) },
-          'operation result does not match its declared output',
-        );
-        throw new AppError(500, 'internal_error');
+      if (op.response === 'browser') {
+        const browser = result as BrowserResult<unknown>;
+        const cookies = (browser.cookies ?? []).map((cookie) => serializeCookie(cookie, deps.secureCookies === true));
+        if (browser.kind === 'redirect') {
+          if (!isSameOriginPath(browser.location)) {
+            request.log.error({ operation: op.name }, 'operation redirect is not a same-origin path');
+            throw new AppError(500, 'internal_error');
+          }
+          if (cookies.length > 0) reply.header('set-cookie', cookies);
+          reply.code(303).header('location', browser.location);
+          return null;
+        }
+        const output = parseOutput(op, browser.body, request);
+        if (cookies.length > 0) reply.header('set-cookie', cookies);
+        reply.code(op.successStatus);
+        return output;
       }
 
+      const output = parseOutput(op, result, request);
       reply.code(op.successStatus);
-      return output.data;
+      return output;
     };
 
     ownHandlers.add(handler);
     app.route({ method: op.method, url: op.path, onRequest, handler });
   }
+}
+
+/** The declared output, or a 500 that logs where the mismatch is, never the values. */
+function parseOutput(op: ErasedOperation, result: unknown, request: FastifyRequest): unknown {
+  const output = op.output.safeParse(result);
+  if (!output.success) {
+    request.log.error(
+      { operation: op.name, issues: output.error.issues.map((i) => ({ code: i.code, path: i.path.map(String) })) },
+      'operation result does not match its declared output',
+    );
+    throw new AppError(500, 'internal_error');
+  }
+  return output.data;
 }

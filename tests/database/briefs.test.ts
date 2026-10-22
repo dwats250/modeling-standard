@@ -462,8 +462,13 @@ describe('what the S08 tables hold', () => {
 });
 
 describe('boundaries', () => {
-  it('adds no HTTP operation', () => {
-    expect(operations.filter((op) => /brief|item|term|layer/i.test(`${op.name} ${op.path}`))).toEqual([]);
+  it('adds no HTTP operation: the only brief routes are S12\'s signed-in participant routes', () => {
+    expect(
+      operations
+        .filter((op) => /brief|item|term|layer/i.test(`${op.name} ${op.path}`))
+        .map((op) => op.name)
+        .sort(),
+    ).toEqual(['participant.decline', 'participant.parameter', 'participant.tick', 'participant.untick']);
   });
 
   it('has no logging, principal, network or provider code in src/briefs', () => {

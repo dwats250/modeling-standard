@@ -18,6 +18,8 @@ describe('trigger functions', () => {
          where n.nspname = 'public' and p.prorettype = 'trigger'::regtype order by 1`,
       );
       expect(functions.rows.map((r) => r.name)).toEqual([
+        'account_session_end_once',
+        'account_session_stamp',
         'account_stamp',
         'brief_item_check_scope',
         'brief_item_guard_live',
@@ -29,6 +31,7 @@ describe('trigger functions', () => {
         'pairwise_agreement_guard_signing',
         'party_account_binding_stamp',
         'project_party_guard_roster',
+        'sign_in_attempt_stamp',
       ]);
       for (const f of functions.rows) {
         expect({ name: f.name, config: f.config, callable: f.callable }).toEqual({
