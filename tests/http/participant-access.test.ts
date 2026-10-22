@@ -7,6 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inject } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
+import { freezeBriefForSigning } from '../../src/briefs/live.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import { createDemoApplication, type DemoApplication } from '../../src/demo/application.ts';
 import { demoOperatorPrincipal } from '../../src/demo/demo.ts';
@@ -93,7 +94,7 @@ interface Body {
   modelPartyId: string;
   invitations: { partyId: string; credential: string }[];
   authorizationUrl: string;
-  brief: { id: string };
+  brief: { id: string; phase: string };
 }
 interface Res {
   status: number;
@@ -489,6 +490,52 @@ describe('live resolution through two sessions (AC-11)', () => {
     expect((await model.client.post(`/shoots/${shoot.projectId}/items/${anyTick.id}/untick`)).json().ready).toBe(false);
     expect((await photographer.client.get(`/shoots/${shoot.projectId}`)).json().ready).toBe(false);
     expect((await model.client.post(`/shoots/${shoot.projectId}/items/${anyTick.id}/tick`)).json().ready).toBe(true);
+  });
+});
+
+describe('no participant route accepts a frozen or final brief (S11, AC-20)', () => {
+  it('a brief the operator froze, then finalized, is the generic 404 on every participant route, with no signing control in the view', async () => {
+    const op = await operator();
+    const shoot = await liveShootWithLinks(op);
+    const people = [await signedIn(shoot.modelLink, uniqueName('Model')), await signedIn(shoot.photographerLink, uniqueName('Photographer'))];
+    expect(JSON.stringify((await people[0]!.client.get(`/shoots/${shoot.projectId}`)).json())).not.toMatch(/sign|final|contract/i);
+    // As in AC-11: resolve and tick through the two sessions until ready.
+    for (let round = 0; round < 6; round += 1) {
+      for (const person of people) {
+        let view = (await person.client.get(`/shoots/${shoot.projectId}`)).json();
+        for (const item of view.items) {
+          if (item.pending === 'decide_together') await op.post(`/demo/sim/items/${item.id}/settle`, { value: '[synthetic] agreed' });
+          if (item.actions.setParameter) await person.client.post(`/shoots/${shoot.projectId}/items/${item.id}/parameter`, { value: '[synthetic] agreed' });
+        }
+        view = (await person.client.get(`/shoots/${shoot.projectId}`)).json();
+        for (const item of view.items) if (item.actions.tick) await person.client.post(`/shoots/${shoot.projectId}/items/${item.id}/tick`);
+      }
+      if ((await people[0]!.client.get(`/shoots/${shoot.projectId}`)).json().ready) break;
+    }
+    const model = people[0]!;
+    const ready = (await model.client.get(`/shoots/${shoot.projectId}`)).json();
+    expect(ready.ready).toBe(true);
+    const itemId = ready.items[0]!.id;
+    const record = (await op.get(`/demo/projects/${shoot.projectId}/record`)).json();
+    const nowhere = generic404(await model.client.get(`/shoots/${randomUUID()}`));
+    const refusedEverywhere = async () => {
+      for (const person of people) {
+        expect(generic404(await person.client.get(`/shoots/${shoot.projectId}`))).toBe(nowhere);
+        for (const act of ['tick', 'untick', 'decline']) {
+          expect(generic404(await person.client.post(`/shoots/${shoot.projectId}/items/${itemId}/${act}`))).toBe(nowhere);
+        }
+        expect(generic404(await person.client.post(`/shoots/${shoot.projectId}/group-check`, { itemIds: [itemId] }))).toBe(nowhere);
+      }
+      // The operator's labelled simulation of a person's screen is live-only too.
+      expect((await op.get(`/demo/shoots/${shoot.projectId}/as/${shoot.modelPartyId}`)).status).toBe(404);
+    };
+
+    await freezeBriefForSigning(database.db, record.brief.id);
+    await refusedEverywhere();
+    const finalized = await op.post(`/demo/sim/briefs/${record.brief.id}/finalize`);
+    expect(finalized.status).toBe(200);
+    expect((await op.get(`/demo/projects/${shoot.projectId}/record`)).json().brief.phase).toBe('final');
+    await refusedEverywhere();
   });
 });
 

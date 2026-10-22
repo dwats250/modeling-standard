@@ -3,6 +3,8 @@ import { AppError } from '../app/errors.ts';
 import { publicAccess, syntheticOnly, type Policy, type Principal } from '../authorization/access.ts';
 import { findLiveBriefForProject } from '../briefs/brief.ts';
 import { getBriefGreenState, isReady, listBriefPresence } from '../briefs/live.ts';
+import { contractViewFor, findContractForBrief, getContract, verifyContractRecord } from '../contracts/contract.ts';
+import { renderContractHtml } from '../contracts/rendering.ts';
 import { defineBrowserOperation, defineOperation, type AnyOperation } from '../http/operations.ts';
 import { sameDigest, tokenDigest } from '../infrastructure/tokens.ts';
 import { createDirectInvitation } from '../invitations/invitation.ts';
@@ -28,9 +30,12 @@ import { createSimulatorOperations } from './simulator.ts';
  * The inspector shows the stored record as it is: parties, the internal
  * pair-scope records, and the live brief (S08, S09) with its phase, presence
  * facts and each item's current green state, derived (approvers, who ticks
- * it now, green) — and whether the whole brief is ready to sign. It is not a
- * view any party would get: D10 is decided for photo shoots, but no party
- * view is built. It writes nothing, and shows no time or history because
+ * it now, green) — and whether the whole brief is ready to sign. Once the
+ * operator has finalized a brief (S11, synthetic), it shows the stored final
+ * contract: its clauses, parties and bound accounts, both signature records
+ * with their database time and chain, whether the chain verifies, and each
+ * party's proposal rendering. It is not a view any party would get. It
+ * writes nothing, and shows no time or history of the live brief because
  * none is stored.
  */
 
@@ -85,6 +90,43 @@ const briefItemDto = z.strictObject({
   green: z.boolean(),
 });
 
+// The stored final contract (S11), whole: the operator's inspector only.
+const contractDto = z.strictObject({
+  id: z.uuid(),
+  fingerprint: z.string(),
+  chain: z.strictObject({ valid: z.boolean(), problems: z.array(z.string()) }),
+  parties: z.array(z.strictObject({ partyId: z.uuid(), accountId: z.uuid(), onSite: z.boolean() })),
+  clauses: z.array(
+    z.strictObject({
+      itemId: z.uuid(),
+      position: z.number().int().positive(),
+      layer: z.enum(['universal', 'shared', 'money']),
+      pairwiseAgreementId: z.uuid().nullable(),
+      subjectPartyId: z.uuid().nullable(),
+      shape: z.enum(['declaration', 'request', 'open_parameter']).nullable(),
+      itemKey: z.enum(['fee', 'no_means_no', 'coverage_level', 'physical_contact', 'stop_rule']).nullable(),
+      content: z.string(),
+      value: z.string().nullable(),
+      approverPartyIds: z.array(z.uuid()),
+    }),
+  ),
+  signatures: z.array(
+    z.strictObject({
+      sequence: z.number().int().positive(),
+      partyId: z.uuid(),
+      accountId: z.uuid(),
+      fingerprint: z.string(),
+      signedAt: z.string(),
+      ip: z.string().nullable(),
+      userAgent: z.string().nullable(),
+      prevHash: z.string(),
+      recordHash: z.string(),
+    }),
+  ),
+  /** Each party's view, as the labelled proposal rendering (self-contained HTML). */
+  renderings: z.array(z.strictObject({ partyId: z.uuid(), html: z.string() })),
+});
+
 export const readDemoProjectRecordOperation = defineOperation({
   name: 'demo.project.record',
   method: 'GET',
@@ -97,13 +139,14 @@ export const readDemoProjectRecordOperation = defineOperation({
     brief: z
       .strictObject({
         id: z.uuid(),
-        // `signing` (S10) is internal; the demo never freezes a brief.
-        phase: z.enum(['draft', 'live', 'signing']),
+        // `signing` (S10) and `final` (S11) are reached only by the operator's synthetic finalization.
+        phase: z.enum(['draft', 'live', 'signing', 'final']),
         ready: z.boolean(),
         presence: z.array(z.strictObject({ partyId: z.uuid(), onSite: z.boolean() })),
         items: z.array(briefItemDto),
       })
       .nullable(),
+    contract: contractDto.nullable(),
   }),
   access: {
     kind: 'protected',
@@ -115,6 +158,8 @@ export const readDemoProjectRecordOperation = defineOperation({
     const agreements = await listPairwiseAgreements(db, target.id);
     const found = await findLiveBriefForProject(db, target.id);
     const state = found ? await getBriefGreenState(db, found.id) : null;
+    const stored = found ? await findContractForBrief(db, found.id) : undefined;
+    const full = stored ? await getContract(db, stored.id) : null;
     return {
       project: { id: target.id },
       parties: parties.map((p) => ({ id: p.id })),
@@ -140,6 +185,17 @@ export const readDemoProjectRecordOperation = defineOperation({
               tickedBy: [...tickedBy],
               green,
             })),
+          }
+        : null,
+      contract: full
+        ? {
+            id: full.contract.id,
+            fingerprint: full.contract.fingerprint,
+            chain: (({ valid, problems }) => ({ valid, problems: [...problems] }))(verifyContractRecord(full)),
+            parties: full.parties.map((p) => ({ ...p })),
+            clauses: full.items.map((i) => ({ ...i, approverPartyIds: [...i.approverPartyIds] })),
+            signatures: full.signatures.map((sig) => ({ ...sig, signedAt: sig.signedAt.toISOString() })),
+            renderings: full.parties.map((p) => ({ partyId: p.partyId, html: renderContractHtml(contractViewFor(full, p.partyId)) })),
           }
         : null,
     };

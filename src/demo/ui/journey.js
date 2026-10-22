@@ -764,11 +764,12 @@ async function renderShoot(root, projectId) {
   const label = labeller(projectId, partyIds);
   const cast = [...partyIds].sort(byLabel(label));
   const brief = record.brief;
-  const stage = brief?.phase === 'live' ? (brief.ready ? 'ready' : 'live') : 'draft';
+  const past = brief?.phase === 'signing' || brief?.phase === 'final';
+  const stage = brief?.phase === 'live' ? (brief.ready ? 'ready' : 'live') : past ? 'ready' : 'draft';
 
   root.append(
     el('header', { className: 'shoot-head' }, [
-      el('p', { className: 'eyebrow', text: brief?.phase === 'live' ? 'Shared' : 'Draft' }),
+      el('p', { className: 'eyebrow', text: brief?.phase === 'final' ? 'Final (synthetic)' : brief?.phase === 'live' || past ? 'Shared' : 'Draft' }),
       el('h1', { text: shootTitle(projectId) }),
       brief ? progressSteps(stage) : null,
       el('div', { className: 'cast' }, cast.length ? cast.map((id) => el('span', { className: 'person', text: label(id) })) : [el('span', { className: 'muted', text: 'Nobody yet' })]),
@@ -782,6 +783,17 @@ async function renderShoot(root, projectId) {
   }
   if (brief.phase === 'live') {
     root.append(renderChooser(projectId, cast, label), renderInviteCard(projectId, cast, label));
+    return;
+  }
+  if (brief.phase === 'signing' || brief.phase === 'final') {
+    // S11: reached only by the operator's synthetic finalization. No person's screen shows this phase.
+    root.append(
+      el('section', { className: 'card' }, [
+        el('h2', { text: brief.phase === 'final' ? 'Finalized by the operator (synthetic)' : 'Frozen (internal)' }),
+        el('p', { className: 'muted', text: 'Nobody’s screen shows a brief in this phase: what people see while signing, and after, is still open. The stored record is in the inspector.' }),
+        link('Open the inspector', '/inspector', 'link'),
+      ]),
+    );
     return;
   }
   if (cast.length === 0) {

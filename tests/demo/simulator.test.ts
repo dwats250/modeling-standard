@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inject } from 'vitest';
+import { resolveAccountForLogin } from '../../src/accounts/account.ts';
+import { bindPartyToAccount } from '../../src/accounts/binding.ts';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import { operations } from '../../src/app/operation-list.ts';
@@ -51,6 +53,7 @@ interface Rec {
   parties: { id: string }[];
   agreements: { id: string; partyIds: [string, string] }[];
   brief: { id: string; phase: string; ready: boolean; presence: { partyId: string; onSite: boolean }[]; items: Item[] } | null;
+  contract: unknown;
 }
 
 async function post(principal: string, url: string, payload: unknown): Promise<{ status: number; code?: string }> {
@@ -95,6 +98,7 @@ describe('simulator separation', () => {
       'demo.sim.item.tick',
       'demo.sim.item.untick',
       'demo.sim.brief.group-check',
+      'demo.sim.brief.finalize',
     ]);
   });
 
@@ -111,6 +115,7 @@ describe('simulator separation', () => {
       'POST /demo/sim/items/:id/tick',
       'POST /demo/sim/items/:id/untick',
       'POST /demo/sim/briefs/:id/group-check',
+      'POST /demo/sim/briefs/:id/finalize',
       'POST /demo/shoots',
       'POST /demo/shoots/scenarios',
       'GET /demo/shoots/:projectId/as/:partyId',
@@ -215,6 +220,57 @@ describe('the walkthrough', () => {
     expect((await record(me, w.id)).brief!.ready).toBe(false);
     expect((await post(me, `/demo/sim/items/${fee.id}/tick`, { partyId: m })).status).toBe(200);
     expect((await record(me, w.id)).brief!.ready).toBe(true);
+    expect((await record(me, w.id)).contract).toBeNull();
+  });
+
+  it('finalizes a ready brief as one synthetic operator act, only with both parties bound, into the stored contract', async () => {
+    const me = `sim-${randomUUID()}`;
+    const w = await walkthrough(me);
+    const briefId = w.rec.brief!.id;
+    const [p, m] = [w.photographerPartyId, w.modelPartyId];
+    for (const partyId of [p, m]) await post(me, `/demo/sim/briefs/${briefId}/presence`, { partyId, onSite: true });
+    await post(me, `/demo/sim/briefs/${briefId}/share`, {});
+    let rec = await record(me, w.id);
+    await post(me, `/demo/sim/items/${rec.brief!.items.find((i) => i.pending === 'decide_together')!.id}/settle`, { value: '[synthetic] the 20th' });
+    await post(me, `/demo/sim/items/${rec.brief!.items.find((i) => i.pending === 'subject')!.id}/parameter`, { partyId: m, value: '[synthetic] 2' });
+
+    // Not ready: refused, nothing changes.
+    for (const partyId of [p, m]) await bindPartyToAccount(database.db, { projectId: w.id, partyId, accountId: (await resolveAccountForLogin(database.db, { provider: 'google', providerSubject: `sim-${randomUUID()}` })).id });
+    expect(await post(me, `/demo/sim/briefs/${briefId}/finalize`, {})).toEqual(conflict('not_ready'));
+    rec = await record(me, w.id);
+    expect(rec.brief!.phase).toBe('live');
+    for (const item of rec.brief!.items) for (const partyId of item.approverIds) await post(me, `/demo/sim/items/${item.id}/tick`, { partyId });
+    rec = await record(me, w.id);
+    expect(rec.brief!.ready).toBe(true);
+
+    // Another operator cannot; undeclared input is refused.
+    expect((await post(`sim-${randomUUID()}`, `/demo/sim/briefs/${briefId}/finalize`, {})).status).toBe(403);
+    expect((await post(me, `/demo/sim/briefs/${briefId}/finalize`, { partyId: p })).status).toBe(400);
+
+    const res = await app.inject({ method: 'POST', url: `/demo/sim/briefs/${briefId}/finalize`, headers: as(me), payload: {} });
+    expect(res.statusCode).toBe(200);
+    const { contractId } = res.json<{ id: string; contractId: string }>();
+    const afterRes = await app.inject({ method: 'GET', url: `/demo/projects/${w.id}/record`, headers: as(me) });
+    expect({ status: afterRes.statusCode, body: afterRes.statusCode === 200 ? null : afterRes.body }).toEqual({ status: 200, body: null });
+    const after = afterRes.json<
+      Rec & { contract: { id: string; chain: { valid: boolean }; clauses: { content: string }[]; signatures: unknown[]; renderings: { partyId: string; html: string }[] } }
+    >();
+    expect(after.brief).toMatchObject({ phase: 'final', ready: false, items: [] });
+    expect(after.contract.id).toBe(contractId);
+    expect(after.contract.chain.valid).toBe(true);
+    expect(after.contract.clauses).toHaveLength(rec.brief!.items.length);
+    expect(after.contract.signatures).toHaveLength(2);
+    expect(after.contract.renderings.map((r) => r.partyId).sort()).toEqual([p, m].sort());
+    for (const r of after.contract.renderings) expect(r.html).toContain("Proposal rendering for Cory's reaction — synthetic.");
+    expect(await post(me, `/demo/sim/briefs/${briefId}/finalize`, {})).toEqual(conflict('already_final'));
+  });
+
+  it('refuses to finalize while a party has no bound account, leaving the ready brief live', async () => {
+    const me = `sim-${randomUUID()}`;
+    const w = await walkthrough(me);
+    const briefId = w.rec.brief!.id;
+    expect(await post(me, `/demo/sim/briefs/${briefId}/finalize`, {})).toEqual(conflict('not_bound_account'));
+    expect((await record(me, w.id)).brief!.phase).toBe('draft');
   });
 
   it('rejects undeclared fields and blank values', async () => {

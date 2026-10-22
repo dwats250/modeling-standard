@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import type { Principal } from '../authorization/access.ts';
-import { briefOfItem, findLiveBrief } from '../briefs/brief.ts';
+import { findBindingForParty } from '../accounts/binding.ts';
+import { BriefActionRefusedError, briefOfItem, findLiveBrief } from '../briefs/brief.ts';
 import {
   declineBriefRequest,
+  freezeBriefForSigning,
+  getBriefSigningState,
   groupCheckBriefItems,
   setDraftPartyPresence,
   setOpenParameterBySubject,
@@ -11,8 +14,10 @@ import {
   tickBriefItem,
   untickBriefItem,
 } from '../briefs/live.ts';
+import { finalizeBrief } from '../contracts/contract.ts';
 import type { Executor } from '../infrastructure/database/client.ts';
 import { defineOperation, type AnyOperation } from '../http/operations.ts';
+import { listProjectParties } from '../projects/party.ts';
 import { creatorOnly, findProject, insertProject } from '../projects/project.ts';
 import { guarded } from '../participants/refusals.ts';
 import type { AnnotationStore } from './annotations.ts';
@@ -22,7 +27,8 @@ import { buildWalkthroughDraft, walkthroughAnnotation } from './walkthrough.ts';
  * The demo's scenario simulator. Demo-only operations, registered only by the
  * demo server and never in the production list, that drive the S09 data
  * functions so a viewer can walk a synthetic photographer and model through
- * draft → share → live → resolve → green → ready to sign.
+ * draft → share → live → resolve → green → ready to sign, and (S11) the
+ * operator's synthetic finalization into the final contract.
  *
  * Every act here is a SIMULATION. The demo operator chooses which synthetic
  * party is acting; in the product only a party acts for itself (D12), signed
@@ -220,6 +226,45 @@ export const groupCheckOperation = defineOperation({
     }),
 });
 
+// ---- Ready to sign: the operator's synthetic finalization (S11) ----
+
+/**
+ * SYNTHETIC, OPERATOR-ONLY: finalizes a ready brief into its final contract
+ * with both parties' signature evidence, as one operator act. It is not the
+ * signing act, which is not decided (D04), and it does not say whether one
+ * person may sign before the other: both signatures are given at once. Each
+ * signature is the party's own bound account (a person who claimed their
+ * invitation); a party without one is refused (`not_bound_account`). A live,
+ * ready brief is frozen first (S10). No request evidence is passed: the
+ * operator's browser is neither party's device.
+ */
+export const finalizeBriefOperation = defineOperation({
+  name: 'demo.sim.brief.finalize',
+  method: 'POST',
+  path: '/demo/sim/briefs/:id/finalize',
+  input: { params: idParams, body: z.strictObject({}) },
+  output: z.strictObject({ id: z.uuid(), contractId: z.uuid() }),
+  access: briefAccess,
+  run: async (_input, { db, target }) =>
+    guarded(async () => {
+      if ((await getBriefSigningState(db, target.briefId)).phase === 'final') throw new BriefActionRefusedError('already_final');
+      // Bindings first, so a refusal here leaves the brief as it was.
+      const signers = [];
+      for (const party of await listProjectParties(db, target.project.id)) {
+        const binding = await findBindingForParty(db, party.id);
+        if (!binding) throw new BriefActionRefusedError('not_bound_account');
+        signers.push({ partyId: party.id, accountId: binding.accountId });
+      }
+      if (signers.length !== 2) throw new BriefActionRefusedError('unsupported_topology');
+      if ((await getBriefSigningState(db, target.briefId)).phase === 'live') await freezeBriefForSigning(db, target.briefId);
+      const { fingerprint } = await getBriefSigningState(db, target.briefId);
+      if (fingerprint === null) throw new BriefActionRefusedError('not_signing');
+      const [one, two] = signers.map((signer) => ({ ...signer, fingerprint }));
+      const { contractId } = await finalizeBrief(db, target.briefId, [one!, two!]);
+      return { id: target.briefId, contractId };
+    }),
+});
+
 export const createSimulatorOperations = (annotations: AnnotationStore): readonly AnyOperation[] => [
   startScenarioOperation(annotations),
   setPresenceOperation,
@@ -230,4 +275,5 @@ export const createSimulatorOperations = (annotations: AnnotationStore): readonl
   tickOperation,
   untickOperation,
   groupCheckOperation,
+  finalizeBriefOperation,
 ];
