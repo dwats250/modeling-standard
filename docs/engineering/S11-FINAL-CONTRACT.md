@@ -18,7 +18,7 @@ Slice and decisions relied on: `docs/slices/S11-final-contract.md` (authorized b
   - `getContractVisibleTo(db, contractId, partyId)` and its pure filter `contractViewFor` — the per-party view.
   - `verifyContractChain(db, contractId)` and its pure core `verifyContractRecord`; `signatureRecordHash`.
 - **Rendering** (`src/contracts/rendering.ts`): `renderContractHtml(view)`, the labelled proposal rendering.
-- **Demo:** the operator-only `POST /demo/sim/briefs/:id/finalize` (labelled synthetic); the inspector record's `contract`; the inspector's final stage and contract section; the journey's operator screen shows a frozen or final shoot as a pointer to the inspector.
+- **Demo:** the operator-only `POST /demo/sim/briefs/:id/finalize` (labelled synthetic); the inspector record's `contract`; the inspector's final stage and contract section; the journey's operator screen shows a frozen or final shoot as a pointer to the inspector. The operator's read-only snapshot (`npm run demo:export`) embeds the inspector record, so a finalized project's contract data (parties and bound accounts, clauses, signature records, the chain check as of export) and each party's proposal rendering travel in that file; it remains an operator/demo artifact, not a participant screen.
 
 ## Finalization, in one READ COMMITTED transaction
 
