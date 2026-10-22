@@ -111,13 +111,43 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
   - Options Observatory still 200 on port 80.
 - **Not yet verified: real Google.** Google accepting the redirect URI and a real sign-in are exercised only by Dustin's phone run (acceptance steps in `S13-STAGING.md`).
 
-## Phone access blocker (2026-10-21, open)
+## Phone access blocker (2026-10-21, resolved)
+
+Resolved the same day: the Pixel loads `https://asher.tail457b97.ts.net:8443/` (first staging requests from it 19:13 UTC). No staging, Serve or Host-pin change was involved. The original notes follow.
+
 
 - The Pixel (`pixel-10-pro`, 100.84.119.8) is on the tailnet and pings Asher directly. Its Chrome reports `DNS_PROBE_FINISHED_NXDOMAIN` for `https://asher.tail457b97.ts.net:8443/`, in every browser and in incognito; Dustin reports Options Observatory loads and that the phone's DNS settings are not the cause.
 - On Asher: `Self.DNSName` matches `asher.tail457b97.ts.net` byte for byte. Tailscale's resolver (100.100.100.100) answers A 100.64.34.84, with empty AAAA and HTTPS answers. Public resolvers return NXDOMAIN, and the router (192.168.0.1) returns no address. Asher itself has `--accept-dns=false`, which is why checks from Asher use `curl --resolve` (that does not test DNS). The router resolves the short names `asher` and `asher.ht.home` to the LAN address 192.168.0.69.
 - No request from the phone reached staging, and Serve opened no connection to 3130 while the phone retried.
 - At Dustin's request the 8443 entry was removed and re-added (`tailscale serve --https=8443 off`, then `--bg --https=8443 http://127.0.0.1:3130`). Port 80 was untouched, and both answer 200 from Asher afterwards.
 - Unresolved: which exact URL the phone uses for Observatory (it matters: a working lookup of the full name would not return NXDOMAIN for the same name on another port), and whether the re-added entry changes anything for the phone.
+
+## Real-Google acceptance (2026-10-21 evening PDT = 2026-10-22 03:03–03:35 UTC)
+
+Walkthrough by Dustin on tailnet devices (the Pixel; operator in a separate browser context). Observations are Dustin's report, cross-checked against the staging log (`tmux ms-staging`) and read-only database queries. Nothing was restarted, reset or reseeded; the records remain as synthetic test data.
+
+| Runbook step (`S13-STAGING.md`) | Result | Evidence |
+|---|---|---|
+| 1 Serve 8443 → 3130, Observatory on 80 | pass | verified from Asher before the run (above) |
+| 2 tmux banner | pass | `ms-staging` pane |
+| 3 Page, valid certificate, staging band | pass, on the phone (no laptop is on the tailnet) | Dustin; certificate verified from Asher |
+| 4 Operator key → operator mode; wrong key refused | pass | 03:03:12 `POST /demo/operator` 200; refusal 403 verified from Asher earlier |
+| 5 Create invitation links | pass | 03:03:44 invitations 201 (shoot `190a09b3`); a second shoot `e4d7b382` at 03:29:36 |
+| 6 Model link → real Google → own brief | **pass: Google accepted the redirect URI; callback completed** | 03:09:31 `/sign-in/start` 200 → 03:09:37 `/sign-in/callback` 303; binding created 03:09:37 |
+| 7 Photographer link → second Google account | pass | 03:12:03 start 200 → 03:16:40 callback 303; binding 03:16:40 |
+| 8 Open value, operator supplies the agreed value, ticks, READY TO SIGN | pass | Dustin: the Model's open value set; delivery date stayed "Decide together — still open" until the operator simulation settled it (03:34:23 `/demo/sim/…/settle` 200); both then ticked; READY TO SIGN shown; no signing control. Ticks from both parties recorded; brief phase still `live` (nothing froze or signed) |
+| 9 Google account not listed as a test user; unverified-app warning | **not run** | only two Google accounts signed in; whether either is a listed test user, and whether any warning appeared, was not recorded |
+| 10 Sign out, open the other person's link → already accepted | **not run** | no sign-out or 409 in the log (covered by fake-Google tests only) |
+| 11 Cancel on Google's page | **not run** | both callbacks succeeded (covered by fake-Google tests only) |
+| 12 Logs hold no client secret, operator key or `code=` | pass | whole pane searched by count only: 0 for each |
+| 13 Cookie names in developer tools | **not inspected** | indirect: staging reads the session only under `__Host-ms_session` over HTTPS, and signed-in calls succeeded; the operator cookie's attributes were verified from Asher |
+| 14 Reset | not done, by instruction | |
+
+Database after the run: 2 accounts (`login_provider = google`), 4 bindings — each account bound to one party in each of the two shoots (`190a09b3`, `e4d7b382`); no sign-in attempts left over. On the second shoot both already-signed-in accounts accepted their links without a new Google round trip (`POST /invitations/claim` 200 ×2), as S12 specifies.
+
+Expected refusals seen in the log: `GET /demo/projects` 401 from a browser not yet in operator mode, and 403 from a signed-in participant browser (a signed-in account is never the operator, S12-E).
+
+**UX observation (recorded, not acted on).** Finding saved shoots was not obvious: the operator returned to the shoot list only through "Synthetic Staging → Back to start". This is demo-operator navigation; no change was made.
 
 ## Running now
 
@@ -134,6 +164,7 @@ Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434),
 
 ## Next
 
-1. Dustin: the Google and Tailscale steps in `S13-STAGING.md`, then start staging in tmux and run the external acceptance checklist.
-2. Review and merge PR #34, then this branch (its PR is Dustin's and ChatGPT's to open).
-3. Close GitGuardian incident 38772493 as a test credential in the GitGuardian dashboard (Dustin).
+1. Optional, before or after merge (Dustin): the unrun runbook steps 9, 10, 11 and 13 on real Google. They are not merge blockers; 10 and 11 are covered by the fake-Google tests.
+2. Merge PR #34 (S12, base `main`), then retarget PR #35 to `main`, let CI rerun, mark it ready, merge. Use a merge commit for #34 (as #33 was): a squash would leave #35 carrying S12's commits again. Dustin's and ChatGPT's call.
+3. GitGuardian incident 38772493: ignored by Dustin in the dashboard as a test credential; the check passes on both PRs' current heads.
+4. Staging stays up for further runs; stop with `tmux kill-session -t ms-staging` and `tailscale serve --https=8443 off` when no longer wanted.
