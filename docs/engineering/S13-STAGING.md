@@ -87,7 +87,7 @@ npm run staging:seed      # load the four synthetic shoots, only into an empty d
 
 ## Start, keep alive, stop
 
-Staging must not live inside a Claude process. Either:
+Staging must not live inside a coding-agent process. Either:
 
 **tmux (simplest):**
 ```

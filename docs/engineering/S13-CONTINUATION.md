@@ -12,7 +12,7 @@ Date: 2026-10-20. Slice: `docs/slices/S13-google-staging.md`. Runbook and accept
 
 Google only on staging; test sign-in only in the local/LAN demo. Tailnet-only through Tailscale Serve, no Funnel. Separate staging database and service on 5435/3130 (both were free). S11, signatures, contracts, Apple and real use out of scope. Cory's questions stay open; operator acts stay labelled.
 
-## Implementation decisions (Claude, technical)
+## Implementation decisions (technical)
 
 - **Staging is the demo composition** (`src/demo/`, outside the build), not `src/main.ts`: production has no screens and no operator, and giving it either would answer Cory's open seams.
 - **Google:** `openid` only, `prompt=select_account`, confidential client with PKCE, constants for endpoints and issuers (both documented spellings), jose remote JWKS. Production registers it when configured.
@@ -88,7 +88,7 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
 - Serve before any change (keep exactly): `TCP 80 HTTP`, `asher.tail457b97.ts.net:80` `/` → `/home/dustin/Projects/options-observatory/dashboard`; Observatory answers 200.
 - Asher does not resolve its own `ts.net` name; verify from Asher with `curl --resolve asher.tail457b97.ts.net:8443:100.64.34.84 …`.
 - GitGuardian incident 38772493 not yet dismissed (check still failing on `2b9fa95`).
-- `CLAUDE.md` now has a Process ownership rule (after an S12 demo was stopped by a broad `pkill`; it was restarted with its data intact).
+- The repository now has a Process ownership rule (after an S12 demo was stopped by a broad `pkill`; it was restarted with its data intact).
 
 ## External setup progress (2026-10-21)
 
@@ -165,6 +165,6 @@ Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434),
 ## Next
 
 1. Optional, before or after merge (Dustin): the unrun runbook steps 9, 10, 11 and 13 on real Google. They are not merge blockers; 10 and 11 are covered by the fake-Google tests.
-2. Merge PR #34 (S12, base `main`), then retarget PR #35 to `main`, let CI rerun, mark it ready, merge. Use a merge commit for #34 (as #33 was): a squash would leave #35 carrying S12's commits again. Dustin's and ChatGPT's call.
+2. Merge PR #34 (S12, base `main`), then retarget PR #35 to `main`, let CI rerun, mark it ready, merge. Use a merge commit for #34 (as #33 was): a squash would leave #35 carrying S12's commits again. Dustin owns the merge decision.
 3. GitGuardian incident 38772493: ignored by Dustin in the dashboard as a test credential; the check passes on both PRs' current heads.
 4. Staging stays up for further runs; stop with `tmux kill-session -t ms-staging` and `tailscale serve --https=8443 off` when no longer wanted.

@@ -1,7 +1,6 @@
 # Slice — S12 participant access
 
 Status: BUILT — awaiting Dustin's review (authorized 2026-10-20: S12-A to S12-F of `planning/sprint-2026-10-21/EXECUTION-PACKAGE.md`, with Dustin's amendments taking precedence; S11 deferred)
-Owner: Claude
 Date: 2026-10-20
 
 ## Outcome

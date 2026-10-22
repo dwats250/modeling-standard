@@ -21,7 +21,7 @@
 
 ## The S12 LAN demo for the two-phone test
 
-The S12 Claude session started it in the background, so it stops when that session ends. To run it yourself inside tmux from the S12 worktree:
+The S12 session started it in the background, so it stops when that session ends. To run it yourself inside tmux from the S12 worktree:
 
 ```
 cd /home/dustin/Projects/modeling-standard-s12

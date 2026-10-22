@@ -1,7 +1,6 @@
 # Slice — S13 Google sign-in and synthetic staging
 
 Status: BUILT — awaiting Dustin's review and the external acceptance run (authorized 2026-10-20 by Dustin: Google sign-in support and isolated synthetic staging; Google only on staging; tailnet-only through Tailscale Serve; staging database and service on 5435/3130)
-Owner: Claude
 Date: 2026-10-20
 Depends on: S12 (`stage-1/s12-participant-access` at `da8003e`, PR #34, not merged when this was built; this branch is built on that commit)
 

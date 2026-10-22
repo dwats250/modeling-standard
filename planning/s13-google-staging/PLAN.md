@@ -110,9 +110,9 @@ Alternatives, not recommended now:
 - **A small hosted VM** running Node and PostgreSQL in Docker, with a TLS proxy and a domain. This is the later shape that `planning/D-technical-architecture.md` §8 describes (one image, managed PostgreSQL with backups, chosen when a stage needs it). It is paid, needs a domain, and belongs to the stage that chooses hosting. No vendor is named here.
 - Cloudflare quick tunnels change URL on every run, so they cannot hold a registered Google redirect URI. Named tunnels need a domain.
 
-## What Claude can implement, and what Dustin must supply
+## What can be implemented locally, and what Dustin must supply
 
-**Claude can build and test without any external account.** That means S13-A, S13-B and S13-C, including every automated test above against fake Google endpoints. It also covers generating the operator key into a 0600 file outside the repository, and writing the runbook.
+**S13-A, S13-B and S13-C can be built and tested without any external account.** That includes every automated test above against fake Google endpoints, generating the operator key into a 0600 file outside the repository, and writing the runbook.
 
 **Dustin must supply:**
 
@@ -127,7 +127,7 @@ Alternatives, not recommended now:
    - `http://localhost:3130/sign-in/callback` (optional, for a local check on Asher; Google exempts loopback from https).
    No JavaScript origins are needed. Google matches the redirect URI exactly.
 3. **The client id and secret** on Asher only, in `~/.config/modeling-standard/staging.env` with mode 0600. They do not go in the repository or in chat.
-4. **Tailscale.** In the admin console, enable HTTPS certificates (DNS page). The machine name then appears in public Certificate Transparency logs. Then run the `tailscale serve --https=8443 …` command above, or authorize Claude to run it. Also decide how Cory's phone joins: an invitation to the tailnet or node sharing (check your plan's user limit).
+4. **Tailscale.** In the admin console, enable HTTPS certificates (DNS page). The machine name then appears in public Certificate Transparency logs. Then run the `tailscale serve --https=8443 …` command above, or authorize that setup step. Also decide how Cory's phone joins: an invitation to the tailnet or node sharing (check your plan's user limit).
 5. **Docker** for the shell that runs staging. `dustin` is in the `docker` group, but this session's process predates that and is denied the socket. A fresh login shell (the new tmux) will have it.
 6. **Decisions that are Dustin's (technical):**
    - whether test sign-in is also offered on staging (default off);
