@@ -165,6 +165,6 @@ Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434),
 ## Next
 
 1. Optional, before or after merge (Dustin): the unrun runbook steps 9, 10, 11 and 13 on real Google. They are not merge blockers; 10 and 11 are covered by the fake-Google tests.
-2. Merge PR #34 (S12, base `main`), then retarget PR #35 to `main`, let CI rerun, mark it ready, merge. Use a merge commit for #34 (as #33 was): a squash would leave #35 carrying S12's commits again. Dustin owns the merge decision.
+2. PR #34 (S12) and PR #35 (S13) are merged into `main`; S11 was subsequently integrated as PR #36. The remaining real-Google, Tailscale-phone and staging acceptance steps stay with Dustin and are not implied by the merges.
 3. GitGuardian incident 38772493: ignored by Dustin in the dashboard as a test credential; the check passes on both PRs' current heads.
 4. Staging stays up for further runs; stop with `tmux kill-session -t ms-staging` and `tailscale serve --https=8443 off` when no longer wanted.

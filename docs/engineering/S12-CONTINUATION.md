@@ -103,4 +103,4 @@ Then: **Continue as the demo operator** → Demo menu → **Shared, with values 
 
 Checks: `npm run check`, `npm test`, `CHROME_PATH=/usr/bin/google-chrome npm run test:demo`, `npm run build`.
 
-**Recommended integration:** this branch into `main` on its own (S11 is deferred and builds on it later). Dustin owns the PR and merge steps.
+**Integration:** this branch was merged into `main` as PR #34. S11 was later built on the integrated S12/S13 baseline and merged as PR #36. The external provider and real-use checks remain separate gates.
