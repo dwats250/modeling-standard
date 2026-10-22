@@ -30,7 +30,7 @@ npm run demo:fresh -- --lan     # then, in the browser:
 ## Verification record (this environment, 2026-10-21)
 
 - `npm run check`: typecheck, lint, migration drift, identifiers — pass (drift after commit).
-- `npm test`: 37 files, 581 tests, pass (baseline before S11: 36 files, 545).
+- `npm test`: 37 files, 584 tests, pass (baseline before S11: 36 files, 545; 581 at the first S11 checkpoint, 584 after the guard-coverage tests).
 - Migration upgrade (`tests/database/migration-upgrades.test.ts`, within `npm test`): a database populated at 0025 with a draft, a live ready brief and a frozen brief upgrades with every row unchanged; the frozen brief is then withdrawn, re-frozen and finalized, the live one frozen and finalized, and the draft untouched — pass.
 - `npm run test:demo` (Chrome): 4 files, 26 tests, pass.
 - `npm run build`: pass; `dist/` has `contracts/` and no `demo/`.

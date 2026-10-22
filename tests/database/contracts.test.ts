@@ -529,6 +529,53 @@ describe('the database guards a finalization written by direct SQL', () => {
     expect(await rawFinalize(w, { isolation: 'serializable' })).toEqual(violation('contract_read_committed_only'));
   });
 
+  it('refuses signing → final outside READ COMMITTED, and without the contract for that fingerprint (WS2 §D 15)', async () => {
+    const w = await world();
+    const toFinal = (isolation: string) =>
+      runtime(async (c) => {
+        await c.query(`begin isolation level ${isolation}`);
+        try {
+          await c.query(`update live_brief set phase = 'final', fingerprint = null where id = $1`, [w.briefId]);
+          return null;
+        } catch (error) {
+          const e = error as { code?: string; constraint?: string };
+          return { code: e.code, constraint: e.constraint };
+        } finally {
+          await c.query('rollback');
+        }
+      });
+    expect(await toFinal('repeatable read')).toEqual(violation('live_brief_final_read_committed_only'));
+    expect(await toFinal('serializable')).toEqual(violation('live_brief_final_read_committed_only'));
+    expect(await toFinal('read committed')).toEqual(violation('live_brief_final_requires_contract'));
+    expect(await getBriefSigningState(db(), w.briefId)).toMatchObject({ phase: 'signing' });
+  });
+
+  it('refuses a signature over another fingerprint than its contract\'s', async () => {
+    const w = await world();
+    const fingerprint = await fingerprintOf(w);
+    const outcome = await runtime(async (c) => {
+      await c.query('begin');
+      try {
+        const id = (await c.query<{ id: string }>('insert into contract (project_id, brief_id, fingerprint) values ($1, $2, $3) returning id', [w.projectId, w.briefId, fingerprint])).rows[0]!.id;
+        for (const [party, account, onSite] of [[w.p, w.pAccount, true], [w.m, w.mAccount, true]] as const) {
+          await c.query('insert into contract_party (contract_id, project_id, party_id, account_id, on_site) values ($1, $2, $3, $4, $5)', [id, w.projectId, party, account, onSite]);
+        }
+        const first = [w.p, w.m].sort()[0]!;
+        await c.query(
+          `insert into contract_signature (contract_id, project_id, sequence, party_id, account_id, fingerprint, prev_hash, record_hash) values ($1, $2, 1, $3, $4, $5, $5, $5)`,
+          [id, w.projectId, first, first === w.p ? w.pAccount : w.mAccount, 'e'.repeat(64)],
+        );
+        return null;
+      } catch (error) {
+        const e = error as { code?: string; constraint?: string };
+        return { code: e.code, constraint: e.constraint };
+      } finally {
+        await c.query('rollback');
+      }
+    });
+    expect(outcome).toEqual(violation('contract_signature_fingerprint_mismatch'));
+  });
+
   it('refuses a contract party whose account is not its binding, or whose presence differs', async () => {
     const w = await world();
     const fingerprint = await fingerprintOf(w);
@@ -602,6 +649,23 @@ describe('serialized outcomes', () => {
     expect(outcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
     expect(((outcomes.find((o) => o.status === 'rejected') as PromiseRejectedResult).reason as BriefActionRefusedError).reason).toBe('already_final');
     expect(await contractRowCount(w.projectId)).toBe(1);
+  });
+
+  it('a raw withdrawal in flight is waited for: the finalization then finds the brief live (WS2 §D 14, as narrowed)', async () => {
+    const w = await world();
+    const signatures = await signaturesOf(w);
+    await runtime(async (c) => {
+      await c.query('begin');
+      // The untick-withdrawal by direct SQL: back to live first, then the tick goes.
+      await c.query(`update live_brief set phase = 'live', fingerprint = null where id = $1`, [w.briefId]);
+      await c.query('delete from brief_tick where brief_item_id = $1 and party_id = $2', [w.items.fee, w.p]);
+      const finalizing = failure(() => finalizeBrief(db(), w.briefId, signatures));
+      await untilBlocked(c);
+      await c.query('commit');
+      expect(await finalizing).toEqual(refused('not_signing'));
+    });
+    expect(await getBriefSigningState(db(), w.briefId)).toEqual({ phase: 'live', fingerprint: null });
+    expect(await contractRowCount(w.projectId)).toBe(0);
   });
 
   it('a raw contract write in flight is waited for, cannot commit without finalizing, and the finalization then succeeds', async () => {
