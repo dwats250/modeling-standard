@@ -42,4 +42,4 @@ The visible signing act and no-means-no wording (D04); what each clause shows / 
 
 ## Next
 
-Dustin reviews and owns the PR. Integration order: S11 sits directly on `main` (S12 and S13 are merged). The proposal rendering is what to show Cory with §7 Q1–Q3.
+PR #36 is merged into `main`; S12 and S13 were already integrated as PRs #34 and #35. The proposal rendering is what to show Cory with §7 Q1–Q3.

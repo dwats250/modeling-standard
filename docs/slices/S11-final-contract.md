@@ -1,6 +1,6 @@
 # Slice — S11 final contract storage and finalization
 
-Status: BUILT — awaiting Dustin's review (authorized 2026-10-21: `planning/sprint-2026-10-21/EXECUTION-PACKAGE.md` §3.2 and AC-19/AC-20, which narrows `WS2-S11-RECON.md` §D)
+Status: BUILT — integrated on `main` via PR #36 (authorized 2026-10-21: `planning/sprint-2026-10-21/EXECUTION-PACKAGE.md` §3.2 and AC-19/AC-20, which narrows `WS2-S11-RECON.md` §D)
 Date: 2026-10-21
 
 Built on `main` at `52216b9` (S12 and S13 merged), so the migrations are `0028` (generated) and `0029` (hand-written).
