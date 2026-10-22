@@ -568,6 +568,17 @@ describe('demo regression', () => {
     // State only: no simulation controls in a read-only snapshot.
     expect(await page.locator('.actor-bar, details.group-check, .item-actions, .presence button').count()).toBe(0);
     await noHorizontalScroll(page);
+
+    // The earlier walkthrough test finalizes this project before the snapshot is exported.
+    // Open it here so the portable file proves that finalized contract renderings survive export.
+    await page.getByText('Walkthrough — Photographer and Model', { exact: true }).first().click();
+    await expect.poll(() => page.locator('.stage-headline').innerText()).toBe('FINAL — SYNTHETIC');
+    const finalContract = page.locator('.card', { has: page.locator('h3', { hasText: 'Final contract — synthetic' }) });
+    await finalContract.waitFor();
+    expect(await finalContract.locator('details.rendering iframe[sandbox=""]').count()).toBe(2);
+    await finalContract.locator('details.rendering summary').first().click();
+    await expect.poll(() => page.frameLocator('details.rendering iframe').first().locator('body').innerText()).toContain("Proposal rendering for Cory's reaction — synthetic.");
+
     await page.screenshot({ path: join(SHOTS, 'snapshot-mobile.png'), fullPage: true });
     expect(requests.filter((url) => !url.startsWith('file:'))).toEqual([]);
     await page.close();
