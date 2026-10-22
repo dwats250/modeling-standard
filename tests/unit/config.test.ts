@@ -21,6 +21,7 @@ describe('application configuration fails closed', () => {
       port: 3000,
       logLevel: 'info',
       publicOrigin: null,
+      google: null,
     });
   });
 
@@ -35,6 +36,29 @@ describe('application configuration fails closed', () => {
       expect(problems[0]).toMatch(/^PUBLIC_BASE_URL: /);
       expect(problems.join(' ')).not.toContain('Secret-42');
       expect(problems.join(' ')).not.toContain('192.168');
+    }
+  });
+
+  it('enables Google sign-in only with a complete, valid client and a public origin, never echoing either value (S13)', () => {
+    const id = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
+    const secret = 'fake-client-secret-Secret_Value-4242';
+    const base = { DATABASE_URL: validUrl, PUBLIC_BASE_URL: 'https://ms.example' };
+    expect(loadAppConfig({ ...base, GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret }).google).toEqual({ clientId: id, clientSecret: secret });
+    expect(loadAppConfig(base).google).toBeNull();
+    const cases: [Record<string, string>, RegExp][] = [
+      [{ ...base, GOOGLE_CLIENT_ID: id }, /^GOOGLE_CLIENT_SECRET: is required/],
+      [{ ...base, GOOGLE_CLIENT_SECRET: secret }, /^GOOGLE_CLIENT_ID: is required/],
+      [{ ...base, GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: '' }, /^GOOGLE_CLIENT_SECRET: is required/],
+      [{ DATABASE_URL: validUrl, GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret }, /^PUBLIC_BASE_URL: is required when Google/],
+      [{ ...base, GOOGLE_CLIENT_ID: 'Secret-42.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: secret }, /^GOOGLE_CLIENT_ID: must be/],
+      [{ ...base, GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: 'short Secret-42' }, /^GOOGLE_CLIENT_SECRET: must be/],
+      [{ ...base, GOOGLE_CLIENT_ID: `${id}.evil.example`, GOOGLE_CLIENT_SECRET: secret }, /^GOOGLE_CLIENT_ID: must be/],
+    ];
+    for (const [env, expected] of cases) {
+      const problems = problemsOf(() => loadAppConfig(env));
+      expect(problems.some((p) => expected.test(p))).toBe(true);
+      const text = problems.join(' ');
+      for (const value of [secret, 'Secret-42', id]) expect(text).not.toContain(value);
     }
   });
 

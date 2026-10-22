@@ -2,6 +2,13 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { inject } from 'vitest';
+import { createApp } from '../../src/app/create-app.ts';
+import { createLogger } from '../../src/app/logger.ts';
+import { demoOperatorPrincipal } from '../../src/demo/demo.ts';
+import { createDemoOperations } from '../../src/demo/operations.ts';
+import { GOOGLE_AUTHORIZATION_ENDPOINT } from '../../src/identity/google.ts';
+import { openDatabase } from '../../src/infrastructure/database/client.ts';
+import { temporaryAnnotationStore } from '../support/annotations.ts';
 
 /**
  * The real entry point, run as a separate process: it refuses to start with
@@ -79,6 +86,82 @@ describe('boot', () => {
       const res = await fetch(`${address}/health`);
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ status: 'ok' });
+    } finally {
+      child.kill('SIGTERM');
+    }
+  });
+
+  it('exits non-zero, without echoing either value, when the Google client is incomplete or has no public origin (S13)', async () => {
+    const id = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
+    const secret = 'fake-client-secret-Boot-Secret-Value-42';
+    for (const env of [
+      { GOOGLE_CLIENT_ID: id, PUBLIC_BASE_URL: 'https://ms.example' },
+      { GOOGLE_CLIENT_SECRET: secret, PUBLIC_BASE_URL: 'https://ms.example' },
+      { GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret },
+      { GOOGLE_CLIENT_ID: 'Secret-Value-42', GOOGLE_CLIENT_SECRET: secret, PUBLIC_BASE_URL: 'https://ms.example' },
+    ]) {
+      const run = await runToExit({ DATABASE_URL: 'postgres://ms_runtime:pw@127.0.0.1:1/none', ...env });
+      expect(run.code).toBe(1);
+      expect(run.stderr).toMatch(/GOOGLE_CLIENT_|PUBLIC_BASE_URL/);
+      for (const value of [secret, 'Secret-Value-42', id]) expect(run.stdout + run.stderr).not.toContain(value);
+    }
+  });
+
+  it('with a complete Google client, sends a real invitation to Google with openid only, and still has no demo or test sign-in (S13)', async () => {
+    // A real invitation in the database, written as the synthetic operator in-process (production has no operator).
+    const logger = createLogger('silent');
+    const database = openDatabase(inject('runtimeUrl'), logger);
+    const operator = createApp({ db: database.db, logger, resolvePrincipal: demoOperatorPrincipal, additionalOperations: createDemoOperations(temporaryAnnotationStore()) });
+    let credential: string;
+    try {
+      await operator.ready();
+      const shoot = (await operator.inject({ method: 'POST', url: '/demo/shoots/scenarios', payload: { card: 'unresolved' } })).json<{ projectId: string }>();
+      credential = (await operator.inject({ method: 'POST', url: `/demo/shoots/${shoot.projectId}/invitations`, payload: {} })).json<{ invitations: { credential: string }[] }>().invitations[0]!.credential;
+    } finally {
+      await operator.close();
+      await database.close();
+    }
+
+    const clientId = '123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com';
+    const child = spawn(process.execPath, [entry], {
+      env: {
+        PATH: process.env.PATH ?? '',
+        DATABASE_URL: inject('runtimeUrl'),
+        PORT: '0',
+        PUBLIC_BASE_URL: 'https://ms.example',
+        GOOGLE_CLIENT_ID: clientId,
+        GOOGLE_CLIENT_SECRET: 'fake-client-secret-Boot-Secret-Value-42',
+      },
+    });
+    let out = '';
+    try {
+      const address = await new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`did not start: ${out}`)), 10_000);
+        child.stdout.on('data', (d: Buffer) => {
+          out += d.toString();
+          const match = /Server listening at (http:\/\/[^"\s]+)/.exec(out);
+          if (match?.[1]) {
+            clearTimeout(timer);
+            resolve(match[1]);
+          }
+        });
+        child.on('exit', (code) => reject(new Error(`exited with ${String(code)}: ${out}`)));
+      });
+      const post = (path: string, body: unknown) =>
+        fetch(`${address}${path}`, { method: 'POST', headers: { origin: 'https://ms.example', 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const started = await post('/sign-in/start', { provider: 'google', invitation: credential });
+      expect(started.status).toBe(200);
+      expect(started.headers.getSetCookie().find((c) => c.startsWith('__Host-ms_signin='))).toMatch(/; Path=\/; HttpOnly; SameSite=Lax; Secure$/);
+      const url = new URL(((await started.json()) as { authorizationUrl: string }).authorizationUrl);
+      expect(`${url.origin}${url.pathname}`).toBe(GOOGLE_AUTHORIZATION_ENDPOINT);
+      expect(url.searchParams.get('scope')).toBe('openid');
+      expect(url.searchParams.get('client_id')).toBe(clientId);
+      expect(url.searchParams.get('redirect_uri')).toBe('https://ms.example/sign-in/callback');
+      expect(url.toString()).not.toContain('fake-client-secret-Boot-Secret-Value-42');
+      expect((await post('/sign-in/start', { provider: 'test', invitation: credential })).status).toBe(404);
+      expect((await post('/demo/operator', {})).status).toBe(404);
+      expect((await fetch(`${address}/demo/environment`)).status).toBe(404);
+      expect(out).not.toContain('fake-client-secret-Boot-Secret-Value-42');
     } finally {
       child.kill('SIGTERM');
     }

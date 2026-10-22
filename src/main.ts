@@ -3,6 +3,7 @@ import { createApp } from './app/create-app.ts';
 import { createLogger } from './app/logger.ts';
 import { ConfigError, loadAppConfig } from './config/config.ts';
 import { openDatabase } from './infrastructure/database/client.ts';
+import { createGoogleProvider } from './identity/google.ts';
 import { createSessionResolver } from './sessions/session.ts';
 
 /**
@@ -30,16 +31,21 @@ try {
   process.exit(1);
 }
 
-// The only principal source is the session cookie (S12). No identity
-// provider is registered, so no session can be created yet: every protected
-// operation is still denied in production. Cookie-bearing POSTs are accepted
-// only from PUBLIC_BASE_URL's origin; with none configured, from nowhere.
+// The only principal source is the session cookie (S12). Google is the only
+// identity provider, registered only when its client is completely
+// configured (configuration refuses a partial one); without it nobody can
+// sign in and every protected operation is denied. Production serves no
+// screens and has no operator, so nothing here creates a shoot or an
+// invitation. Cookie-bearing POSTs are accepted only from PUBLIC_BASE_URL's
+// origin; with none configured, from nowhere.
+const secureCookies = config.publicOrigin?.startsWith('https:') === true;
 const app = createApp({
   db: database.db,
   logger,
-  resolvePrincipal: createSessionResolver(database.db),
+  resolvePrincipal: createSessionResolver(database.db, secureCookies),
   allowedOrigins: config.publicOrigin === null ? [] : [config.publicOrigin],
-  secureCookies: config.publicOrigin?.startsWith('https:') === true,
+  secureCookies,
+  identity: { providers: config.google === null ? [] : [createGoogleProvider(config.google)] },
 });
 
 const shutdown = async (signal: string): Promise<void> => {

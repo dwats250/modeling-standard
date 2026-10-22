@@ -220,8 +220,13 @@ async function bindingsOf(projectId: string): Promise<{ party_id: string; accoun
   return withClient(inject('migrationUrl'), async (c) => (await c.query<{ party_id: string; account_id: string }>('select party_id, account_id from party_account_binding where project_id = $1 order by party_id', [projectId])).rows);
 }
 
+/** Sessions of test-provider accounts: this file's. Other files (S13 staging) sign in with other subjects in parallel. */
 async function sessionCount(): Promise<number> {
-  return withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from account_session')).rows[0]!.n);
+  return withClient(
+    inject('migrationUrl'),
+    async (c) =>
+      (await c.query<{ n: number }>("select count(*)::int as n from account_session s join account a on a.id = s.account_id where a.provider_subject like 'test-issuer|%'")).rows[0]!.n,
+  );
 }
 
 // ---- Acceptance ----
@@ -345,7 +350,8 @@ describe('invitation behaviour (AC-4, AC-5)', () => {
 
   it('an invitation-shaped string that is not an invitation starts nothing: no attempt, no cookie, no account', async () => {
     const client = new Client();
-    const attemptsBefore = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt')).rows[0]!.n);
+    // Other suites start attempts in the same database concurrently: count only this server's.
+    const attemptsBefore = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt where redirect_uri = $1', [`${base}/sign-in/callback`])).rows[0]!.n);
     const baseline = generic404(await client.post('/sign-in/start', { provider: 'test', invitation: newToken().token }));
     for (const invitation of ['x', `${newToken().token}=`, newToken().token.toUpperCase(), 'a'.repeat(43), ' '.repeat(10)]) {
       const res = await client.post('/sign-in/start', { provider: 'test', invitation });
@@ -353,7 +359,7 @@ describe('invitation behaviour (AC-4, AC-5)', () => {
       expect(res.setCookies).toEqual([]);
     }
     expect(generic404(await client.post('/sign-in/start', { provider: 'google', invitation: newToken().token }))).toBe(baseline);
-    const attemptsAfter = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt')).rows[0]!.n);
+    const attemptsAfter = await withClient(inject('migrationUrl'), async (c) => (await c.query<{ n: number }>('select count(*)::int as n from sign_in_attempt where redirect_uri = $1', [`${base}/sign-in/callback`])).rows[0]!.n);
     expect(attemptsAfter).toBe(attemptsBefore);
     expect(client.jar.size).toBe(0);
   });
@@ -771,7 +777,7 @@ describe('production isolation (AC-15)', () => {
 
   it('nothing in the production entry points imports the test issuer or the demo', () => {
     const src = join(import.meta.dirname, '../../src');
-    for (const file of ['main.ts', 'app/create-app.ts', 'app/operation-list.ts', 'identity/operations.ts', 'identity/provider.ts', 'participants/operations.ts', 'sessions/session.ts']) {
+    for (const file of ['main.ts', 'app/create-app.ts', 'app/operation-list.ts', 'identity/operations.ts', 'identity/provider.ts', 'identity/google.ts', 'config/config.ts', 'participants/operations.ts', 'sessions/session.ts']) {
       expect({ file, demo: /from '.*demo\//.test(readFileSync(join(src, file), 'utf8')) }).toEqual({ file, demo: false });
     }
     const build = JSON.parse(readFileSync(join(import.meta.dirname, '../../tsconfig.build.json'), 'utf8'));

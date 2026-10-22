@@ -128,6 +128,6 @@ The completed demonstration work and the S10 slice, combined and verified togeth
 3. PR #32 (`stage-1/s10-signing-freeze`) into `main`.
 4. The integration fix commit (the `shoots.test.ts` change) with or right after step 3. Without it, `main` fails that one test as soon as both the demo and S10 are present, in either order.
 
-Equivalently, after step 1, `integration/mobile-demo-s10` itself can be merged: its tree is the combined, verified result. PRs and merges are Dustin's and ChatGPT's.
+Equivalently, after step 1, `integration/mobile-demo-s10` itself can be merged: its tree is the combined, verified result. Dustin owns the PR and merge steps.
 
 **Still open.** S11 (signatures and the final contract), whose affirmation-evidence design is unresolved. The visible signing act (D04). The no-means-no wording (D04). Who composes, who shares and who enters an agreed value (Cory). Chaperone participation and three-party signing. What a person sees while a brief is signing. The required-term catalogue (Dustin drafts, Cory reviews). Gate 2 (D06) for any real use.

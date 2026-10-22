@@ -98,7 +98,7 @@ describe('simulator separation', () => {
     ]);
   });
 
-  it('is part of exactly this demo operation set (inspector, simulator, composer, participant screens, invite, operator mode)', () => {
+  it('is part of exactly this demo operation set (inspector, simulator, composer, participant screens, invite, operator mode, environment)', () => {
     expect(createDemoOperations(annotations).map((op) => `${op.method} ${op.path}`)).toEqual([
       'GET /demo/projects',
       'GET /demo/projects/:id/record',
@@ -121,6 +121,7 @@ describe('simulator separation', () => {
       'POST /demo/shoots/:projectId/as/:partyId/group-check',
       'POST /demo/shoots/:projectId/invitations',
       'POST /demo/operator',
+      'GET /demo/environment',
     ]);
   });
 

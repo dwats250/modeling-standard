@@ -4,6 +4,7 @@ import { publicAccess, syntheticOnly, type Policy, type Principal } from '../aut
 import { findLiveBriefForProject } from '../briefs/brief.ts';
 import { getBriefGreenState, isReady, listBriefPresence } from '../briefs/live.ts';
 import { defineBrowserOperation, defineOperation, type AnyOperation } from '../http/operations.ts';
+import { sameDigest, tokenDigest } from '../infrastructure/tokens.ts';
 import { createDirectInvitation } from '../invitations/invitation.ts';
 import { SESSION_COOKIE, clearSessionCookie, endSession } from '../sessions/session.ts';
 import { listPairwiseAgreements } from '../projects/agreement.ts';
@@ -185,16 +186,34 @@ const OPERATOR_COOKIE_SECONDS = 12 * 60 * 60;
  * demo operator. It ends any session this browser carries and sets the
  * operator cookie to the server's per-process secret. Without this action a
  * browser is never the operator.
+ *
+ * On staging (S13) the action also needs the operator key, checked here on
+ * the server in constant time: it arrives only in this POST's JSON body (never
+ * a URL), is never stored, logged or returned, and is not the cookie's value.
+ * A missing or wrong key is the same 403, before anything is written. The
+ * local demo has no key and refuses one.
  */
-function enterOperatorModeOperation(operatorSecret: string | undefined) {
+function enterOperatorModeOperation(operatorSecret: string | undefined, operatorKey: string | undefined) {
+  const expectedKey = operatorKey === undefined ? null : tokenDigest(operatorKey);
+  if (operatorKey !== undefined && expectedKey === null) throw new Error('the operator key must be a canonical token');
   return defineBrowserOperation({
     name: 'demo.operator.enter',
     method: 'POST',
     path: '/demo/operator',
+    input: { body: z.strictObject({ key: z.string().min(1).max(256).optional() }) },
     output: z.strictObject({}),
-    access: publicAccess('the demo convenience that makes this browser the synthetic demo operator; origin-checked; demo only'),
-    run: async (_input, { db, cookies }) => {
+    access: publicAccess('the demo convenience that makes this browser the synthetic demo operator; origin-checked; on staging it needs the operator key'),
+    run: async (input, { db, cookies, log }) => {
       if (operatorSecret === undefined) throw new AppError(404, 'not_found');
+      if (expectedKey === null) {
+        if (input.body.key !== undefined) throw new AppError(400, 'invalid_input');
+      } else {
+        const presented = tokenDigest(input.body.key);
+        if (presented === null || !sameDigest(presented, expectedKey)) {
+          log.warn('operator key refused');
+          throw new AppError(403, 'forbidden');
+        }
+      }
       for (const token of cookies(SESSION_COOKIE)) await endSession(db, token);
       return {
         kind: 'json',
@@ -202,6 +221,31 @@ function enterOperatorModeOperation(operatorSecret: string | undefined) {
         cookies: [clearSessionCookie(), { name: OPERATOR_COOKIE, value: operatorSecret, maxAge: OPERATOR_COOKIE_SECONDS, path: '/', sameSite: 'Strict' }],
       };
     },
+  });
+}
+
+/** What the screens need to know about where they run. Nothing secret. */
+export interface DemoEnvironment {
+  readonly environment: 'local' | 'staging';
+  /** Registered sign-in provider ids (`test` locally, `google` on staging). */
+  readonly providers: readonly string[];
+  readonly operatorKeyRequired: boolean;
+}
+
+const LOCAL_ENVIRONMENT: DemoEnvironment = { environment: 'local', providers: [], operatorKeyRequired: false };
+
+function environmentOperation(environment: DemoEnvironment) {
+  return defineOperation({
+    name: 'demo.environment',
+    method: 'GET',
+    path: '/demo/environment',
+    output: z.strictObject({
+      environment: z.enum(['local', 'staging']),
+      providers: z.array(z.string()),
+      operatorKeyRequired: z.boolean(),
+    }),
+    access: publicAccess('tells the demo screens whether they run locally or on synthetic staging, which sign-in to offer and whether operator mode needs a key; nothing secret'),
+    run: async () => ({ ...environment, providers: [...environment.providers] }),
   });
 }
 
@@ -228,12 +272,16 @@ function operatorOnly(op: AnyOperation): AnyOperation {
 
 /**
  * Every demo operation: the inspector's reads, the simulator, the composer
- * and scenario cards, the operator's participant simulation, Invite, and the
- * explicit operator-mode action. The operations that write demo labels are
- * given the annotation store they write to. Every protected one refuses a
+ * and scenario cards, the operator's participant simulation, Invite, the
+ * explicit operator-mode action and the environment the screens read. The
+ * operations that write demo labels are given the annotation store they
+ * write to. Every protected one refuses a
  * signed-in account.
  */
-export function createDemoOperations(annotations: AnnotationStore, operator: { secret?: string } = {}): readonly AnyOperation[] {
+export function createDemoOperations(
+  annotations: AnnotationStore,
+  operator: { secret?: string; key?: string; environment?: DemoEnvironment } = {},
+): readonly AnyOperation[] {
   return [
     listDemoProjectsOperation,
     readDemoProjectRecordOperation,
@@ -241,6 +289,7 @@ export function createDemoOperations(annotations: AnnotationStore, operator: { s
     ...createShootOperations(annotations),
     ...participantOperations,
     inviteDemoPartiesOperation,
-    enterOperatorModeOperation(operator.secret),
+    enterOperatorModeOperation(operator.secret, operator.key),
+    environmentOperation(operator.environment ?? LOCAL_ENVIRONMENT),
   ].map(operatorOnly);
 }

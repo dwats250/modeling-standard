@@ -70,25 +70,25 @@ export async function endSession(db: Executor, token: unknown): Promise<boolean>
   return rows.length > 0;
 }
 
-/** True if the Cookie header carries a session cookie at all, valid or not. */
-export function carriesSessionCookie(cookieHeader: string | undefined): boolean {
-  return cookieValues(cookieHeader, SESSION_COOKIE).length > 0;
+/** True if the Cookie header carries a session cookie at all (in the wire form for `secure`), valid or not. */
+export function carriesSessionCookie(cookieHeader: string | undefined, secure: boolean): boolean {
+  return cookieValues(cookieHeader, SESSION_COOKIE, secure).length > 0;
 }
 
 /**
  * The account principal for a Cookie header, or null. Exactly one session
  * cookie naming an open, unexpired session; anything else is null.
  */
-export async function sessionPrincipal(db: Executor, cookieHeader: string | undefined): Promise<Principal | null> {
-  const values = cookieValues(cookieHeader, SESSION_COOKIE);
+export async function sessionPrincipal(db: Executor, cookieHeader: string | undefined, secure: boolean): Promise<Principal | null> {
+  const values = cookieValues(cookieHeader, SESSION_COOKIE, secure);
   if (values.length !== 1) return null;
   const session = await findActiveSession(db, values[0]);
   return session ? { id: session.accountId, kind: 'account' } : null;
 }
 
-/** The production principal source: the session cookie, and nothing else. */
-export function createSessionResolver(db: Executor): ResolvePrincipal {
-  return (request) => sessionPrincipal(db, request.headers.cookie);
+/** The production principal source: the session cookie, and nothing else. `secure` must match the app's `secureCookies`. */
+export function createSessionResolver(db: Executor, secure: boolean): ResolvePrincipal {
+  return (request) => sessionPrincipal(db, request.headers.cookie, secure);
 }
 
 export function sessionCookie(token: string, ttlSeconds = SESSION_TTL_SECONDS): ResponseCookie {

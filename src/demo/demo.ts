@@ -51,13 +51,13 @@ export const OPERATOR_COOKIE = 'ms_demo_operator';
  * Signing in and signing out clear the operator cookie, so a participant who
  * signs out is nobody, not the operator.
  */
-export function createDemoPrincipalResolver(db: Executor, operatorSecret: string): ResolvePrincipal {
+export function createDemoPrincipalResolver(db: Executor, operatorSecret: string, secure: boolean): ResolvePrincipal {
   const expected = tokenDigest(operatorSecret);
   if (!expected) throw new Error('the operator secret must be a canonical token');
   return async (request) => {
     const header = request.headers.cookie;
-    if (carriesSessionCookie(header)) return sessionPrincipal(db, header);
-    const values = cookieValues(header, OPERATOR_COOKIE);
+    if (carriesSessionCookie(header, secure)) return sessionPrincipal(db, header, secure);
+    const values = cookieValues(header, OPERATOR_COOKIE, secure);
     if (values.length !== 1) return null;
     const presented = tokenDigest(values[0]);
     return presented !== null && sameDigest(presented, expected) ? DEMO_OPERATOR : null;
@@ -188,9 +188,19 @@ export function demoDatabaseTarget(configuredUrl: string): ExplicitDatabaseTarge
  * server: where reset runs DROP and CREATE DATABASE for the demo database.
  */
 export function demoAdminTarget(configuredUrl: string): ExplicitDatabaseTarget {
+  return syntheticAdminTarget(configuredUrl, DEMO_DATABASE);
+}
+
+/** A named synthetic database (the demo's or staging's), on a verified loopback server. */
+export function syntheticDatabaseTarget(configuredUrl: string, database: string): ExplicitDatabaseTarget {
+  return resolveLoopbackTarget(configuredUrl, database);
+}
+
+/** The migration role's own database, which must not be the synthetic one it creates or drops. */
+export function syntheticAdminTarget(configuredUrl: string, database: string): ExplicitDatabaseTarget {
   const target = resolveLoopbackTarget(configuredUrl);
-  if (target.database === DEMO_DATABASE) {
-    throw new DemoGuardError('Reset needs the migration role\'s own database, not the demo database.');
+  if (target.database === database) {
+    throw new DemoGuardError(`Reset needs the migration role's own database, not ${database}.`);
   }
   return target;
 }

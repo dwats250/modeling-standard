@@ -148,6 +148,9 @@ describe('two people, two browsers, one shoot', () => {
       expect(await page.locator('.viewing.signed-in .me').innerText()).toBe(who === 'model' ? 'Model' : 'Photographer');
       expect(await page.locator('nav.people').count()).toBe(0);
       expect(await page.locator('.sim-controls').count()).toBe(0);
+      // Plain HTTP: the bare session cookie, not Secure (a __Host- one could not be set here).
+      const cookies = await page.context().cookies(base);
+      expect(cookies.map((c) => [c.name, c.secure, c.path])).toEqual([['ms_session', false, '/']]);
       await shot(page, `${who}-signed-in`);
     }
 
