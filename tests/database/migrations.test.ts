@@ -43,7 +43,7 @@ describe('migrations', () => {
     });
   });
 
-  it('produce exactly the Stage 0 synthetic tables and the S01, S02, S06 to S09 and S12 tables (S03–S05 retired)', async () => {
+  it('produce exactly the Stage 0 synthetic tables and the S01, S02, S06 to S09, S11 and S12 tables (S03–S05 retired)', async () => {
     const tables = await withClient(inject('migrationUrl'), (c) =>
       c.query(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -55,6 +55,10 @@ describe('migrations', () => {
       'brief_item',
       'brief_party_presence',
       'brief_tick',
+      'contract',
+      'contract_item',
+      'contract_party',
+      'contract_signature',
       'direct_invitation',
       'live_brief',
       'pairwise_agreement',

@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import type pg from 'pg';
 import { describe, expect, inject, it } from 'vitest';
 import { createLogger } from '../../src/app/logger.ts';
-import { listBriefItems } from '../../src/briefs/brief.ts';
+import { resolveAccountForLogin } from '../../src/accounts/account.ts';
+import { bindPartyToAccount } from '../../src/accounts/binding.ts';
+import { addBriefItem, listBriefItems, openLiveBrief } from '../../src/briefs/brief.ts';
 import {
   freezeBriefForSigning,
   getBriefSigningState,
@@ -14,12 +16,17 @@ import {
   settleDecideTogetherItem,
   shareLiveBrief,
   tickBriefItem,
+  untickBriefItem,
   getBriefGreenState,
 } from '../../src/briefs/live.ts';
+import { finalizeBrief, getContract, verifyContractChain } from '../../src/contracts/contract.ts';
 import { consumeSignInAttempt, startSignInAttempt } from '../../src/identity/attempt.ts';
-import { openDatabase } from '../../src/infrastructure/database/client.ts';
+import { openDatabase, type Executor } from '../../src/infrastructure/database/client.ts';
 import { migrationsFolder, runMigrations } from '../../src/infrastructure/database/migrate.ts';
 import { resolveDirectInvitation } from '../../src/invitations/invitation.ts';
+import { createPairwiseAgreement } from '../../src/projects/agreement.ts';
+import { addProjectParty } from '../../src/projects/party.ts';
+import { insertProject } from '../../src/projects/project.ts';
 import { createSession, findActiveSession } from '../../src/sessions/session.ts';
 import { createScratchDatabase, journal, migrateThrough, type ScratchDatabase } from '../support/migration-boundary.ts';
 import { CHECK_VIOLATION, withClient } from '../support/sql.ts';
@@ -1014,6 +1021,73 @@ describe('populated migration upgrades', () => {
   );
 
   it(
+    'populated 0025 → current (S11): draft, live and frozen briefs keep every row and phase, the contract tables arrive empty, and both briefs then finalize',
+    async () => {
+      await inScratch(async (db) => {
+        await migrateThrough(db.migrationUrl, T0025);
+        const before25 = openDatabase(db.runtimeUrl, createLogger('silent'));
+        let ids: { draft: string; live: S11Brief; frozen: S11Brief; frozenFingerprint: string };
+        try {
+          const draftProject = await insertProject(before25.db, { createdByPrincipalId: 'upgrade-test-creator' });
+          await addProjectParty(before25.db, draftProject.id);
+          const draft = (await openLiveBrief(before25.db, draftProject.id)).id;
+          const live = await readyBoundBrief(before25.db);
+          const frozen = await readyBoundBrief(before25.db);
+          const { fingerprint } = await freezeBriefForSigning(before25.db, frozen.briefId);
+          ids = { draft, live, frozen, frozenFingerprint: fingerprint };
+        } finally {
+          await before25.close();
+        }
+
+        const boundary = journal().entries.findIndex((e) => e.tag === T0025) + 1;
+        const before = await asOwner(db, async (c) => ({ rows: await rowsOf(c), books: await bookkeeping(c) }));
+        expect((before.rows['live_brief'] as { phase: string }[]).map((b) => b.phase).sort()).toEqual(['draft', 'live', 'signing']);
+
+        await runMigrations(db.migrationUrl);
+
+        await asOwner(db, async (c) => {
+          expect(await rowsOf(c)).toEqual(before.rows);
+          for (const table of ['contract', 'contract_party', 'contract_item', 'contract_signature']) {
+            expect({ table, rows: (await c.query(`select count(*)::int as n from ${table}`)).rows[0].n }).toEqual({ table, rows: 0 });
+            expect({ table, privileges: await runtimePrivileges(c, table) }).toEqual({ table, privileges: ['INSERT', 'SELECT'] });
+          }
+          const books = await bookkeeping(c);
+          expect(books.slice(0, boundary)).toEqual(before.books);
+          expect(books.map(({ hash, created_at }) => ({ hash, created_at }))).toEqual(expectedBookkeeping(journal().entries.length));
+          expect(await catalog(c)).toEqual(await freshCatalog());
+        });
+        // Rerunning is a no-op.
+        await runMigrations(db.migrationUrl);
+        await asOwner(db, async (c) => expect((await bookkeeping(c)).length).toBe(journal().entries.length));
+
+        const handle = openDatabase(db.runtimeUrl, createLogger('silent'));
+        try {
+          // The frozen brief keeps its fingerprint, can still be withdrawn (S10), re-frozen to the same digest and finalized.
+          expect(await getBriefSigningState(handle.db, ids.frozen.briefId)).toEqual({ phase: 'signing', fingerprint: ids.frozenFingerprint });
+          expect(await untickBriefItem(handle.db, ids.frozen.feeId, ids.frozen.parties[0].partyId)).toBe(true);
+          expect(await getBriefSigningState(handle.db, ids.frozen.briefId)).toEqual({ phase: 'live', fingerprint: null });
+          await tickBriefItem(handle.db, ids.frozen.feeId, ids.frozen.parties[0].partyId);
+          expect((await freezeBriefForSigning(handle.db, ids.frozen.briefId)).fingerprint).toBe(ids.frozenFingerprint);
+          // The live brief freezes and finalizes too; the draft is untouched.
+          await freezeBriefForSigning(handle.db, ids.live.briefId);
+          for (const brief of [ids.frozen, ids.live]) {
+            const { fingerprint } = await getBriefSigningState(handle.db, brief.briefId);
+            const [one, two] = brief.parties.map((p) => ({ ...p, fingerprint: fingerprint! }));
+            const { contractId } = await finalizeBrief(handle.db, brief.briefId, [one!, two!]);
+            expect(await getBriefSigningState(handle.db, brief.briefId)).toEqual({ phase: 'final', fingerprint: null });
+            expect(await verifyContractChain(handle.db, contractId)).toEqual({ valid: true, problems: [] });
+            expect((await getContract(handle.db, contractId)).contract.fingerprint).toBe(fingerprint);
+          }
+          expect(await getBriefSigningState(handle.db, ids.draft)).toEqual({ phase: 'draft', fingerprint: null });
+        } finally {
+          await handle.close();
+        }
+      });
+    },
+    UPGRADE_TIMEOUT,
+  );
+
+  it(
     'duplicate pairs at 0018: the S08 upgrade fails loudly and leaves the database exactly as it was',
     async () => {
       await inScratch(async (db) => {
@@ -1043,3 +1117,36 @@ describe('populated migration upgrades', () => {
     UPGRADE_TIMEOUT,
   );
 });
+
+interface S11Brief {
+  readonly briefId: string;
+  readonly feeId: string;
+  readonly parties: readonly [{ partyId: string; accountId: string }, { partyId: string; accountId: string }];
+}
+
+/** A two-party brief, shared, resolved and ticked by everyone, with each party bound to its own account (S11 upgrade). */
+async function readyBoundBrief(db: Executor): Promise<S11Brief> {
+  const project = await insertProject(db, { createdByPrincipalId: 'upgrade-test-creator' });
+  const p = (await addProjectParty(db, project.id)).id;
+  const m = (await addProjectParty(db, project.id)).id;
+  const pm = (await createPairwiseAgreement(db, project.id, [p, m])).id;
+  const briefId = (await openLiveBrief(db, project.id)).id;
+  await addBriefItem(db, briefId, { layer: 'universal', content: '[upgrade] safety' });
+  const parameter = (await addBriefItem(db, briefId, { layer: 'shared', subjectPartyId: m, shape: 'open_parameter', content: '[upgrade] coverage', pending: 'subject' })).id;
+  const feeId = (await addBriefItem(db, briefId, { layer: 'money', pairwiseAgreementId: pm, itemKey: 'fee', content: '[upgrade] fee', value: '[upgrade] 100' })).id;
+  await setDraftPartyPresence(db, briefId, p, true);
+  await setDraftPartyPresence(db, briefId, m, false);
+  await shareLiveBrief(db, briefId);
+  await setOpenParameterBySubject(db, parameter, m, '[upgrade] level one');
+  for (const state of (await getBriefGreenState(db, briefId)).items) {
+    for (const party of state.approverIds) await tickBriefItem(db, state.item.id, party);
+  }
+  expect(await isBriefReadyToSign(db, briefId)).toBe(true);
+  const parties = [];
+  for (const partyId of [p, m]) {
+    const account = await resolveAccountForLogin(db, { provider: 'google', providerSubject: `upgrade-${partyId}` });
+    await bindPartyToAccount(db, { projectId: project.id, partyId, accountId: account.id });
+    parties.push({ partyId, accountId: account.id });
+  }
+  return { briefId, feeId, parties: [parties[0]!, parties[1]!] };
+}

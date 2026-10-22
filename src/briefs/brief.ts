@@ -31,7 +31,7 @@ export type BriefLayer = 'universal' | 'shared' | 'money';
 export type BriefShape = 'declaration' | 'request' | 'open_parameter';
 export type BriefItemKey = 'fee' | 'no_means_no' | 'coverage_level' | 'physical_contact' | 'stop_rule';
 export type BriefPending = 'decide_together' | 'subject';
-export type BriefPhase = 'draft' | 'live' | 'signing';
+export type BriefPhase = 'draft' | 'live' | 'signing' | 'final';
 
 export interface LiveBriefRecord {
   readonly id: string;
@@ -103,7 +103,13 @@ export type BriefRefusal =
   | 'deliberate_tick'
   | 'item_not_in_brief'
   | 'not_ready'
-  | 'unsupported_topology';
+  | 'unsupported_topology'
+  // S11 finalization (src/contracts/contract.ts).
+  | 'not_signing'
+  | 'already_final'
+  | 'fingerprint_mismatch'
+  | 'not_a_party'
+  | 'not_bound_account';
 
 export class BriefActionRefusedError extends Error {
   readonly reason: BriefRefusal;

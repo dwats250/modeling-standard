@@ -42,8 +42,9 @@ import { briefItem, briefPartyPresence, briefTick, liveBrief } from './tables.ts
  * project of exactly two parties and one pair, can be frozen: its
  * signing-relevant state is fingerprinted and every change is refused, except
  * an untick, which withdraws it to live with nothing kept. Freezing is an
- * internal mechanism, not a party act; signatures and the final contract are
- * S11.
+ * internal mechanism, not a party act. Signatures and the final contract are
+ * S11 (`src/contracts/`), which moves a signing brief to its terminal final
+ * phase; every function here refuses a final brief.
  *
  * Every mutation runs READ COMMITTED under the per-brief advisory lock.
  *
@@ -542,6 +543,15 @@ export async function freezeBriefForSigning(db: Executor, briefId: string): Prom
     if (!row) throw new BriefNotFoundError();
     return { briefId: row.id, fingerprint };
   }, READ_COMMITTED);
+}
+
+/**
+ * The brief's fingerprint snapshot as it is now, with each item's derived
+ * approvers, read in the caller's transaction (S11 finalization copies it).
+ * Call under the brief lock.
+ */
+export async function readFingerprintSnapshot(tx: Executor, brief: LiveBriefRecord): Promise<FingerprintSnapshot> {
+  return fingerprintSnapshot(tx, brief, await greenStateOf(tx, brief, await listBriefItems(tx, brief.id)));
 }
 
 /** The brief's phase and fingerprint. */

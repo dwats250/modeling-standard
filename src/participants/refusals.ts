@@ -2,8 +2,8 @@ import { AppError } from '../app/errors.ts';
 import { BriefActionRefusedError } from '../briefs/brief.ts';
 
 /**
- * Refusals from the brief data functions and the database's own guards (S08,
- * S09), as stable 409 codes. Shared by the participant routes (S12) and the
+ * Refusals from the brief data functions and the database's own guards (S08
+ * to S11), as stable 409 codes. Shared by the participant routes (S12) and the
  * demo's simulator. No rule is decided here; this only names the refusal.
  * Error bodies carry the code and nothing else.
  */
@@ -24,6 +24,9 @@ const CONSTRAINT_CODES: Readonly<Record<string, string>> = {
   brief_item_signing_fixed: 'not_live',
   brief_tick_signing_fixed: 'not_live',
   pairwise_agreement_signing_fixed: 'not_live',
+  // S11: a final brief is fixed.
+  brief_item_final_fixed: 'not_live',
+  pairwise_agreement_final_fixed: 'not_live',
 };
 
 export function asConflict(error: unknown): never {
