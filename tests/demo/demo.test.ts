@@ -152,12 +152,13 @@ describe('demo inspector operations', () => {
 
     const res = await app.inject({ method: 'GET', url: `/demo/projects/${projectId}/record`, headers: as(me) });
     expect(res.statusCode).toBe(200);
-    const body = res.json<{ project: unknown; parties: { id: string }[]; agreements: unknown; brief: unknown }>();
-    expect(Object.keys(body).sort()).toEqual(['agreements', 'brief', 'parties', 'project']);
+    const body = res.json<{ project: unknown; parties: { id: string }[]; agreements: unknown; brief: unknown; contract: unknown }>();
+    expect(Object.keys(body).sort()).toEqual(['agreements', 'brief', 'contract', 'parties', 'project']);
     expect(body.project).toEqual({ id: projectId });
     expect(body.parties.map((p) => p.id).sort()).toEqual([a.id, b.id, c.id].sort());
     expect(body.agreements).toEqual([{ id: ac.id, partyIds: [...ac.partyIds] }]);
     expect(body.brief).toBeNull();
+    expect(body.contract).toBeNull();
     expect(res.body).not.toMatch(/created|principal|role|payer|signed/i);
   });
 
@@ -316,7 +317,7 @@ describe('demo fixtures and server', () => {
     const { id } = (await created.json()) as { id: string };
     const record = await fetch(`${base}/demo/projects/${id}/record`);
     expect(record.status).toBe(200);
-    expect(await record.json()).toEqual({ project: { id }, parties: [], agreements: [], brief: null });
+    expect(await record.json()).toEqual({ project: { id }, parties: [], agreements: [], brief: null, contract: null });
   });
 
   it('refuse a Host header that is not this loopback server (DNS rebinding)', async () => {

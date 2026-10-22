@@ -9,6 +9,8 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
+import { resolveAccountForLogin } from '../../src/accounts/account.ts';
+import { bindPartyToAccount } from '../../src/accounts/binding.ts';
 import { addBriefItem, openLiveBrief } from '../../src/briefs/brief.ts';
 import { createDemoApplication } from '../../src/demo/application.ts';
 import { demoDatabaseTarget, demoOperatorPrincipal } from '../../src/demo/demo.ts';
@@ -492,6 +494,36 @@ describe('demo regression', () => {
     expect(stuck.y).toBeLessThan(20);
     expect(await page.locator('.band .actor.current').isVisible()).toBe(true);
     await page.screenshot({ path: join(SHOTS, 'ready-to-sign-mobile-scrolled.png'), mask: masks(page), animations: 'disabled' });
+
+    // 15. S11: the operator's synthetic finalization. Unbound people are refused, and nothing changes.
+    await page.setViewportSize(VIEWPORTS.desktop);
+    await page.evaluate('window.scrollTo(0, 0)');
+    const finalizeButton = page.locator('button', { hasText: 'Finalize as the operator (synthetic)' });
+    await expectRefusal(() => finalizeButton.click(), 'Each person must claim their invitation');
+    expect(await headline()).toBe('READY TO SIGN');
+    // Bind each person (as claiming their invitation would), then finalize.
+    const projectId = (await page.evaluate<string>('location.hash')).split('/')[2]!;
+    const parties = (await page.evaluate<{ parties: { id: string }[] }>(`fetch('/demo/projects/${projectId}/record').then((r) => r.json())`)).parties;
+    for (const party of parties) {
+      const account = await resolveAccountForLogin(database.db, { provider: 'google', providerSubject: `regression-${party.id}` });
+      await bindPartyToAccount(database.db, { projectId, partyId: party.id, accountId: account.id });
+    }
+    await finalizeButton.click();
+    await expect.poll(headline).toBe('FINAL — SYNTHETIC');
+    const contract = page.locator('.card', { has: page.locator('h3', { hasText: 'Final contract — synthetic' }) });
+    await contract.waitFor();
+    expect(await contract.locator('.chip', { hasText: 'chain verifies' }).count()).toBe(1);
+    expect(await contract.locator('.signatures li').count()).toBe(2);
+    expect(await contract.locator('details.rendering iframe[sandbox=""]').count()).toBe(2);
+    expect(await page.locator('button:not([disabled])', { hasText: /\bsign\b/i }).count()).toBe(0);
+    const finalDetail = await page.locator('#detail').innerText();
+    for (const never of NEVER_IN_PROJECT_VIEWS) expect({ never: String(never), found: never.test(finalDetail) }).toEqual({ never: String(never), found: false });
+    await contract.locator('details.rendering summary').first().click();
+    await expect.poll(() => page.frameLocator('details.rendering iframe').first().locator('body').innerText()).toContain("Proposal rendering for Cory's reaction — synthetic.");
+    await page.setViewportSize(VIEWPORTS.mobile);
+    await noHorizontalScroll(page);
+    await contract.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(SHOTS, 'final-contract-mobile.png'), fullPage: true, mask: masks(page), animations: 'disabled' });
     await page.close();
   });
 

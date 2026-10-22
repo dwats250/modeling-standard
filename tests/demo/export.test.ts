@@ -66,7 +66,7 @@ describe('portable snapshot', () => {
 
   it('carries Cory’s rulings and the S09 live framing, not the superseded wording', () => {
     expect(html).toContain('READY TO SIGN');
-    expect(html).toContain('Signing is the next slice (S10–S11) and is not built in this demo');
+    expect(html).toContain('The signing act is not built: what it looks like, and whether one person may go first, are open (D04).');
     expect(html).toContain('the required-item catalogue does not exist yet, so real use stays gated');
     expect(html).toContain('Needs its own tick');
     expect(html).toContain('private money only');

@@ -1,6 +1,8 @@
 // Record Inspector for the local synthetic demo. Plain browser JavaScript, no
 // build step. Every value from the server is written with textContent, never
-// as HTML.
+// as HTML. The one exception is the S11 proposal rendering, a whole document
+// the server renders with every stored value escaped, shown only inside a
+// sandboxed iframe (no scripts, no same origin).
 
 const state = {
   fixture: { projects: {} },
@@ -48,7 +50,7 @@ const UNAVAILABLE = [
   ['Add a party', 'Decided (D03): a person joins through the invitation link and signs in with Google or Apple. Not built: account binding (S06) and invitation links (S07) are stored; sign-in and delivery are not.'],
   ['Compose the brief for real', 'Not a product action. The demo composer (Shoots → New shoot) composes as the demo operator; who composes in the product, and how, is not ruled.'],
   ['Share, resolve and tick for real', 'Not a product action. These are data functions (S09); this page only simulates them for synthetic parties.'],
-  ['Sign', 'Not built (S10–S11). Everyone signs only once every term is green for everyone (D04); what the signing act looks like is still open.'],
+  ['Sign', 'Not built: what the signing act looks like is still open (D04). Everyone signs only once every term is green for everyone. The operator can store a final contract synthetically (S11).'],
   ['View as a party for real', 'Decided for photo shoots (D10). The demo shows party-filtered screens (Shoots → look at it as each person) by simulation; there is no sign-in, so no real party view exists.'],
 ];
 
@@ -306,6 +308,7 @@ function renderDetail() {
     head,
     record.brief ? renderBand(record, annotation) : null,
     renderBrief(record, annotation),
+    ...(record.contract ? [renderContract(record, annotation)] : []),
     el('details', { className: 'card not-built' }, [
       el('summary', { text: 'Not built yet: signing, sign-in and more' }),
       el('p', { className: 'hint', text: 'Decided is not implemented: not built yet, or still open.' }),
@@ -374,6 +377,13 @@ const SIM_ERRORS = {
   still_pending: 'Settle the item before ticking it.',
   fixed_once_shared: 'A shared brief is fixed: nothing is added, reworded or reordered.',
   invalid_input: 'Check the input.',
+  // S11: the operator's synthetic finalization.
+  not_bound_account: 'Each person must claim their invitation (a bound account) before the operator can finalize.',
+  not_ready: 'Not everything is green yet.',
+  not_signing: 'The brief is not ready to finalize.',
+  already_final: 'This brief is already final.',
+  fingerprint_mismatch: 'The brief changed since it was frozen.',
+  unsupported_topology: 'Only a brief between exactly two people can be finalized.',
 };
 
 function simError(error) {
@@ -550,7 +560,7 @@ function stageOf(brief) {
   return brief.ready ? 'ready' : brief.phase;
 }
 
-const STAGE_HEADLINES = { draft: 'DRAFT', live: 'LIVE', ready: 'READY TO SIGN' };
+const STAGE_HEADLINES = { draft: 'DRAFT', live: 'LIVE', ready: 'READY TO SIGN', signing: 'FROZEN (INTERNAL)', final: 'FINAL — SYNTHETIC' };
 const EYEBROWS = { fixture: 'Fixture', scenario: 'Synthetic walkthrough', composed: 'Composed shoot' };
 
 /** One line of story: who, one shared brief, resolve, green-light, ready to sign. */
@@ -596,12 +606,15 @@ function renderBand(record, annotation) {
 
   let progress;
   if (stage === 'ready') progress = `All ${brief.items.length} green`;
+  else if (stage === 'final') progress = `Contract stored · ${record.contract?.clauses.length ?? 0} clauses`;
+  else if (stage === 'signing') progress = 'Frozen for finalization';
   else if (live) progress = `${greens} of ${brief.items.length} green${open ? ` · ${open} still open` : ''}`;
   else progress = 'Not shared yet';
 
   const steps = el('ol', { className: 'band-steps', attrs: { 'aria-label': 'Stages' } });
-  const current = ['draft', 'live', 'ready'].indexOf(stage);
-  ['Draft', 'Live', 'Ready to sign'].forEach((label, i) => {
+  const past = stage === 'signing' || stage === 'final';
+  const current = past ? 3 : ['draft', 'live', 'ready'].indexOf(stage);
+  ['Draft', 'Live', 'Ready to sign', ...(past ? ['Final (synthetic)'] : [])].forEach((label, i) => {
     steps.append(el('li', { className: i === current ? 'current' : i < current ? 'done' : '', text: label }));
   });
 
@@ -615,7 +628,8 @@ function renderBand(record, annotation) {
   ]);
   if (change) {
     let note;
-    if (change.to === 'ready') note = 'Everything is green. The brief is ready to sign.';
+    if (change.to === 'final') note = 'Finalized by the operator (synthetic). The contract is stored.';
+    else if (change.to === 'ready') note = 'Everything is green. The brief is ready to sign.';
     else if (change.from === 'ready') note = 'No longer ready to sign: an item needs its tick again.';
     else if (change.to === 'live') note = 'Shared. The brief is now live: resolve what is open, then tick.';
     if (note) band.append(el('p', { className: 'band-note', text: note }));
@@ -662,8 +676,21 @@ function renderMilestone(brief) {
         el('span', { text: 'Signing is not built in this demo yet.' }),
       ]),
       eng(
-        'Signing is the next slice (S10–S11) and is not built in this demo. This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated (Gate 2).',
+        'The signing act is not built: what it looks like, and whether one person may go first, are open (D04). This is the structural all-green rule only: the required-item catalogue does not exist yet, so real use stays gated (Gate 2).',
       ),
+    );
+    if (!SNAPSHOT) node.append(renderOperatorFinalize(brief));
+  } else if (stage === 'signing') {
+    node.append(
+      el('p', { className: 'milestone-title', text: 'Frozen (internal)' }),
+      el('p', { className: 'stage-detail', text: 'Fixed and fingerprinted (S10). An untick withdraws it to live.' }),
+    );
+    if (!SNAPSHOT) node.append(renderOperatorFinalize(brief));
+  } else if (stage === 'final') {
+    node.append(
+      el('p', { className: 'milestone-title', text: 'Final — synthetic' }),
+      el('p', { className: 'stage-detail', text: 'The operator finalized this brief. Its terms now exist only in the stored contract below; nothing in it can change.' }),
+      eng('S11: append-only contract, copied verbatim; the live items and ticks are gone (HC1). No participant sees a final brief.'),
     );
   } else if (stage === 'live') {
     const bar = el('span');
@@ -684,6 +711,17 @@ function renderMilestone(brief) {
     );
   }
   return node;
+}
+
+/** SYNTHETIC, OPERATOR-ONLY: one act carrying both parties' bound-account evidence (S11). Not the signing act. */
+function renderOperatorFinalize(brief) {
+  return el('div', { className: 'share-row operator-finalize' }, [
+    button('Finalize as the operator (synthetic)', () => simulate(`/demo/sim/briefs/${brief.id}/finalize`, {}, 'Finalized (synthetic). The contract is stored.'), 'secondary'),
+    el('span', {
+      className: 'hint',
+      text: 'Operator simulation only: stores the final contract with both people’s bound-account evidence at once. Each person must have claimed their invitation. This is not the signing act, which is still open (D04).',
+    }),
+  ]);
 }
 
 function renderPresence(record, annotation) {
@@ -772,7 +810,8 @@ function renderBrief(record, annotation) {
   }
   if (actor) body.append(renderGroupCheck(record, annotation, actor));
   if (brief.items.length === 0) {
-    body.append(el('div', { className: 'state empty' }, [el('p', { text: 'The draft brief has no items.' })]));
+    const text = brief.phase === 'final' ? 'No live items: they were copied into the contract and deleted (HC1).' : 'The draft brief has no items.';
+    body.append(el('div', { className: 'state empty' }, [el('p', { text })]));
   }
   const numberOf = new Map(brief.items.map((item, i) => [item.id, i + 1]));
   for (const [layer, title, audience, hint, engNote] of LAYERS) {
@@ -791,6 +830,63 @@ function renderBrief(record, annotation) {
   }
   return section('The brief', 'One brief, as it stands right now.', body, {
     engNote: 'Current state only: no history, no record of a decline, nobody recorded as having proposed anything, and no times (HC1, HC2).',
+  });
+}
+
+// ---- The final contract (S11, synthetic) ----
+
+function renderContract(record, annotation) {
+  const contract = record.contract;
+  const label = (id) => partyLabel(annotation, id);
+  const body = el('div', { className: 'contract' }, [
+    el('p', {}, [chip(contract.chain.valid ? 'chain verifies' : 'chain does NOT verify', contract.chain.valid ? 'green' : 'open'), el('span', { className: 'hint', text: ` fingerprint ${shortId(contract.fingerprint)}` })]),
+    ...contract.chain.problems.map((problem) => el('p', { className: 'hint', text: problem })),
+  ]);
+  const parties = el('ul', { className: 'presence' });
+  for (const p of contract.parties) {
+    parties.append(el('li', {}, [el('span', { className: 'who', text: label(p.partyId) }), el('span', { text: p.onSite ? ' on site · account ' : ' not on site · account ' }), idCode(p.accountId)]));
+  }
+  const clauses = el('ol', { className: 'brief-items' });
+  for (const c of contract.clauses) {
+    clauses.append(
+      el('li', { className: 'item', attrs: { 'data-layer': c.layer } }, [
+        el('div', { className: 'item-body' }, [
+          el('p', { className: 'wording', text: c.content }),
+          c.value === null ? null : el('p', { className: 'value', text: c.value }),
+          el('p', { className: 'hint', text: `${c.layer} · approvers recorded: ${c.approverPartyIds.map(label).join(', ') || 'none'}` }),
+        ]),
+      ]),
+    );
+  }
+  const signatures = el('ul', { className: 'signatures' });
+  for (const s of contract.signatures) {
+    signatures.append(
+      el('li', {}, [
+        el('span', { text: `sequence ${s.sequence} · ${label(s.partyId)} · ${s.signedAt} · ip ${s.ip ?? 'none'} · device ${s.userAgent ?? 'none'} · ` }),
+        el('span', { className: 'hint', text: `prev ${shortId(s.prevHash)} → record ${shortId(s.recordHash)}` }),
+      ]),
+    );
+  }
+  const renderings = contract.renderings.map((r) =>
+    el('details', { className: 'rendering' }, [
+      el('summary', { text: `Proposal rendering — ${label(r.partyId)}’s view` }),
+      el('iframe', { attrs: { sandbox: '', srcdoc: r.html, title: `Proposal rendering, ${label(r.partyId)}’s view` } }),
+    ]),
+  );
+  body.append(
+    el('h4', { text: 'Parties and bound accounts' }),
+    parties,
+    el('h4', { text: 'Clauses, verbatim' }),
+    clauses,
+    el('h4', { text: 'Signature records, chained' }),
+    eng('Both written in one operator act, at one database time; chain order is by party id, not who went first.'),
+    signatures,
+    el('h4', { text: 'Each person’s view' }),
+    el('p', { className: 'hint', text: 'A proposal for Cory’s reaction: what each clause shows is still open (D04). Shown to no participant.' }),
+    ...renderings,
+  );
+  return section('Final contract — synthetic', 'The stored record, whole, as the operator inspects it. Append-only: nothing here can change.', body, {
+    engNote: 'S11. Operator/test-only finalization; the signing act, signing order and every participant-facing word are open.',
   });
 }
 
@@ -818,7 +914,7 @@ const DECISIONS = [
     file: 'decisions/D04-terms-and-affirmation.md',
     built: [
       'Decided: ticking and signing are separate acts. Everyone ticks until every term is green for everyone; only then does anyone sign.',
-      'Built as data functions: ticks, green state and ready to sign (S09). Not built: signing (S10–S11).',
+      'Built as data functions: ticks, green state and ready to sign (S09), the freeze (S10) and the final contract, reached here only by an operator-only synthetic finalization (S11). Not built: the signing act.',
     ],
     open: ['The visible signing act once everything is green.'],
     blocks: ['Building the signing step'],
@@ -848,7 +944,7 @@ const CAPABILITIES = [
 const DECIDED_NOT_BUILT = [
   'D03 participation credential: account by Google or Apple sign-in, the link is the invitation. Account storage exists (S06); sign-in and invitation do not.',
   'D10 what each party sees (photo shoots): decided in full. The demo simulates party-filtered screens; no real party view (signed in) is built.',
-  'D02 lifecycle: share, resolve, decline and green state are data functions (S09), simulated here; signing is not built (S10–S11).',
+  'D02 lifecycle: share, resolve, decline and green state are data functions (S09), simulated here; the final contract is stored only by an operator-only synthetic finalization (S11); the signing act is not built.',
   'Three layers: universal safety, shared logistics including the call sheet, private money only. Built as draft topology (S08); the call sheet is not built.',
   'On site means physical proximity: an explicit fact per party, fixed once the brief is shared (S09). The roster-addition workflow is not built.',
   'D11 verification at first participation. Not built.',

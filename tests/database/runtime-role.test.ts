@@ -4,7 +4,7 @@ import { INSUFFICIENT_PRIVILEGE, sqlErrorCode, withClient } from '../support/sql
 
 /**
  * The runtime credential is distinct from the migration credential and holds
- * exactly the privileges Stage 0 and S01, S02 and S06 to S08 need. Checked as the runtime role, in SQL.
+ * exactly the privileges Stage 0 and S01, S02 and S06 to S12 need. Checked as the runtime role, in SQL.
  */
 
 describe('runtime and migration credentials', () => {
@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09 and S12 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09, S11 and S12 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -46,6 +46,11 @@ describe('runtime and migration credentials', () => {
       brief_tick: ['SELECT', 'INSERT', 'DELETE'],
       account_session: ['SELECT', 'INSERT'],
       sign_in_attempt: ['SELECT', 'INSERT', 'DELETE'],
+      // S11: the final contract is append-only.
+      contract: ['SELECT', 'INSERT'],
+      contract_party: ['SELECT', 'INSERT'],
+      contract_item: ['SELECT', 'INSERT'],
+      contract_signature: ['SELECT', 'INSERT'],
     };
     // Column-level UPDATE only (S08, S09, S12); no table may be updated wholesale.
     const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence', 'account_session']);
@@ -100,6 +105,11 @@ describe('runtime and migration credentials', () => {
         // S12: a session can only be ended.
         ['account_session', ['ended_at']],
         ['sign_in_attempt', []],
+        // S11: nothing in a contract is ever updated.
+        ['contract', []],
+        ['contract_party', []],
+        ['contract_item', []],
+        ['contract_signature', []],
       ] as const) {
         const { rows } = await c.query<{ column_name: string }>(
           `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1

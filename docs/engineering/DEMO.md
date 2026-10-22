@@ -2,7 +2,7 @@
 
 (Synthetic staging — the same demo over HTTPS for tailnet phones, with Google sign-in and a keyed operator mode — is S13: `docs/engineering/S13-STAGING.md`.)
 
-A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), invite each person by link, let each person sign in on their own device and act only as themselves (S12), and resolve it live to **READY TO SIGN**. It is not real-use approval (Gate 2). Sign-in is a local **test identity provider**, not Google or Apple, and verifies nothing. Signing is not built here.
+A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), invite each person by link, let each person sign in on their own device and act only as themselves (S12), and resolve it live to **READY TO SIGN**. It is not real-use approval (Gate 2). Sign-in is a local **test identity provider**, not Google or Apple, and verifies nothing. Signing is not built here. In the record inspector (`/inspector`) the operator can **finalize** a ready brief whose two people have both claimed their invitations: one synthetic operator act that stores the final contract (S11) and shows it, with each person's proposal rendering. It is not the signing act, and no person's screen shows a frozen or final shoot.
 
 ## Two people, two devices (S12)
 
@@ -84,7 +84,7 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 - **Operator acts.** Composing, presence, sharing, entering agreed values and sending invitations are operator acts; who does them in the product is open.
 - **Who composes, who shares, who enters a decide-together value** are open questions for Cory; here they are operator acts, labelled as such.
 - **READY TO SIGN is structural.** It means everything currently in the brief is resolved and green for everyone who must tick it; the required-term catalogue is not drafted, so it does not mean the brief is complete.
-- **No signing**, freeze, signatures or contract (S10–S11 are a later slice). **No no-means-no** term or placeholder (D04 wording is Cory's). **No walking away** from a collaboration.
+- **No signing act.** The only way to a final contract is the inspector's operator-only, synthetic finalize (S11); people never sign, and never see a frozen or final brief or a contract. **No no-means-no** term or placeholder (D04 wording is Cory's). **No walking away** from a collaboration.
 - **Multi-party** shoots show no overall readiness (it could reveal another pair's private fee).
 - The **inspector** is an engineering aid showing the whole record; its walkthrough's "Settle together" form predates the participant screens.
 - The snapshot covers the inspector only.
@@ -95,7 +95,7 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 
 - `tests/demo-browser/journey.test.ts` — the participant journey at 1280 and 390: the welcome screen's single primary action, the demo menu and every About statement; composer fields (exactly these rows) and per-field blank refusals; share refused then shared; chooser; each person's screen with the simulation label, band and proposed-word flag; the Model's open parameter; Simulation controls; group-check and deliberate ticks to READY TO SIGN with the catalogue caveat and "signing is the next step and is not built"; untick ("No longer ready to sign.") and retick; mobile band in the first half-screen and stuck while scrolling, controls at least 44 px; reload; the decline path with no numbering gap; the three-person case (only one's own fee, no readiness); the empty shoot; a draft refused under a person's screen; labels kept across a restart and cleared by reset; no history words, no stray text, no signing control, no horizontal scroll, no browser errors.
 - `tests/demo-browser/participants.test.ts` — S12 in a real browser: the operator invites; two separate 390-wide contexts accept their own links, sign in on the test provider's page, see only their own screen and controls, and resolve to READY TO SIGN; a signed-in phone is refused the operator screens; sign-out leaves no mode.
-- `tests/demo-browser/regression.test.ts` — the inspector at `/inspector`: fixtures, the walkthrough, the decisions view, the snapshot from `file://`, reset repeatability, every demo route 404 in production.
+- `tests/demo-browser/regression.test.ts` — the inspector at `/inspector`: fixtures, the walkthrough, the decisions view, the snapshot from `file://` (it opens a draft fixture and the ready fixture: no simulation controls, no network request, no horizontal scroll; it does not open a finalized contract), reset repeatability, every demo route 404 in production.
 
 Screenshots go to `test-results/demo/` (`journey-*` per stage and width; the inspector's existing set). They are evidence, not design approval.
 
