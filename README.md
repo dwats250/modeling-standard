@@ -100,6 +100,8 @@ Cory and Dustin are equal partners. Cory has final authority over binding produc
 
 Routine technical choices and authorized reversible synthetic prototypes are within Dustin's remit. Fundamental product decisions and protected legal, consent, privacy, and real-use boundaries remain explicit.
 
+Dustin created both the earlier Replit-era repository hosted under Cory's GitHub account and this repository. The earlier application and subsequent reconstruction are part of the project's development history, not its present product identity.
+
 ## Documentation
 
 - [Product decisions](decisions/README.md): Cory's current rulings and unresolved consequential questions.
