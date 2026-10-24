@@ -2,14 +2,14 @@
 
 Status: BUILT — integrated on `main` via PR #35; external acceptance remains partial (authorized 2026-10-20 by Dustin: Google sign-in support and isolated synthetic staging; Google only on staging; tailnet-only through Tailscale Serve; staging database and service on 5435/3130)
 Date: 2026-10-20
-Depends on: S12 (`stage-1/s12-participant-access` at `da8003e`, PR #34, not merged when this was built; this branch is built on that commit)
+Build-time dependency: S12 (`stage-1/s12-participant-access` at `da8003e`; PR #34 was unmerged when S13 was built, and has since been integrated). This records the original branch dependency, not a current integration instruction.
 
 ## Outcome
 
 1. A real Google account can sign in from an invitation link through the S12 flow: Google is one more `IdentityProvider`, with browser binding, single-use state, PKCE, nonce and jose verification unchanged.
 2. The synthetic demo can run as **synthetic staging**: reachable from tailnet phones over HTTPS through a local reverse proxy, signing people in with Google, operator mode behind a server-checked key, on its own database.
 
-Implemented and tested locally against a fake Google. **Not deployed** (no Tailscale Serve change, no certificate, no Google client in this session) and **not verified against real Google**.
+**Implemented and verified in stages.** Automated fake-Google tests passed. A later **partial real-Google acceptance walkthrough** on tailnet phones verified the Google redirect and callbacks for two accounts, invitation-bound participant access, the synthetic operator resolution, and the journey to **READY TO SIGN**. Runbook steps **9–11 were not run** and **step 13 was not inspected**; these are not claimed verified. Staging was configured and operated for that recorded run, but this does not establish its current runtime state. Participant signing, identity/adult verification, and real collaboration remain outside S13; **Gate 2 is closed**. See `docs/engineering/S13-CONTINUATION.md` for the dated evidence.
 
 ## Product decisions relied on
 
