@@ -1,71 +1,33 @@
-# CLAUDE.md — operating contract
+# CLAUDE.md — Modeling Standard operating contract
 
-This is how Claude Code works in this repository. It is a contract, not a governance manual. The operating model and gates are in `README.md`.
+Keep this file short. Read `README.md` for product state and gates, `decisions/` for ratified decisions, and the current work order for task-specific authority.
 
-## Authority
+## Partnership and decisions
 
-- Cory is the sole authority for Modeling Standard product semantics.
-- Dustin owns technical orchestration and implementation authorization.
-- A ratified Cory decision outranks recommendations, PRDs, architecture and existing code.
-- Existing code is never evidence that a product decision is correct.
+- Cory and Dustin are equal partners. Cory has final authority over binding product vision and semantics; Dustin owns technical strategy, architecture, implementation, delivery, repository control, and engineering authorization.
+- Cory leads coordination of legal/compliance work and qualified legal review; Dustin supports that work and owns technical implementation. Neither partner substitutes for legal counsel.
+- Dustin chooses architecture, infrastructure, SaaS/build tradeoffs, engineering practices, development sequence, and reversible implementation details. Product suggestions are not technical mandates.
+- Default to progress within an authorized scope. Dustin may approve provisional synthetic UI, fields, workflows, and features consistent with the product vision without separate Cory sign-off.
+- `OPEN` decisions remain unresolved: a prototype is not ratification. Escalate genuine conflicts with ratified direction, fundamental product semantics, irreversible commitments, consequential commercial policy, or legal/consent/privacy/real-use boundaries. Do not block unrelated synthetic work.
+- Track A (collaboration/agreement engine) and Track B (professional toolkit) may advance independently. Track B is currently the priority; neither track is authorized for real use merely because a demo works.
 
-## Product decisions
+## Scope and engineering
 
-Cory's decisions live in `decisions/`. An `OPEN` decision has no answer, and you must not supply one through:
+- Follow the bounded work order: inspect, implement, test, report, and stop at its stated boundary. Make reasonable reversible choices without requesting approval for routine details.
+- Prefer small, coherent changes and existing patterns. No speculative abstractions, broad refactors, or neighboring features without demonstrated need.
+- Protect authorization, isolation, privacy, and data integrity. Never treat synthetic accounts, fixture media, or staging as permission for public exposure or real participants.
+- Validate changes with relevant tests and checks; report unverified claims and remaining limitations honestly.
 
-- a reasonable default;
-- prototype or Replit behaviour;
-- industry convention;
-- Fable or reviewer recommendations;
-- convenience;
-- "easy to change later".
+## Git and agent isolation
 
-When approved work reaches an unanswered product seam, omit that behaviour and report the blocker.
+- One canonical active Claude implementation tmux session: `ms-builder`. `ms-review` is for independent review; `ms-demo` is for demo services. Tracks are scopes, not standing tmux sessions.
+- Each implementation assignment identifies its branch, worktree, base commit, owner, scope, acceptance criteria, and stop condition. Never run two implementation agents in one worktree.
+- `main` is the shared baseline. Preserve unpublished changes and other agents' branches/worktrees; do not reset, clean, prune, or rewrite shared history without explicit authorization.
+- Commits, pushes, PR changes, merges, deployments, and service changes require the permissions stated in the current work order. Never infer permission from a standing lifecycle rule. Dustin controls integration and merges.
+- Commit messages describe the work, without AI attribution, model names, session IDs, or generator footers.
 
-## Scope
+## Processes and handoffs
 
-- Work only inside the explicitly approved slice.
-- Refactoring needed to implement that slice cleanly is allowed.
-- A small slice is not permission to build speculative neighbouring features or abstractions.
-
-## Modularity
-
-- Prefer change locality: a change to one product policy should have an identifiable, proportionate blast radius.
-- Do not build generic systems for hypothetical future consumers.
-- Create a module only when real behaviour needs it.
-
-## Branch and handoff
-
-Lifecycle: **inspect → implement → test → commit → push → handoff → stop.**
-
-Unless Dustin explicitly overrides this for a named task, Claude must not:
-
-- create a PR;
-- edit a PR;
-- comment on a PR;
-- review a PR;
-- mark a PR ready;
-- merge;
-- change repository settings.
-
-ChatGPT and Dustin own the PR and merge layer.
-
-## Repository hygiene
-
-- No AI attribution, `Co-Authored-By` AI trailers, model names, Claude session IDs, session URLs or generator footers — in commits, files or anything else pushed.
-- Commit messages describe the work, not the tool that produced it.
-- Do not rewrite already-shared branch history unless Dustin explicitly authorizes it.
-
-## Agent isolation
-
-- Do not modify another agent's branch or worktree.
-- Do not assume another agent's unmerged work exists unless the task explicitly says to build on it.
-- `main` is the shared baseline.
-
-## Process ownership
-
-- Never use broad process-name or command-line matching to stop processes (for example `pkill -f`, `killall`, or killing every node/npm/chrome process).
-- Stop a service through its dedicated service manager, exact tmux session, or a PID captured when this task started it.
-- Before stopping anything, verify its identity, owner, working directory and purpose. A listener's port alone is not proof of ownership.
-- Preserve unrelated sessions and services. If ownership is uncertain, investigate; do not kill speculatively.
-- Cleanup must target only resources created or explicitly assigned to the current task. Do not restart another service to simplify cleanup.
+- Preserve `opend` and unrelated infrastructure. Never use broad process kills (`pkill -f`, `killall`, etc.). Verify process ownership before stopping an exact service, tmux session, or task-owned PID.
+- Do not restart or reconfigure unrelated services for convenience. Clean up only resources created or explicitly assigned to the current task.
+- Before ending an active task, leave a concise durable handoff in the project's designated tracked location when needed. Do not rely on tmux scrollback or chat history as the sole record.
