@@ -211,6 +211,20 @@
       "when": 1792643454004,
       "tag": "0029_contract_guards_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792872101302,
+      "tag": "0030_professional_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792872102442,
+      "tag": "0031_profile_stamps_and_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -122,6 +122,10 @@ describe('the production operation list', () => {
       'participant.decline': 'protected',
       'participant.parameter': 'protected',
       'participant.group-check': 'protected',
+      'toolkit.profile.read': 'protected',
+      'toolkit.profile.save': 'protected',
+      'toolkit.comp-card.read': 'protected',
+      'toolkit.comp-card.save': 'protected',
     });
   });
 

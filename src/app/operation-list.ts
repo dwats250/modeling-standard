@@ -7,6 +7,7 @@ import {
   createSyntheticResourceOperation,
   readSyntheticResourceOperation,
 } from '../stage0/synthetic-resource.ts';
+import { toolkitOperations } from '../toolkit/operations.ts';
 
 /**
  * Every operation the application exposes. This list is the whole HTTP
@@ -24,6 +25,7 @@ export function createOperationList(identity: IdentityOptions = NO_IDENTITY): re
     readProjectOperation,
     ...createIdentityOperations(identity),
     ...participantOperations,
+    ...toolkitOperations,
   ];
 }
 

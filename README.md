@@ -48,7 +48,7 @@ Two complementary workstreams serve **one product**:
 - **Track A — Collaboration and agreement engine:** briefs, participation, agreement, and evidence.
 - **Track B — Professional toolkit:** identity, presentation, and eventually other professional tools, starting with **private synthetic profiles and comp-card drafts**.
 
-Track B is the current implementation priority. Profile and comp-card features are **not yet implemented** at this baseline. Authorized synthetic toolkit work can proceed without waiting for unrelated Track A decisions.
+Track B is the current implementation priority. Its first slice, B1, adds a **private synthetic profile and comp-card draft** with an editor and preview in the local demo, using fixture images and two fixed synthetic professionals in place of sign-in. Sign-in for professionals, uploads, sharing and public profiles are not built. Authorized synthetic toolkit work can proceed without waiting for unrelated Track A decisions.
 
 Participant signing, identity and adult assurance, document completion, legal prerequisites, and real-use acceptance remain incomplete. Youth and guardian workflows are deferred. **A working demo does not authorize real use.**
 

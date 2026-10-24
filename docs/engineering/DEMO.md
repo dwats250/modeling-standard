@@ -55,6 +55,20 @@ Every screen has a top bar with the wordmark (back to the start), a discreet **S
 
 Stored demo text keeps its `[synthetic]` mark; the journey shows it without repeating the mark on each line, and values typed on these screens are stored marked. Engineering notes (Demo menu) reveal ids and item keys.
 
+## Professional toolkit (B1)
+
+A private professional profile and comp-card draft, in the same local demo (not on staging). Synthetic and provisional throughout: the fields, the five slot names, the fixture catalogue and the layout are reversible design choices, not product policy. Slice record: `docs/slices/B1-profile-comp-card.md`.
+
+1. **Entry.** The start screen's "Professional toolkit" card or the Demo menu opens `#/me`.
+2. **Choose a synthetic professional.** Without a session, `#/me` offers **Continue as Synthetic professional A** or **B**. This is a demo stand-in for signing in, not a sign-in: the two professionals are fixed, invented accounts, nothing is checked, and choosing one leaves operator mode. **Sign-in for professionals is not built** (no sign-in screen, onboarding, login link or Google change).
+3. **Profile** (`#/me`). Display name (required, up to 80 characters), profession (up to 60) and a short plain-text biography (up to 600), with counters, inline errors, and a save status ("Not saved yet", "Unsaved changes", "Saved at …").
+4. **Comp card** (`#/me/card`). Five slots — Hero, Full body, Profile view, Lifestyle, Beauty — each a row of ten generated fixture images (native radio buttons: arrow keys move the choice). Choosing an image another slot holds swaps the two. An optional one-line tagline. A live preview: front (hero, name, profession) and back (the other four, tagline, biography). On a phone the preview leads and Save sits in a sticky footer; on a desktop the preview and Save are a sticky column. A draft never saved starts from a suggested arrangement and says so.
+5. **Preview** (`#/me/card/preview`). The card full size, front and back, side by side when there is room. Unsaved edits are carried between the three tabs in memory and labelled as unsaved on the preview.
+
+Every toolkit screen shows "Private draft · only you can see this", who is signed in, **Switch to A/B** and **Sign out**.
+
+**Built:** `src/toolkit/` (tables, owner-keyed data functions, fixture catalogue, `GET`/`POST /me/profile` and `GET`/`POST /me/comp-card` in the production operation list, owner from the session only), migrations 0030 and 0031, `src/demo/toolkit.ts` (the harness: `POST /demo/toolkit/owner` with `{ owner: 'a' | 'b' }`, origin-checked, local only; `GET /demo/toolkit/owner`), `src/demo/fixture-images.ts` (deterministic SVG at `/media/fixtures/<key>.svg`, generated from shapes, marked "Synthetic fixture"), `src/demo/ui/toolkit.js` and `toolkit.css`.
+
 ## How it is built
 
 - **Never in production.** Everything is in `src/demo/` and `src/scripts/demo*.ts`; `src/main.ts`, `src/app/create-app.ts` and `src/app/operation-list.ts` import nothing from it, `tsconfig.build.json` excludes it, and every demo route 404s in the production application (tested).
@@ -88,6 +102,7 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 - **Multi-party** shoots show no overall readiness (it could reveal another pair's private fee).
 - The **inspector** is an engineering aid showing the whole record; its walkthrough's "Settle together" form predates the participant screens.
 - The snapshot covers the inspector only.
+- **Toolkit:** two fixed synthetic professionals instead of sign-in; fixture images only (no uploads, no real images); one profile and one draft per account; no sharing, public page, discovery, measurements or contact details. The toolkit's routes are in the production operation list (owner-only, session-derived), but the screens and the harness exist only in the local demo.
 
 ## Regression
 
@@ -97,6 +112,8 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 - `tests/demo-browser/participants.test.ts` — S12 in a real browser: the operator invites; two separate 390-wide contexts accept their own links, sign in on the test provider's page, see only their own screen and controls, and resolve to READY TO SIGN; a signed-in phone is refused the operator screens; sign-out leaves no mode.
 - `tests/demo-browser/regression.test.ts` — the inspector at `/inspector`: fixtures, the walkthrough, the decisions view, the snapshot from `file://` (it opens a draft fixture and the ready fixture: no simulation controls, no network request, no horizontal scroll; it does not open a finalized contract), reset repeatability, every demo route 404 in production.
 
-Screenshots go to `test-results/demo/` (`journey-*` per stage and width; the inspector's existing set). They are evidence, not design approval.
+- `tests/demo-browser/toolkit.test.ts` — B1: entry points; the chooser; A at 1280 and B at 390 in separate contexts each create, edit and save their own profile and comp card (a refused blank name, keyboard entry and Enter to save, arrow-key slot choice, a swap, unsaved edits carried to the preview and back, keyboard save); unsafe text shown as text; reload; a full application restart; crafted requests from B's browser refused; switching owners; sign-out; no stray text, no horizontal scroll, controls at least 44 px, no browser errors.
+
+Screenshots go to `test-results/demo/` (`journey-*` per stage and width; `toolkit-*`; the inspector's existing set). They are evidence, not design approval.
 
 HTTP and database tests (`npm test`): `tests/demo/shoots.test.ts` (composer combinations, blank refusals, annotations, scenario cards, no migration), `tests/demo/participant.test.ts` (payload fields, switching, the 404 equivalence for non-members, drafts, hidden items and group-checks, the full lifecycle through participant routes, decline, production isolation), plus the existing demo suites.
