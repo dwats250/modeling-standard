@@ -1,8 +1,10 @@
-# Planning package: Modeling Standard from ground zero
+# Planning package — historical product reconstruction
 
-**Status: REVIEW. Not implementation authority.**
+**Historical evidence, not the current product status, implementation queue, or agent instructions.** This September–October 2026 package captured the product direction during the ground-up reconstruction of Modeling Standard. The current application has since progressed through numerous implemented engineering slices.
 
-Prepared 2026-09-29 by Fable 5.1 from a read-only reconnaissance of `seeravenproductions/ShootBriefGenerator` at commit `bfbf5f1` (docs dated 2026-07-15 to 2026-07-23), checked by an independent Opus 5.5 review, then reconciled on 2026-10-02 after Astra's adversarial review. The reconciled package is awaiting human review. The pre-reconciliation baseline is commit `856b037` of this repository.
+Start with the [root README](../README.md) for the product and development focus, the [current engineering index](../docs/engineering/README.md) for implementation, and [decisions](../decisions/README.md) for Cory's later rulings. This planning package and its provenance annotations remain intact as evidence of the earlier analysis.
+
+Prepared 2026-09-29 from the earlier repository at `seeravenproductions/ShootBriefGenerator` commit `bfbf5f1`, independently reviewed and reconciled on 2026-10-02. Earlier implementation and project setup were carried out by Dustin; the historical source repository was under Cory's GitHub account. The pre-reconciliation baseline is commit `856b037` of this repository.
 
 ## Purpose
 
@@ -10,7 +12,7 @@ This package answers one question:
 
 > If Cory had explained Modeling Standard this clearly before any application existed, what product should we build now?
 
-It is a set of recommendations for Cory to read, challenge, amend and approve. Cory's vision is the sole product authority. Nothing here is a product decision unless Cory has made it, and every claim carries a provenance tag.
+At the time, this was a recommendation set for Cory to review. **It is not today's approval checklist.** Later ratified decisions are in `../decisions/`; provenance tags here still identify what was known, inferred, or open at the time.
 
 ## Provenance tags
 
@@ -68,12 +70,8 @@ For Dustin: `RECONCILIATION-REPORT.md`, then G (Stage 0), D, E and B.
 
 It does not choose vendors, price anything, design youth operation, write PRDs, produce mockups, or authorize implementation.
 
-## What happens next
+## Current interpretation of this historical package
 
-Human review of this reconciled package. After that, three separate gates (root `README.md`):
+The original future-work instructions have been superseded by implemented slices and the current [repository operating contract](../CLAUDE.md). Follow the current work order, code, tests, [engineering index](../docs/engineering/README.md), and [latest Cory rulings](../decisions/README.md), not the stage order or gate language proposed in this package.
 
-- **Gate 0.** Dustin may approve a Stage 0 PRD for the product-neutral engineering foundation. It needs no Cory decision.
-- **Gate 1.** Each piece of the first collaboration slice starts when Cory has answered the decisions it depends on and its PRD is approved.
-- **Gate 2.** Real use by real people is authorized separately by Cory.
-
-Opus implements only from an approved PRD, on a branch, through a human-reviewed pull request. No implementation exists in this repository today.
+**Real-use authorization remains a separate protected boundary.** Synthetic demonstrations do not open it.
