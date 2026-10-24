@@ -151,9 +151,11 @@ Expected refusals seen in the log: `GET /demo/projects` 401 from a browser not y
 
 **UX observation (recorded, not acted on).** Finding saved shoots was not obvious: the operator returned to the shoot list only through "Synthetic Staging → Back to start". This is demo-operator navigation; no change was made.
 
-## Running now
+## Historical runtime snapshot (2026-10-21; not current)
 
-| What | Where | How to stop |
+The table below records what was observed then. Commands are **historical examples, not instructions to run now**. Confirm the live service, database, Tailscale, and tmux state and obtain a bounded work order before starting, stopping, or changing anything.
+
+| What | Where | How to stop (historical) |
 |---|---|---|
 | S12 LAN demo (two-phone test, existing data) | `http://192.168.0.69:3120/`, tmux `ms-s12-demo` | `tmux kill-session -t ms-s12-demo` |
 | Staging Postgres | 127.0.0.1:5435, `ms-staging-postgres` | `sg docker -c "docker stop ms-staging-postgres"` |
@@ -169,4 +171,4 @@ Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434),
 1. Optional, before or after merge (Dustin): the unrun runbook steps 9, 10, 11 and 13 on real Google. They are not merge blockers; 10 and 11 are covered by the fake-Google tests.
 2. PR #34 (S12) and PR #35 (S13) are merged into `main`; S11 was subsequently integrated as PR #36. The remaining real-Google, Tailscale-phone and staging acceptance steps stay with Dustin and are not implied by the merges.
 3. GitGuardian incident 38772493: ignored by Dustin in the dashboard as a test credential; the check passes on both PRs' current heads.
-4. Staging stays up for further runs; stop with `tmux kill-session -t ms-staging` and `tailscale serve --https=8443 off` when no longer wanted.
+4. Before any further staging run or cleanup, **inspect the current service/database/tmux/Tailscale state** and obtain a bounded work order. This note does not establish that staging is running or authorize stopping any process or route.
