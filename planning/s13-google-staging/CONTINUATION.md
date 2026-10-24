@@ -1,5 +1,7 @@
 # Continuation state, 2026-10-20 (after S12; before S13)
 
+> **Superseded historical plan state.** The branch and PR statuses below were true at this timestamp, not now. S12 and S13 were later integrated. Use the [current engineering index](../../docs/engineering/README.md), [S13 runbook](../../docs/engineering/S13-STAGING.md), and live Git state for future work.
+
 ## Where things stand
 
 - **S12** is on `stage-1/s12-participant-access` at `da8003ed5683b2c6bcac5a3798d0bad6fb28ce5f`, pushed. PR #34 (into `main`) is open, and its head is that commit. The worktree `/home/dustin/Projects/modeling-standard-s12` is clean. Nothing was interrupted: the test run killed mid-session (exit 137) was rerun to completion before the handoff, and the results are in `docs/engineering/S12-CONTINUATION.md`.
