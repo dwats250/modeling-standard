@@ -1,15 +1,15 @@
 # Decisions
 
-These are Cory's twelve product decisions, one file each. Cory answers here, in plain words.
+These are Cory's twelve photo-shoot product decisions, one file each, including later direct rulings. Their substantive contents and dated amendment history are preserved. For current engineering state and work authorization see the [root README](../README.md) and [agent contract](../CLAUDE.md).
 
 ## Rules
 
 - `planning/H-cory-decision-packet.md` keeps the planning and provenance context. These files are the active answer surface.
-- **OPEN** means at least one required product question in that file is still unanswered. An OPEN file may contain direct Cory rulings on some subparts; implementation may rely only on the subparts explicitly answered and named by an approved slice PRD.
+- **OPEN** means at least one required product question in that file is still unanswered. An OPEN file may contain direct Cory rulings on some subparts. Binding implementation may rely on those explicitly answered subparts; a Dustin-authorized private synthetic prototype may also use clearly provisional choices without settling an OPEN decision. Protected real-use, legal, privacy and consent boundaries remain closed until their requirements are met.
 - **DECIDED** means Cory has resolved the decision sufficiently for its stated current scope.
 - Changing a decided answer does not erase it. Add a dated note under "Amendments".
 - A decision file does not by itself authorize implementation.
-- A slice PRD names the exact decisions it depends on.
+- A bounded work order or slice PRD names the exact rulings it relies on; whole-file DECIDED status is not required when the relied-on subpart is explicitly answered.
 
 Anything marked **[F] lean** is Fable's recommendation to Cory. It is not a default and nothing is built from it.
 
@@ -20,7 +20,7 @@ Direct Cory rulings are recorded in two dated notes:
 
 Both supersede conflicting older candidate evidence. Every decision in this folder covers **photo shoots**; fashion shows are a separate product, not designed by extension.
 
-Provenance tags (**[R]**, **[R-prov]**, **[CA]**, **[F]**) and citations such as `VISION:374` are explained in the root `README.md`.
+Historical provenance tags (**[R]**, **[R-prov]**, **[CA]**, **[F]**) and citations such as `VISION:374` are explained in [planning/README.md](../planning/README.md). They do not make historical recommendations binding.
 
 ## Current status
 

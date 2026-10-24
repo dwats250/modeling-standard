@@ -1,95 +1,114 @@
 # Modeling Standard
 
-Modeling Standard is being redesigned from first principles.
+**A professional workspace for independent models, photographers, and creative teams.**
 
-This repository intentionally begins with product planning rather than application code. The previous Replit application (`seeravenproductions/ShootBriefGenerator`) is not being migrated or ported. It remains historical evidence only.
+Modeling Standard brings professional presentation, shoot coordination, clear expectations, and lasting agreement records into one coherent experience. It is designed for people whose work currently stretches across comp cards, portfolios, messages, informal arrangements, and scattered documents.
 
-## Current state
+The aim is simple: help creative professionals present their work, coordinate with others, understand what they are agreeing to, and keep a reliable record. Protection belongs in the ordinary workflow through clarity, consent, and deliberate sharing, rather than fear-based messaging.
 
-**Stage 1 in progress.** The planning package was reconciled on 2026-10-02 after an adversarial review (`planning/RECONCILIATION-REPORT.md`). The Stage 0 engineering foundation is described in `docs/engineering/STAGE-0.md`. Cory's 2026-10-09 and 2026-10-14/15 rulings are reconciled into `decisions/` (`decisions/2026-10-09-15-cory-reconciliation.md`); several change what S02–S05 assume, mapped in `docs/engineering/OCTOBER-SEMANTIC-IMPACT.md`.
+**Status:** Active development, using synthetic scenarios and test accounts. The collaboration foundation and development demonstrations exist; the complete product is **not available for real collaborations or production use**.
 
-- **Merged:** S01 project and party core, S02 pairwise agreement topology, S06 account and party binding, S07 direct invitation links, S08 draft live-brief topology, and S09 sharing/live resolution (data functions only: no participant HTTP surface exists). S03 term units, S04 presented versions and S05 per-term affirmation evidence were merged earlier and are **retired in S08**. The current brief model now supports draft → live, explicit on-site presence, post-share rigidity, decide-together/open-parameter resolution, declines that leave no trace, current ticks, derived approvers, group-check excluding deliberate items, green state and the structural READY TO SIGN boundary (`docs/engineering/S09-LIVE-RESOLUTION.md`). S10 freezes a ready two-party brief for signing (`docs/engineering/S10-SIGNING-FREEZE.md`). Slices are in `docs/slices/`; each is described as built in `docs/engineering/`.
-- **Integrated:** a local synthetic demo with a record inspector and a two-person walkthrough from draft to READY TO SIGN, a portable read-only snapshot and an end-to-end browser regression in CI (`docs/engineering/DEMO.md`). It runs only on loopback against the demo database, with invented records.
-- **Decided, not fully built:** participation credential (D03), agreement topology and lifecycle (D02), what each party sees (D10) and Cory's authorization of pre-launch real use (D06) are now DECIDED for photo shoots, and D04 is largely answered. S12, S13 and S11 provide synthetic participant access, staging and final-contract storage; real use and the remaining participant-facing product are still gated. Deciding a semantic does not build it.
-- **Still open:** no-means-no wording and the visible signing act (D04), remaining public vocabulary (D05), the document trigger table and counsel review (D08), counsel-dependent retention and erasure (D09), and synthetic-demo verification (D11). See `decisions/README.md`.
-- **Integrated via PR #34:** S12 participant access — sessions, sign-in that starts only from a direct invitation and is bound to the starting browser, the claim, and signed-in routes where a person acts only as their own party (`docs/engineering/S12-PARTICIPANT-ACCESS.md`). The S12 slice uses the demo's local test provider; real Google and Apple sign-in and identity verification remain outside it.
-- **Integrated via PR #35:** S13 Google sign-in support (`openid` only, registered only with a complete client configuration) and synthetic staging — the demo over HTTPS for tailnet phones, Google sign-in, a keyed operator mode and its own database (`docs/engineering/S13-STAGING.md`). It is staging-only; the recorded real-Google acceptance is partial and does not open real use.
-- **Integrated via PR #36:** S11 final contract storage — an append-only contract copied verbatim from a frozen brief, written by one operator/test-only finalization carrying both parties' bound-account signature evidence, with a per-party view, a labelled proposal rendering for the operator and a recomputable signature chain (`docs/engineering/S11-FINAL-CONTRACT.md`). The signing act, signing order and every participant view of signing or of a contract are not built (D04 and Cory's open questions).
-- **Gated:** no real participant flow exists. Production resolves only sessions and registers an identity provider (Google) only when configured; it has no screens and no operator, so nothing creates a shoot or an invitation there. Real use (Gate 2) is not open: D06 authorizes it in principle, but its prerequisites, including counsel-dependent D08/D09 items and the participant flow itself, are unmet.
+## What we're building
 
-## Product authority
+Modeling Standard is **model-forward**, while supporting the photographers, makeup artists, stylists, assistants, and other professionals who work together on a production.
 
-Cory's vision is the sole product authority. Nothing in this repository is a product decision unless Cory has made it; the documents say so line by line.
+Its intended capabilities include:
 
-## Operating rule
+- **Professional identity:** profiles, comp cards, portfolios, and professional presentation.
+- **Shoot coordination:** briefs that make the people, logistics, compensation, deliverables, usage, and boundaries explicit.
+- **Agreements and records:** relevant terms presented to each party, a distinct signing act, and a durable final record.
+- **Documents:** consent and release documentation appropriate to the work, with access to safety documents protected from paywalls.
+- **Deliberate sharing:** owner-controlled access to professional material, scoped to specific recipients and bounded in time.
 
-- **Cory** owns product semantics and product direction.
-- **Dustin** owns technical orchestration, implementation authorization, repository control and merge authority.
-- Agents and tools may support planning, implementation, coordination or review only within the task they are explicitly given.
-- Agents do not resolve Cory-owned product seams. An open product question stays open until Cory answers it; "configurable later" does not authorize a default now.
-- The implementation session follows the narrower repository contract in `CLAUDE.md`: build, test, commit, push, hand off and stop. It does not own pull requests or merges.
-- **Dustin** owns the pull-request review and merge-preparation layer and remains the human merge authority.
-- Human review occurs at material product boundaries and at every merge.
+Moodboards, concepts, and other professional workflow tools are also part of the broader vision. **These are product directions, not claims that every feature is built.**
 
-This is the whole operating model. Tool-specific instructions may narrow an agent's behavior but may not expand its authority. The prototype repository's `GOVERNANCE.md`, `PROJECT-ROLES.md` and `CLAUDE.md` describe a migration-era arrangement and do not govern this repository; they remain historical evidence only.
+This is a professional workspace, **not a people directory**. Creating an account does not grant permission to browse other people's private profiles, comp cards, or portfolios.
 
-## Start here
+## What exists today
 
-For Cory: `decisions/README.md` lists what is still his to answer. `docs/CORY-CATCH-UP.md` is the question set he answered on 2026-10-09 and 2026-10-14/15, kept as history.
+The repository has progressed well beyond a planning exercise. Its implemented foundation is primarily the collaboration and agreement engine, with synthetic demos for testing its behavior.
 
-1. `planning/README.md`
-2. `planning/RECONCILIATION-REPORT.md` for what changed in the reconciliation and why
-3. `planning/H-cory-decision-packet.md` for the decisions that are Cory's
-4. The other A to I planning documents as desired
-5. `planning/REVIEW-FINDINGS.md` and `planning/ASTRA-REVIEW.md` for the two reviews
+| Area | Implemented | Important limitation |
+| --- | --- | --- |
+| Collaboration core | Projects, project-local parties, account bindings, direct invitation links, and pairwise agreement structure | Demonstrated primarily with synthetic two-person photo shoots |
+| Live briefs | Draft/live lifecycle, participant-specific views, explicit terms, resolution actions, deliberate ticks, and readiness for signing | Ticking a term is **not** signing; some demonstrations use an operator |
+| Participant access | Invitation-led account sessions and routes constrained to a person's own party | No complete production participant-facing application |
+| Google and staging | Google sign-in integration and a separate synthetic HTTPS staging environment | Real-Google acceptance is partial; sign-in does not establish identity or age verification |
+| Final contract records | Operator/test-only finalization of a frozen brief, append-only contract storage, and a recomputable signature chain | No actual participant signing or participant contract interface |
+| Development tools | Local demo, record inspector, portable snapshot, database and HTTP tests, and browser regressions | Demo exports are not the finished document-delivery experience |
 
-## Provenance
+The current brief model has **one live brief before signing**, not a retained intermediate version history. Earlier presented-version and per-term evidence implementations were superseded; final agreement evidence belongs to the final contract.
 
-Every claim in the planning documents carries one of five tags. A tag is never upgraded by repetition, by plausibility, or because later documents depend on it.
+See the [demo guide](docs/engineering/DEMO.md), [participant access](docs/engineering/S12-PARTICIPANT-ACCESS.md), [staging](docs/engineering/S13-STAGING.md), and [final-contract implementation](docs/engineering/S11-FINAL-CONTRACT.md).
 
-- **[R]** Ratified Cory direction: stated as approved in `VISION.md` or `PRODUCT-DOCTRINE.md` of the prototype repository.
-- **[R-prov]** Appears in a ratified document but is marked PROVISIONAL there. It keeps that status.
-- **[CA]** Cory-attributed direction recorded only in a document that was not itself ratified.
-- **[F]** Fable recommendation, interpretation or proposed mechanism.
-- **[OPEN]** Unresolved product decision.
+## Current development focus
 
-Primary sources are pinned at `seeravenproductions/ShootBriefGenerator` commit `bfbf5f1`: `docs/VISION.md` and `docs/PRODUCT-DOCTRINE.md`. Citations of the form `DOCTRINE:56` or `VISION:374` are line numbers in those files at that commit. `CORY-QUESTIONS:n`, `COST-REALITY:n` and `FEATURE-REVIEW:n` are line numbers in `docs/CORY-QUESTIONS.md`, `docs/COST-REALITY-2026-07.md` and `docs/FEATURE-REVIEW-2026-07-17.md` at the same commit; none of those three is ratified, so anything cited to them is **[CA]** at most.
+Two complementary workstreams serve **one product**:
 
-## Implementation gates
+- **Track A — Collaboration and agreement engine:** briefs, participation, agreement, and evidence.
+- **Track B — Professional toolkit:** identity, presentation, and eventually other professional tools, starting with **private synthetic profiles and comp-card drafts**.
 
-Three separate gates. Passing one does not open the next.
+Track B is the current implementation priority. Profile and comp-card features are **not yet implemented** at this baseline. Authorized synthetic toolkit work can proceed without waiting for unrelated Track A decisions.
 
-| Gate | What it authorizes | Who approves | What it requires |
-|---|---|---|---|
-| **Gate 0: Stage 0 technical authorization** | The product-neutral engineering foundation in `planning/G-development-sequence.md`, and nothing else | Dustin | An approved Stage 0 PRD that passes the neutrality test below. No Cory decision is needed, by construction. |
-| **Gate 1: Stage 1 semantic authorization** | Building one piece of the first collaboration slice | Cory for the product decisions, then Dustin for the PRD | Cory has answered every decision that piece depends on (the dependency table is in `planning/F-first-slice.md`), and a PRD for that piece is approved. A piece whose decisions are unanswered does not start. No preferred answer is built as a stand-in. |
-| **Gate 2: Real-use authorization** | Any real collaboration between real people run on the product | Cory, with counsel where a decision is marked counsel-dependent | The real-use prerequisites in `planning/F-first-slice.md` are resolved for the named scenario. A working synthetic demonstration is not real-use approval. |
+Participant signing, identity and adult assurance, document completion, legal prerequisites, and real-use acceptance remain incomplete. Youth and guardian workflows are deferred. **A working demo does not authorize real use.**
 
-**Neutrality test for Stage 0.** If Cory could answer an open product question differently and force a piece of Stage 0 work to change, that piece belongs in Stage 1 or later. Ordinary technical choices (language, database, test tooling) are not product questions and are Dustin's.
+## Product principles
 
-No implementation begins because a planning document proposes it. All work after this baseline happens on branches through human-reviewed pull requests.
+- **Clarity before participation.** Relevant compensation, expectations, and boundaries should be understood before people commit.
+- **An agreement record is not a witness.** The product records what parties agreed; it does not verify what occurred on set or promise legal enforcement.
+- **Private professional material is owner-controlled.** Temporary sharing of a portfolio is different from a party's right to access its own agreement evidence.
+- **Final evidence must be durable.** Consent-bearing records are protected from ordinary modification and deletion; retention and erasure policy remain subject to legal review.
+- **Compensation is recorded, not transferred.** User-to-user payments are outside this product.
+- **Capacity, not completion, is the collaboration paywall.** Completing an allowed collaboration, including its agreement and record, is free under Cory's current direction. Profiles and portfolios have a separate paid boundary; billing and pricing are not implemented.
+- **Claims follow evidence.** Synthetic operation, provider authentication, identity assurance, participant signing, and production readiness are distinct.
+- **The best safeguards are built into the experience.** A calm, credible professional tool with clear boundaries, rather than a fear-based safety dashboard.
 
-## Development
+These principles describe intended behavior and binding constraints where established, not the readiness of every screen or workflow. See [current product decisions](decisions/README.md).
 
-The Stage 0 foundation is a single TypeScript application on PostgreSQL. What it contains and why: `docs/engineering/STAGE-0.md`.
+## Engineering and local development
 
-**Requirements.** Node 24 (`.nvmrc`) with its bundled npm, and Docker for the local database. No external accounts.
+The application uses **Node.js 24, TypeScript, Fastify, Zod, Pino, PostgreSQL, and Drizzle ORM**. It is built around explicit authorization policies, strict boundary validation, reviewed migrations, separate runtime/migration database roles, and automated tests. Browser regression uses Playwright with Chrome/Chromium.
 
-**Setup.**
+Start with Node 24 and Docker Compose in a dedicated development environment:
 
-```
+```sh
 npm ci
 cp .env.example .env
+npm run db:up
+npm run db:migrate
 ```
 
-**Database.** `npm run db:up` starts PostgreSQL 17 on `127.0.0.1:5432` and, on first start, runs `db/provision.sql` to create the migration role, the runtime role and the database. `npm run db:down` stops it. (Any PostgreSQL 16+ works if you run `db/provision.sql` against it as a superuser.)
+To check, test, and build:
 
-**Migrations.** `npm run db:migrate` applies the reviewed SQL in `migrations/` using `MIGRATION_DATABASE_URL`. To change a table, edit `src/stage0/tables.ts` or `src/projects/tables.ts`, run `npm run db:generate`, and review the generated SQL. Privileges go in hand-written migrations (`npx drizzle-kit generate --custom --name=<name>`). Never `drizzle-kit push`.
+```sh
+npm run check
+npm test
+npm run build
+```
 
-**Check.** `npm run check` runs the typechecker, the linter and a drift check that fails if the table definitions and migrations disagree.
+**Important side effects:** `npm run check` invokes Drizzle migration generation and may write migration files. `npm test` drops and recreates a named **test database**. `npm run test:demo` resets the **demo database** and needs a Chrome/Chromium executable (`CHROME_PATH`). Run these only against an isolated, task-owned database environment. **Separate Git worktrees do not isolate database resources.**
 
-**Test.** `npm test` creates a fresh test database, migrates it, and runs every suite against it. It needs the database up; it fails rather than skips without it.
+For development, run `npm run dev`; for the compiled service, `npm run build` and `npm start`. The application exposes `GET /health`; its production entry point does **not** serve demo screens.
 
-**Build and run.** `npm run build` compiles to `dist/`; `npm start` runs it with `DATABASE_URL` (runtime credential only). `npm run dev` runs from source with `.env`. Health: `GET /health`.
+For an interactive synthetic walkthrough, use the [local demo guide](docs/engineering/DEMO.md). For tailnet-only HTTPS staging, use the [staging runbook](docs/engineering/S13-STAGING.md). Database changes require reviewed migrations: **do not use `drizzle-kit push`**.
 
-**Synthetic demo.** `npm run demo:reset` then `npm run demo` serves a local record inspector on `127.0.0.1:3100` against `modeling_standard_demo` only. See `docs/engineering/DEMO.md`.
+The [engineering index](docs/engineering/README.md) explains application composition, environment boundaries, and where to find as-built records.
+
+## Project ownership
+
+Cory and Dustin are equal partners. Cory has final authority over binding product vision and fundamental product semantics. Dustin leads architecture, infrastructure, engineering implementation, and delivery. Cory leads legal and compliance coordination, with Dustin's active assistance and qualified legal review where required.
+
+Routine technical choices and authorized reversible synthetic prototypes are within Dustin's remit. Fundamental product decisions and protected legal, consent, privacy, and real-use boundaries remain explicit.
+
+## Documentation
+
+- [Product decisions](decisions/README.md): Cory's current rulings and unresolved consequential questions.
+- [Engineering index](docs/engineering/README.md): what is built, environment boundaries, validation, and implementation references.
+- [Slice specifications](docs/slices/): bounded work and acceptance evidence.
+- [Product invariants](planning/B-product-invariants.md): sourced outcomes distinguished from proposed mechanisms; read alongside later decisions.
+- [Agent instructions](CLAUDE.md) and [Codex instructions](AGENTS.md): identical repository-level operating contracts.
+- [Historical planning](planning/README.md) and [research](research/): reconstruction, provenance, exploratory designs, and engineering lessons.
+
+The original ratified [vision](https://github.com/seeravenproductions/ShootBriefGenerator/blob/bfbf5f1/docs/VISION.md) and [product doctrine](https://github.com/seeravenproductions/ShootBriefGenerator/blob/bfbf5f1/docs/PRODUCT-DOCTRINE.md) remain traceable at their pinned commit. Later [Cory reconciliation records](decisions/2026-10-09-15-cory-reconciliation.md) govern where they explicitly supersede earlier rulings.
+
+Previous proposals, prototypes, and development history remain evidence—not automatic authority for today's implementation.

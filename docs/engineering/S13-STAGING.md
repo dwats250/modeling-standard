@@ -1,5 +1,7 @@
 # S13: Google sign-in and synthetic staging — as built, runbook and acceptance
 
+> **Acceptance status:** The recorded real-Google walkthrough was partial. See [S13-CONTINUATION.md](S13-CONTINUATION.md) for observed results and remaining unverified steps. A successful staging walkthrough does not authorize real use.
+
 Slice: `docs/slices/S13-google-staging.md`. Plan: `planning/s13-google-staging/PLAN.md`. Continuation: `docs/engineering/S13-CONTINUATION.md`.
 
 **What this is not.** Staging is synthetic: invented shoots, operator acts labelled as such, no real collaboration (D06 step 1; Gate 2 stays closed). Google sign-in is the door, not identity, and verifies nobody (D03, D11). Apple is not built. The automated tests use a fake Google; **real Google sign-in is verified only by the manual acceptance run below**, by whoever runs it.

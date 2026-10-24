@@ -1,5 +1,7 @@
 # S13 continuation note — Google sign-in and synthetic staging
 
+> **Historical session snapshots.** Branch states, tmux sessions, device access and commands below are dated observations—not current instructions to restart, recreate, or resume an old environment. S13 has been integrated; consult [README.md](README.md), [S13-STAGING.md](S13-STAGING.md), and live repository/environment state before acting. Real-Google acceptance remains partial.
+
 Date: 2026-10-20. Slice: `docs/slices/S13-google-staging.md`. Runbook and acceptance: `docs/engineering/S13-STAGING.md`.
 
 ## Baseline and dependency

@@ -1,6 +1,6 @@
 # Deliverable B. Product invariants
 
-Status: REVIEW. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). Not implementation authority.
+Status: HISTORICAL PRODUCT-EVIDENCE RECORD. Reconciled 2026-10-02 (see `RECONCILIATION-REPORT.md`). Not implementation authority. **Later explicit Cory rulings in [decisions/](../decisions/README.md) supersede dated “Open” commentary or proposed mechanisms here where they conflict. The sourced outcomes, provenance, and invariant IDs below remain unchanged.**
 
 An invariant here is an outcome the product must hold, stated without saying how. Each one is followed by the mechanisms proposed to achieve it and by the questions it leaves open. The three are kept apart on purpose:
 

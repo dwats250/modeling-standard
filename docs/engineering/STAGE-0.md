@@ -1,5 +1,7 @@
 # Stage 0: engineering foundation
 
+> **As-built historical scope.** This document records what the foundation implemented at Stage 0. Statements below such as “Nobody can sign in” describe that original stage, **not** the current application. See the [current engineering index](README.md) and [root README](../../README.md) for today's implemented surfaces and boundaries.
+
 What Stage 0 built, as built. Authorized by Dustin's Gate 0 charge. Planning context: `planning/G-development-sequence.md` (Stage 0) and `planning/D-technical-architecture.md`.
 
 ## Scope

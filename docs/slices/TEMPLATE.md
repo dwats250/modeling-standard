@@ -1,6 +1,6 @@
 # Slice — <name>
 
-<!-- This template is not implementation authority. A slice is built only from an approved PRD whose decisions are DECIDED. -->
+<!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
 Status:
 Owner:
@@ -11,7 +11,7 @@ What a person can do when this slice is done, in one or two sentences.
 
 ## Product decisions required
 
-The exact `decisions/Dxx` files this slice depends on, and the part of each it relies on. Every one must be DECIDED before work starts.
+Name the exact settled rulings or subparts this work depends on, the unresolved questions it touches, and any private synthetic design choices Dustin has authorized. An OPEN decision file may contain usable, explicitly answered subparts. Stop or omit only behavior that requires an unresolved fundamental product decision or crosses a protected boundary. Independent authorized work can continue.
 
 ## Invariants
 

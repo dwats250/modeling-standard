@@ -1,5 +1,7 @@
 # S11 continuation note — final contract storage
 
+> **Historical session snapshot.** Branch, worktree, database, and next-action references below are not current operational instructions. S11 is integrated; consult the [current engineering index](README.md), [S11 as-built record](S11-FINAL-CONTRACT.md), and actual Git/environment state before acting.
+
 Date: 2026-10-21. Slice: `docs/slices/S11-final-contract.md`. As built: `docs/engineering/S11-FINAL-CONTRACT.md`.
 
 ## Baseline
