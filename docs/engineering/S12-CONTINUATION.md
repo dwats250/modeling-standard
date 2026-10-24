@@ -1,5 +1,7 @@
 # S12 participant access — continuation note
 
+> **Historical session snapshot.** Branches, worktrees, ports, and next steps below describe the state when this note was written. S12 is integrated; use the [current engineering index](README.md), [S12 as-built record](S12-PARTICIPANT-ACCESS.md), and live repository state rather than treating this snapshot as an active task authorization.
+
 Work item: S12-A to S12-F of `planning/sprint-2026-10-21/EXECUTION-PACKAGE.md`, as amended by Dustin's authorization of 2026-10-20 (summarized below; the amendments take precedence over the package). This note lets the work resume after a session reset. It is not a product decision.
 
 - Base: `main` at `57f0b630603c5760580ed8320a68ff1572a570c8` (verified on `origin`).
