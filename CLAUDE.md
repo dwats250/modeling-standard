@@ -1,33 +1,30 @@
-# CLAUDE.md — Modeling Standard operating contract
+# Modeling Standard — agent operating contract
 
-Keep this file short. Read `README.md` for product state and gates, `decisions/` for ratified decisions, and the current work order for task-specific authority.
+Keep `CLAUDE.md` and `AGENTS.md` identical. Start with the current work order and root `README.md`; consult only the relevant decisions and engineering records. Historical planning documents are evidence, not standing instructions.
 
-## Partnership and decisions
+## Partnership and product boundaries
 
-- Cory and Dustin are equal partners. Cory has final authority over binding product vision and semantics; Dustin owns technical strategy, architecture, implementation, delivery, repository control, and engineering authorization.
-- Cory leads coordination of legal/compliance work and qualified legal review; Dustin supports that work and owns technical implementation. Neither partner substitutes for legal counsel.
-- Dustin chooses architecture, infrastructure, SaaS/build tradeoffs, engineering practices, development sequence, and reversible implementation details. Product suggestions are not technical mandates.
-- Default to progress within an authorized scope. Dustin may approve provisional synthetic UI, fields, workflows, and features consistent with the product vision without separate Cory sign-off.
-- `OPEN` decisions remain unresolved: a prototype is not ratification. Escalate genuine conflicts with ratified direction, fundamental product semantics, irreversible commitments, consequential commercial policy, or legal/consent/privacy/real-use boundaries. Do not block unrelated synthetic work.
-- Track A (collaboration/agreement engine) and Track B (professional toolkit) may advance independently. Track B is currently the priority; neither track is authorized for real use merely because a demo works.
+- Cory and Dustin are equal partners. Cory has final authority over binding product vision and fundamental semantics; Dustin owns technical strategy, architecture, infrastructure, implementation, engineering delivery, and repository integration.
+- Cory leads legal and compliance coordination, with Dustin's active support. Obtain qualified legal review when required; neither partner's preference substitutes for it.
+- Dustin decides technology, SaaS versus custom build, architecture, development sequence, and reversible design details. Technical proposals from any partner or agent are not architectural mandates.
+- Ratified direction and later explicit Cory rulings govern product semantics. Recommendations, historical plans, prototypes, and existing code do not ratify product decisions.
+- Default to progress within an authorized assignment. Dustin may authorize provisional, private synthetic interfaces, fields, and workflows that are consistent with the vision. An `OPEN` decision alone is not a blocker.
+- Escalate only material conflicts with binding direction, unresolved fundamental semantics, hard-to-reverse commitments, consequential commercial policy, or legal, consent, privacy, and real-use boundaries. Do not block independent synthetic work.
+- Track A (collaboration and agreement engine) and Track B (professional toolkit) are workstreams of one product. Their current priority belongs in the README or work order. A demo never authorizes real use.
 
-## Scope and engineering
+## Execution and verification
 
-- Follow the bounded work order: inspect, implement, test, report, and stop at its stated boundary. Make reasonable reversible choices without requesting approval for routine details.
-- Prefer small, coherent changes and existing patterns. No speculative abstractions, broad refactors, or neighboring features without demonstrated need.
-- Protect authorization, isolation, privacy, and data integrity. Never treat synthetic accounts, fixture media, or staging as permission for public exposure or real participants.
-- Validate changes with relevant tests and checks; report unverified claims and remaining limitations honestly.
+- Follow the current bounded work order: outcome, scope, relevant decisions, acceptance evidence, environment, permitted actions, and stop condition. Exercise engineering judgment; do not repeatedly request approval for routine or already-authorized actions.
+- Prefer small changes, clear ownership, existing patterns, and proportionate tests. Do not build speculative systems or neighboring features.
+- Enforce authorization, privacy, data integrity, and isolation. Label synthetic behavior accurately; do not expose private material or enable real participants without authorization.
+- Inspect command side effects before running them. Here `npm run check` can generate migration files; `npm test` recreates a named test database; demo/browser tests can reset demo data. Separate Git worktrees do not isolate databases. Use a task-owned isolated environment for destructive checks.
+- Report the actual commands, results, observed behavior, and unverified limitations. Never claim that passing tests proves untested real-world behavior.
 
-## Git and agent isolation
+## Repository, processes, and continuity
 
-- One canonical active Claude implementation tmux session: `ms-builder`. `ms-review` is for independent review; `ms-demo` is for demo services. Tracks are scopes, not standing tmux sessions.
-- Each implementation assignment identifies its branch, worktree, base commit, owner, scope, acceptance criteria, and stop condition. Never run two implementation agents in one worktree.
-- `main` is the shared baseline. Preserve unpublished changes and other agents' branches/worktrees; do not reset, clean, prune, or rewrite shared history without explicit authorization.
-- Commits, pushes, PR changes, merges, deployments, and service changes require the permissions stated in the current work order. Never infer permission from a standing lifecycle rule. Dustin controls integration and merges.
-- Commit messages describe the work, without AI attribution, model names, session IDs, or generator footers.
-
-## Processes and handoffs
-
-- Preserve `opend` and unrelated infrastructure. Never use broad process kills (`pkill -f`, `killall`, etc.). Verify process ownership before stopping an exact service, tmux session, or task-owned PID.
-- Do not restart or reconfigure unrelated services for convenience. Clean up only resources created or explicitly assigned to the current task.
-- Before ending an active task, leave a concise durable handoff in the project's designated tracked location when needed. Do not rely on tmux scrollback or chat history as the sole record.
+- Establish the assigned branch, worktree, base commit, working changes, and resource ownership before acting. Never share one worktree between independent implementation agents or overwrite unpublished work.
+- Commit, push, PR, merge, deploy, and service permissions come from the current assignment, not this file; an authorization remains valid for that assignment until changed. Dustin controls integration. No destructive cleanup, reset, prune, or shared-history rewrite without explicit authority.
+- On Asher, use the task-assigned builder, review, and demo sessions; `ms-builder`, `ms-review`, and `ms-demo` are the normal conventions, not a reason to rename or restart existing sessions. Preserve `opend` and unrelated infrastructure.
+- Never stop processes by broad command or name matching (`pkill -f`, `killall`). Verify exact process/service ownership; stop only task-owned or expressly assigned resources.
+- When work remains, update an existing work order or continuation record with verified state and the next action; do not create a new handoff file unless needed. For read-only assignments, hand off in the response.
+- Write plain, work-focused commits and files without AI attribution, agent/session identifiers, or generated footers.
