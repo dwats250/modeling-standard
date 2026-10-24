@@ -2,7 +2,7 @@
   "name": "modeling-standard",
   "version": "0.0.0",
   "private": true,
-  "description": "Modeling Standard application. Stage 0: engineering foundation only.",
+  "description": "Professional toolkit and collaboration platform for independent creative work.",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
