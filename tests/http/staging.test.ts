@@ -414,7 +414,7 @@ describe('no B1 toolkit on staging', () => {
     expect((await person.get(`/shoots/${shoot.projectId}`)).status).toBe(200);
 
     const profile = { displayName: 'Staging Person', profession: 'Model', biography: '' };
-    for (const [method, path, json] of [['GET', '/me/profile'], ['POST', '/me/profile', profile], ['GET', '/me/comp-card'], ['POST', '/me/comp-card', { tagline: '', slots: {} }]] as const) {
+    for (const [method, path, json] of [['GET', '/me/profile'], ['POST', '/me/profile', profile], ['GET', '/me/comp-card'], ['POST', '/me/comp-card', { tagline: '', slots: {} }], ['GET', '/me/portfolio'], ['POST', '/me/portfolio', { items: [] }]] as const) {
       expect(staging.app.hasRoute({ method, url: path })).toBe(false);
       const res = await person.request(method, path, json === undefined ? {} : { json });
       expect({ method, path, status: res.status }).toEqual({ method, path, status: 404 });

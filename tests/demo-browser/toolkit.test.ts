@@ -13,13 +13,15 @@ import { demoDatabaseTarget } from '../../src/demo/demo.ts';
 import { resetDemoDatabase } from '../../src/demo/reset.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
+import { FIXTURE_KEYS } from '../../src/toolkit/fixture-media.ts';
+import { PORTFOLIO_MAX_ITEMS } from '../../src/toolkit/tables.ts';
 import { requireEnv } from '../support/urls.ts';
 
 /**
- * B1 in a real browser: two synthetic professionals in two separate browser
- * contexts, A at desktop width (1280) and B at phone width (390), each
- * building their own private profile and comp-card draft with pointer and
- * keyboard; unsafe text shown as text; save, reload, and a full application
+ * B1 and B2 in a real browser: two synthetic professionals in two separate
+ * browser contexts, A at desktop width (1280) and B at phone width (390), each
+ * building their own private profile, comp-card draft and portfolio draft
+ * with pointer and keyboard; unsafe text shown as text; save, reload, and a full application
  * restart; crafted requests refused. Screenshots go to
  * test-results/demo/toolkit-*.
  */
@@ -107,11 +109,18 @@ async function shot(page: Page, name: string): Promise<void> {
 
 const status = (page: Page) => page.locator('.tk-status:visible').first();
 const checked = (page: Page, slot: string) => page.locator(`input[name="slot-${slot}"]:checked`).getAttribute('value');
+const keysIn = (page: Page, selector: string) => page.locator(selector).evaluateAll((nodes) => nodes.map((n) => (n as unknown as { dataset: { key: string } }).dataset.key));
+const orderKeys = (page: Page) => keysIn(page, '.pf-order .pf-item');
+const previewKeys = (page: Page) => keysIn(page, '.tk-aside .pf-grid li, .pf-sheet.full .pf-grid li');
+const pick = (page: Page, key: string) => page.locator(`.pf-pick[data-key="${key}"]`);
+const move = (page: Page, key: string, action: 'up' | 'down' | 'remove') => page.locator(`.pf-item[data-key="${key}"] [data-action="${action}"]`);
+const focusedLabel = (page: Page) => page.evaluate<string | null>("document.activeElement?.getAttribute('aria-label') ?? null");
+const k = (i: number) => FIXTURE_KEYS[i]!;
 const heroSrc = (page: Page) => page.locator('.tk-aside .cc-hero img, .cc-card.full .cc-hero img').first().getAttribute('src');
 
 async function chooseOwner(page: Page, owner: 'a' | 'b'): Promise<void> {
   await go(page, '#/me');
-  await expect.poll(() => page.locator('[data-mode="toolkit-chooser"] h1').innerText()).toBe('Your profile and comp card');
+  await expect.poll(() => page.locator('[data-mode="toolkit-chooser"] h1').innerText()).toBe('Your profile, comp card and portfolio');
   await page.locator(`button.tk-choose[data-owner="${owner}"]`).click();
   await idle(page);
   await expect.poll(() => page.locator('.tk-owner').innerText()).toBe(`Synthetic professional ${owner.toUpperCase()}`);
@@ -121,7 +130,7 @@ describe('the professional toolkit', () => {
   it('is reachable from the start screen and the demo menu, and asks for a synthetic professional first', async () => {
     const { ctx, page } = await context('visitor', PHONE);
     await go(page, '#/');
-    expect(await page.locator('.tk-teaser h2').innerText()).toBe('Your profile and comp card');
+    expect(await page.locator('.tk-teaser h2').innerText()).toBe('Your profile, comp card and portfolio');
     expect(await page.locator('#screen').innerText()).not.toMatch(/\b(null|undefined)\b/);
     await go(page, '#/demo');
     expect(await page.locator('a.menu-item[href="#/me"]').count()).toBe(1);
@@ -203,7 +212,7 @@ describe('the professional toolkit', () => {
     expect(await a.page.locator('.cc-bio img, .cc-bio b').count()).toBe(0);
     expect(await a.page.evaluate<unknown>('window.__pwned')).toBeUndefined();
     // Preview with unsaved changes, then back: the edits are still there.
-    await a.page.locator('.tk-tab[href="#/me/card/preview"]').click();
+    await a.page.locator('.tk-subtab[href="#/me/card/preview"]').click();
     await idle(a.page);
     expect(await a.page.locator('[data-unsaved]').innerText()).toContain('Showing unsaved changes');
     expect(await heroSrc(a.page)).toBe('/media/fixtures/studio-portrait-slate.svg');
@@ -266,6 +275,125 @@ describe('the professional toolkit', () => {
     await b.ctx.close();
   });
 
+  it('A (desktop) and B (phone) each organize, save and reopen their own portfolio (B2)', async () => {
+    const a = await context('A portfolio', DESKTOP);
+    const b = await context('B portfolio', PHONE);
+    await chooseOwner(a.page, 'a');
+    await chooseOwner(b.page, 'b');
+
+    // ---- A: empty to start, clearly ----
+    await go(a.page, '#/me/portfolio');
+    expect(await a.page.locator('.tk-tab[aria-current="page"]').innerText()).toBe('Portfolio');
+    expect(await a.page.locator('.tk-subtab[aria-current="page"]').innerText()).toBe('Organize');
+    expect(await status(a.page).innerText()).toBe('Not saved yet');
+    expect(await a.page.locator('.pf-count').innerText()).toBe(`0 of ${PORTFOLIO_MAX_ITEMS} selected`);
+    expect(await a.page.locator('[data-empty="selection"]').isVisible()).toBe(true);
+    expect(await a.page.locator('.tk-aside [data-empty="portfolio"]').innerText()).toBe('No images yet');
+
+    // ---- Select four, reorder by pointer and keyboard, remove two ----
+    for (const i of [3, 0, 7, 5]) await pick(a.page, k(i)).click();
+    expect(await orderKeys(a.page)).toEqual([k(3), k(0), k(7), k(5)]);
+    expect(await previewKeys(a.page)).toEqual([k(3), k(0), k(7), k(5)]);
+    expect(await pick(a.page, k(7)).getAttribute('aria-pressed')).toBe('true');
+    expect(await pick(a.page, k(7)).innerText()).toContain('Added · 3');
+    expect(await move(a.page, k(3), 'up').isDisabled()).toBe(true);
+    expect(await move(a.page, k(5), 'down').isDisabled()).toBe(true);
+    await move(a.page, k(3), 'down').click();
+    expect(await orderKeys(a.page)).toEqual([k(0), k(3), k(7), k(5)]);
+    // Focus stays on the control that moved, so the keyboard can keep going.
+    expect(await focusedLabel(a.page)).toMatch(/^Move .+ later$/);
+    await a.page.keyboard.press('Enter');
+    expect(await orderKeys(a.page)).toEqual([k(0), k(7), k(3), k(5)]);
+    await move(a.page, k(7), 'remove').click();
+    expect(await orderKeys(a.page)).toEqual([k(0), k(3), k(5)]);
+    await pick(a.page, k(5)).click(); // a chosen image, chosen again, comes out
+    expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
+    expect(await status(a.page).innerText()).toBe('Unsaved changes');
+
+    // ---- Unsaved edits go to the preview and back ----
+    await a.page.locator('.tk-subtab[href="#/me/portfolio/preview"]').click();
+    await idle(a.page);
+    expect(await a.page.locator('[data-unsaved]').innerText()).toContain('Showing unsaved changes');
+    expect(await previewKeys(a.page)).toEqual([k(0), k(3)]);
+    await a.page.locator('.tk-subtab[href="#/me/portfolio"]').click();
+    await idle(a.page);
+    expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
+
+    // ---- Save, reload, the same order ----
+    await a.page.locator('button.tk-save:visible').click();
+    await idle(a.page);
+    await expect.poll(() => status(a.page).getAttribute('data-state')).toBe('saved');
+    await a.page.reload();
+    await idle(a.page);
+    expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
+    expect(await previewKeys(a.page)).toEqual([k(0), k(3)]);
+    expect(await status(a.page).getAttribute('data-state')).toBe('saved');
+
+    // ---- Up to the maximum: then nothing more can be added ----
+    const full = [k(0), k(3), ...FIXTURE_KEYS.filter((key) => key !== k(0) && key !== k(3)).slice(0, PORTFOLIO_MAX_ITEMS - 2)];
+    for (const key of full.slice(2)) await pick(a.page, key).click();
+    expect(await orderKeys(a.page)).toEqual(full);
+    expect(await a.page.locator('.pf-count').innerText()).toBe(`${PORTFOLIO_MAX_ITEMS} of ${PORTFOLIO_MAX_ITEMS} selected`);
+    expect(await a.page.locator('[data-full]').isVisible()).toBe(true);
+    const left = FIXTURE_KEYS.filter((key) => !full.includes(key));
+    for (const key of left) expect(await pick(a.page, key).isDisabled()).toBe(true);
+    await a.page.locator('button.tk-save:visible').click();
+    await idle(a.page);
+    await expect.poll(() => status(a.page).getAttribute('data-state')).toBe('saved');
+    await shot(a.page, 'desktop-portfolio');
+    await go(a.page, '#/me/portfolio/preview');
+    expect(await previewKeys(a.page)).toEqual(full);
+    expect(await a.page.locator('.pf-sheet.full .pf-name').innerText()).toBe('AMARA OKAFOR');
+    expect(await a.page.locator('.pf-sheet.full .pf-foot').innerText()).toMatch(/private draft/i);
+    expect(await a.page.locator('[data-unsaved]').count()).toBe(0);
+    await shot(a.page, 'desktop-portfolio-preview');
+
+    // ---- B on the phone: none of A's, its own order ----
+    await go(b.page, '#/me/portfolio');
+    expect(await orderKeys(b.page)).toEqual([]);
+    expect(await b.page.content()).not.toContain('Amara');
+    await pick(b.page, k(9)).click();
+    await pick(b.page, k(1)).click();
+    await move(b.page, k(1), 'up').click();
+    expect(await orderKeys(b.page)).toEqual([k(1), k(9)]);
+    for (const control of [...(await b.page.locator('.pf-move').all()), ...(await b.page.locator('.pf-pick').all()).slice(0, 3), ...(await b.page.locator('.tk-subtab').all()), b.page.locator('button.tk-save:visible')]) {
+      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+    await b.page.locator('button.tk-save:visible').click();
+    await idle(b.page);
+    await expect.poll(() => status(b.page).getAttribute('data-state')).toBe('saved');
+    await shot(b.page, 'phone-portfolio');
+    await go(b.page, '#/me/portfolio/preview');
+    expect(await previewKeys(b.page)).toEqual([k(1), k(9)]);
+    expect(await b.page.locator('.pf-sheet.full .pf-name').innerText()).toBe('JUN PARK');
+    await shot(b.page, 'phone-portfolio-preview');
+
+    // ---- Crafted requests from B's browser reach only B ----
+    const origin = { origin: running.base };
+    for (const data of [{ items: [k(0)], accountId: 'a' }, { items: FIXTURE_KEYS.slice(0, PORTFOLIO_MAX_ITEMS + 1) }, { items: [k(0), k(0)] }, { items: ['https://example.com/x.jpg'] }]) {
+      expect((await b.page.request.post(`${running.base}/me/portfolio`, { headers: origin, data })).status()).toBe(400);
+    }
+    type Portfolio = { draft: { items: string[] } };
+    expect(((await (await b.page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft.items).toEqual([k(1), k(9)]);
+    expect(((await (await a.page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft.items).toEqual(full);
+
+    // ---- B empties the portfolio and saves: an empty draft, said plainly ----
+    await go(b.page, '#/me/portfolio');
+    await move(b.page, k(1), 'remove').click();
+    await move(b.page, k(9), 'remove').click();
+    expect(await b.page.locator('[data-empty="selection"]').isVisible()).toBe(true);
+    await b.page.locator('button.tk-save:visible').click();
+    await idle(b.page);
+    await expect.poll(() => status(b.page).getAttribute('data-state')).toBe('saved');
+    await go(b.page, '#/me/portfolio/preview');
+    expect(await b.page.locator('.tk-notice').innerText()).toContain('no images yet');
+    expect(await b.page.locator('.pf-sheet.full [data-empty="portfolio"]').isVisible()).toBe(true);
+    await shot(b.page, 'phone-portfolio-empty');
+
+    await a.ctx.close();
+    await b.ctx.close();
+  });
+
   it('keeps everything across a full application restart', async () => {
     await stop(running);
     running = await start();
@@ -275,6 +403,10 @@ describe('the professional toolkit', () => {
     expect(await page.locator('#biography').inputValue()).toBe(UNSAFE);
     await go(page, '#/me/card');
     expect(await checked(page, 'hero')).toBe('studio-portrait-slate');
+    expect(await status(page).getAttribute('data-state')).toBe('saved');
+    await go(page, '#/me/portfolio');
+    expect((await orderKeys(page)).length).toBe(PORTFOLIO_MAX_ITEMS);
+    expect((await orderKeys(page)).slice(0, 2)).toEqual([k(0), k(3)]);
     expect(await status(page).getAttribute('data-state')).toBe('saved');
     await ctx.close();
   });

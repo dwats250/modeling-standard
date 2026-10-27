@@ -53,7 +53,14 @@ const asAccount = (id: string) => ({ [ACCOUNT_HEADER]: id });
 const profile = { displayName: 'Amara Okafor', profession: 'Model', biography: 'Editorial and commercial.' };
 const card = (overrides: Json = {}) => ({ tagline: 'Available for editorial work', slots: { ...DEFAULT_ARRANGEMENT }, ...overrides });
 
-const ROUTES = [['GET', '/me/profile'], ['POST', '/me/profile'], ['GET', '/me/comp-card'], ['POST', '/me/comp-card']] as const;
+const ROUTES = [
+  ['GET', '/me/profile'],
+  ['POST', '/me/profile'],
+  ['GET', '/me/comp-card'],
+  ['POST', '/me/comp-card'],
+  ['GET', '/me/portfolio'],
+  ['POST', '/me/portfolio'],
+] as const;
 
 describe('the toolkit routes are not in the production surface', () => {
   it('the production operation list has none of them', () => {
@@ -70,7 +77,7 @@ describe('the toolkit routes are not in the production surface', () => {
     expect((await call(t, 'GET', '/me/profile', asAccount(ownerA))).json()).toEqual({ profile: null });
   });
 
-  it('the four operations, as the local demo registers them, pass registration validation and are all protected', () => {
+  it('the toolkit operations (B1 and B2), as the local demo registers them, pass registration validation and are all protected', () => {
     expect(() => validateOperations(toolkitOperations)).not.toThrow();
     expect(toolkitOperations.map((op) => `${op.method} ${op.path}`)).toEqual(ROUTES.map(([m, u]) => `${m} ${u}`));
     expect(toolkitOperations.every((op) => op.access.kind === 'protected')).toBe(true);

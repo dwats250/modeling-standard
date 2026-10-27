@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09, S11, S12 and B1 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09, S11, S12, B1 and B2 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -54,9 +54,11 @@ describe('runtime and migration credentials', () => {
       // B1: the owner's profile and comp-card draft; no delete.
       professional_profile: ['SELECT', 'INSERT'],
       comp_card_draft: ['SELECT', 'INSERT'],
+      // B2: the owner's portfolio draft; no delete.
+      portfolio_draft: ['SELECT', 'INSERT'],
     };
-    // Column-level UPDATE only (S08, S09, S12, B1); no table may be updated wholesale.
-    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence', 'account_session', 'professional_profile', 'comp_card_draft']);
+    // Column-level UPDATE only (S08, S09, S12, B1, B2); no table may be updated wholesale.
+    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence', 'account_session', 'professional_profile', 'comp_card_draft', 'portfolio_draft']);
     await withClient(inject('runtimeUrl'), async (c) => {
       const tables = await c.query<{ table_name: string }>(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -89,7 +91,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime role may update exactly the B1 profile text and the draft tagline and slots, never owner, id or time', async () => {
+  it('runtime role may update exactly the B1 profile text, the draft tagline and slots, and the B2 portfolio items, never owner, id or time', async () => {
     await withClient(inject('runtimeUrl'), async (c) => {
       const updatable = async (table: string) =>
         (
@@ -101,6 +103,7 @@ describe('runtime and migration credentials', () => {
         ).rows.map((r) => r.column_name);
       expect(await updatable('professional_profile')).toEqual(['biography', 'display_name', 'profession']);
       expect(await updatable('comp_card_draft')).toEqual(['slot_beauty', 'slot_full_body', 'slot_hero', 'slot_lifestyle', 'slot_profile_view', 'tagline']);
+      expect(await updatable('portfolio_draft')).toEqual(['items']);
     });
   });
 

@@ -14,10 +14,12 @@ import {
   type DraftFields,
   type ProfileRecord,
 } from './profile.ts';
+import { findPortfolioForAccount, savePortfolioForAccount } from './portfolio.ts';
+import { PORTFOLIO_MAX_ITEMS } from './tables.ts';
 
 /**
  * The signed-in professional's own profile and comp-card draft (slice B1,
- * Track B). Synthetic and provisional.
+ * Track B) and portfolio draft (B2). Synthetic and provisional.
  *
  * Owner-only by construction. The owner is the signed-in account the
  * session names, resolved on the server; no address or body names an
@@ -69,6 +71,13 @@ const slotsSchema = z
 
 const compCardBody = z.strictObject({ tagline: oneLine(80), slots: slotsSchema });
 
+const portfolioBody = z.strictObject({
+  items: z
+    .array(fixtureKey)
+    .max(PORTFOLIO_MAX_ITEMS, `A portfolio holds up to ${PORTFOLIO_MAX_ITEMS} images.`)
+    .refine((items) => new Set(items).size === items.length, { message: 'Each image can appear once only.' }),
+});
+
 // ---- Output: no ids, no owner ----
 
 const profileDto = z.strictObject({
@@ -103,6 +112,29 @@ async function compCardView(db: Executor, accountId: string) {
     profile: profile ? toProfileDto(profile) : null,
     draft: { tagline: shown.tagline, slots: { ...shown.slots }, updatedAt: draft ? draft.updatedAt.toISOString() : null },
     fixtures: FIXTURES_DTO.map((f) => ({ ...f })),
+  };
+}
+
+const portfolioDto = z.strictObject({
+  profile: profileDto.nullable(),
+  draft: z.strictObject({
+    /** Fixture keys, first shown first. Empty until the owner adds some. */
+    items: z.array(z.string()),
+    /** Null until the draft is first saved. */
+    updatedAt: z.iso.datetime().nullable(),
+  }),
+  maxItems: z.number().int().positive(),
+  fixtures: z.array(z.strictObject({ key: z.string(), label: z.string() })),
+});
+
+async function portfolioView(db: Executor, accountId: string) {
+  const profile = await findProfileForAccount(db, accountId);
+  const draft = profile ? await findPortfolioForAccount(db, accountId) : undefined;
+  return {
+    profile: profile ? toProfileDto(profile) : null,
+    draft: { items: draft ? [...draft.items] : [], updatedAt: draft ? draft.updatedAt.toISOString() : null },
+    maxItems: PORTFOLIO_MAX_ITEMS,
+    fixtures: FIXTURE_MEDIA.map((f) => ({ key: f.key, label: f.label })),
   };
 }
 
@@ -160,9 +192,39 @@ export const saveOwnCompCardOperation = defineOperation({
   },
 });
 
+export const readOwnPortfolioOperation = defineOperation({
+  name: 'toolkit.portfolio.read',
+  method: 'GET',
+  path: '/me/portfolio',
+  output: portfolioDto,
+  access,
+  run: async (_input, { db, target }) => portfolioView(db, target.accountId),
+});
+
+export const saveOwnPortfolioOperation = defineOperation({
+  name: 'toolkit.portfolio.save',
+  method: 'POST',
+  path: '/me/portfolio',
+  input: { body: portfolioBody },
+  output: portfolioDto,
+  access,
+  run: async (input, { db, target }) => {
+    try {
+      await db.transaction((tx) => savePortfolioForAccount(tx, target.accountId, input.body.items), { isolationLevel: 'read committed' });
+    } catch (error) {
+      if (error instanceof ProfileRequiredError) throw new AppError(409, 'profile_required');
+      throw error;
+    }
+    return portfolioView(db, target.accountId);
+  },
+});
+
+/** Registered only by the local synthetic demo (`src/demo/application.ts`), never production or staging. */
 export const toolkitOperations: readonly AnyOperation[] = [
   readOwnProfileOperation,
   saveOwnProfileOperation,
   readOwnCompCardOperation,
   saveOwnCompCardOperation,
+  readOwnPortfolioOperation,
+  saveOwnPortfolioOperation,
 ];

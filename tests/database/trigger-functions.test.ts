@@ -33,6 +33,7 @@ describe('trigger functions', () => {
         'live_brief_check_phase',
         'pairwise_agreement_guard_signing',
         'party_account_binding_stamp',
+        'portfolio_draft_check_items',
         'project_party_guard_roster',
         'sign_in_attempt_stamp',
         'toolkit_row_stamp',

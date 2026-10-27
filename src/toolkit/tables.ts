@@ -3,8 +3,8 @@ import { check, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-co
 import { account } from '../accounts/tables.ts';
 
 /**
- * Slice B1 (Track B): a private professional profile and its comp-card
- * draft. Synthetic and provisional: the fields, lengths and the five slot
+ * Slices B1 and B2 (Track B): a private professional profile, its comp-card
+ * draft and its portfolio draft. Synthetic and provisional: the fields, lengths and the five slot
  * names are reversible design choices, not product policy.
  *
  * Owner-only. A profile belongs to exactly one sign-in account and is read
@@ -13,7 +13,8 @@ import { account } from '../accounts/tables.ts';
  * verified identity (D03, D11).
  *
  * Deliberately absent: measurements, contact details, location, date of
- * birth, age, images or image bytes (slots hold fixture keys only), public
+ * birth, age, images or image bytes (slots and portfolio items hold fixture
+ * keys only), captions, public
  * or share state, visibility, payment or plan, and history.
  *
  * Privileges and the database-time stamps are hand-written SQL in
@@ -94,6 +95,39 @@ export const compCardDraft = pgTable(
     check(
       'comp_card_draft_slots_distinct',
       sql.raw(distinctPairs(['slot_hero', 'slot_full_body', 'slot_profile_view', 'slot_lifestyle', 'slot_beauty'])),
+    ),
+  ],
+);
+
+/** The most images a portfolio draft holds (B2; provisional). */
+export const PORTFOLIO_MAX_ITEMS = 8;
+
+/**
+ * One profile's portfolio draft (B2): an ordered list of fixture keys, first
+ * shown first. Runtime role: SELECT, INSERT, and UPDATE of `items` only. No
+ * DELETE; `profile_id` never changes. An empty list is a valid draft.
+ *
+ * The CHECKs bound the count and the array's shape; each key's shape and
+ * that no key repeats are checked by a trigger (migrations/0033), since a
+ * CHECK cannot look inside an array element by element. Which keys exist is
+ * the application's fixture catalogue.
+ */
+export const portfolioDraft = pgTable(
+  'portfolio_draft',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => professionalProfile.id),
+    items: text('items').array().notNull().default(sql`'{}'::text[]`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('portfolio_draft_one_per_profile').on(table.profileId),
+    check(
+      'portfolio_draft_items_bounded',
+      sql.raw(`cardinality("portfolio_draft"."items") = 0 or (cardinality("portfolio_draft"."items") <= ${PORTFOLIO_MAX_ITEMS} and array_ndims("portfolio_draft"."items") = 1 and array_lower("portfolio_draft"."items", 1) = 1)`),
     ),
   ],
 );

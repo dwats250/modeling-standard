@@ -55,19 +55,23 @@ Every screen has a top bar with the wordmark (back to the start), a discreet **S
 
 Stored demo text keeps its `[synthetic]` mark; the journey shows it without repeating the mark on each line, and values typed on these screens are stored marked. Engineering notes (Demo menu) reveal ids and item keys.
 
-## Professional toolkit (B1)
+## Professional toolkit (B1, B2)
 
-A private professional profile and comp-card draft, in the same local demo (not on staging). Synthetic and provisional throughout: the fields, the five slot names, the fixture catalogue and the layout are reversible design choices, not product policy. Slice record: `docs/slices/B1-profile-comp-card.md`.
+A private professional profile, comp-card draft and portfolio draft, in the same local demo (not on staging). Synthetic and provisional throughout: the fields, the five slot names, the fixture catalogue, the portfolio's eight-image limit and the layout are reversible design choices, not product policy. Slice records: `docs/slices/B1-profile-comp-card.md`, `docs/slices/B2-portfolio-draft.md`.
 
 1. **Entry.** The start screen's "Professional toolkit" card or the Demo menu opens `#/me`.
 2. **Choose a synthetic professional.** Without a session, `#/me` offers **Continue as Synthetic professional A** or **B**. This is a demo stand-in for signing in, not a sign-in: the two professionals are fixed, invented accounts, nothing is checked, and choosing one leaves operator mode. **Sign-in for professionals is not built** (no sign-in screen, onboarding, login link or Google change).
 3. **Profile** (`#/me`). Display name (required, up to 80 characters), profession (up to 60) and a short plain-text biography (up to 600), with counters, inline errors, and a save status ("Not saved yet", "Unsaved changes", "Saved at …").
 4. **Comp card** (`#/me/card`). Five slots — Hero, Full body, Profile view, Lifestyle, Beauty — each a row of ten generated fixture images (native radio buttons: arrow keys move the choice). Choosing an image another slot holds swaps the two. An optional one-line tagline. A live preview: front (hero, name, profession) and back (the other four, tagline, biography). On a phone the preview leads and Save sits in a sticky footer; on a desktop the preview and Save are a sticky column. A draft never saved starts from a suggested arrangement and says so.
-5. **Preview** (`#/me/card/preview`). The card full size, front and back, side by side when there is room. Unsaved edits are carried between the three tabs in memory and labelled as unsaved on the preview.
+5. **Preview** (`#/me/card/preview`). The card full size, front and back, side by side when there is room. Unsaved edits are carried between the tabs in memory and labelled as unsaved on the preview.
+6. **Portfolio** (`#/me/portfolio`). Up to eight of the ten fixture images, in order. **Add images** lists the catalogue (a chosen image, chosen again, comes out; when eight are chosen the rest are disabled and a note says so); **Your selection** lists the order with ↑, ↓ and Remove on each image (focus stays on the control that moved). A live preview, the save status and Save as on the comp card. A new or emptied portfolio says "Nothing selected yet"; an empty draft can be saved.
+7. **Portfolio preview** (`#/me/portfolio/preview`). Name and profession, then the images in order, the first one large, numbered; "No images yet" when empty.
+
+The tabs are Profile, Comp card and Portfolio; inside the comp card and the portfolio, a second row switches between editing and the preview.
 
 Every toolkit screen shows "Private draft · only you can see this", who is signed in, **Switch to A/B** and **Sign out**.
 
-**Built:** `src/toolkit/` (tables, owner-keyed data functions, fixture catalogue, `GET`/`POST /me/profile` and `GET`/`POST /me/comp-card`, owner from the session only; registered only by the local demo's `createDemoApplication`, never in the production operation list or on staging), migrations 0030 and 0031, `src/demo/toolkit.ts` (the harness: `POST /demo/toolkit/owner` with `{ owner: 'a' | 'b' }`, origin-checked, local only; `GET /demo/toolkit/owner`), `src/demo/fixture-images.ts` (deterministic SVG at `/media/fixtures/<key>.svg`, generated from shapes, marked "Synthetic fixture"), `src/demo/ui/toolkit.js` and `toolkit.css`.
+**Built:** `src/toolkit/` (tables, owner-keyed data functions, fixture catalogue, `GET`/`POST /me/profile` and `GET`/`POST /me/comp-card`, owner from the session only; registered only by the local demo's `createDemoApplication`, never in the production operation list or on staging), migrations 0030 and 0031, `src/demo/toolkit.ts` (the harness: `POST /demo/toolkit/owner` with `{ owner: 'a' | 'b' }`, origin-checked, local only; `GET /demo/toolkit/owner`), `src/demo/fixture-images.ts` (deterministic SVG at `/media/fixtures/<key>.svg`, generated from shapes, marked "Synthetic fixture"), `src/demo/ui/toolkit.js` and `toolkit.css`. B2 adds `src/toolkit/portfolio.ts`, `GET`/`POST /me/portfolio` (same registration and owner rule) and migrations 0032 and 0033.
 
 ## How it is built
 
@@ -102,7 +106,7 @@ Every toolkit screen shows "Private draft · only you can see this", who is sign
 - **Multi-party** shoots show no overall readiness (it could reveal another pair's private fee).
 - The **inspector** is an engineering aid showing the whole record; its walkthrough's "Settle together" form predates the participant screens.
 - The snapshot covers the inspector only.
-- **Toolkit:** two fixed synthetic professionals instead of sign-in; fixture images only (no uploads, no real images); one profile and one draft per account; no sharing, public page, discovery, measurements or contact details. The toolkit's routes, screens and harness exist only in the local demo: production and staging have no `/me/*` route and answer the generic 404, even to a signed-in account.
+- **Toolkit:** two fixed synthetic professionals instead of sign-in; fixture images only (no uploads, no real images); one profile, one comp-card draft and one portfolio draft per account; no captions, no sharing, public page, discovery, measurements or contact details. The toolkit's routes, screens and harness exist only in the local demo: production and staging have no `/me/*` route and answer the generic 404, even to a signed-in account.
 
 ## Regression
 
@@ -112,7 +116,7 @@ Every toolkit screen shows "Private draft · only you can see this", who is sign
 - `tests/demo-browser/participants.test.ts` — S12 in a real browser: the operator invites; two separate 390-wide contexts accept their own links, sign in on the test provider's page, see only their own screen and controls, and resolve to READY TO SIGN; a signed-in phone is refused the operator screens; sign-out leaves no mode.
 - `tests/demo-browser/regression.test.ts` — the inspector at `/inspector`: fixtures, the walkthrough, the decisions view, the snapshot from `file://` (it opens a draft fixture and the ready fixture: no simulation controls, no network request, no horizontal scroll; it does not open a finalized contract), reset repeatability, every demo route 404 in production.
 
-- `tests/demo-browser/toolkit.test.ts` — B1: entry points; the chooser; A at 1280 and B at 390 in separate contexts each create, edit and save their own profile and comp card (a refused blank name, keyboard entry and Enter to save, arrow-key slot choice, a swap, unsaved edits carried to the preview and back, keyboard save); unsafe text shown as text; reload; a full application restart; crafted requests from B's browser refused; switching owners; sign-out; no stray text, no horizontal scroll, controls at least 44 px, no browser errors.
+- `tests/demo-browser/toolkit.test.ts` — B1: entry points; the chooser; A at 1280 and B at 390 in separate contexts each create, edit and save their own profile and comp card (a refused blank name, keyboard entry and Enter to save, arrow-key slot choice, a swap, unsaved edits carried to the preview and back, keyboard save); unsafe text shown as text; reload; a full application restart; crafted requests from B's browser refused; switching owners; sign-out. B2: A at 1280 selects, reorders (pointer and keyboard), removes and saves a portfolio, carries unsaved edits to the preview and back, reloads to the same order, fills it to the maximum and finds the rest disabled; B at 390 sees none of A's, orders and saves its own, has crafted requests refused, and saves an empty portfolio; the order survives a restart. Throughout: no stray text, no horizontal scroll, controls at least 44 px, no browser errors.
 
 Screenshots go to `test-results/demo/` (`journey-*` per stage and width; `toolkit-*`; the inspector's existing set). They are evidence, not design approval.
 
