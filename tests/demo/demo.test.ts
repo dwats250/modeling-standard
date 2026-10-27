@@ -80,13 +80,16 @@ describe('separation from production', () => {
     );
   });
 
-  it('declares every demo operation as protected, except the explicit operator-mode switch and the environment', () => {
+  it('declares every demo operation as protected, except the explicit operator-mode switch, the environment and the toolkit owner harness', () => {
     // Operator mode is how a browser becomes the operator, so it cannot require
     // being one; it is origin-checked and demo-only (S12), and needs the
     // operator key on staging (S13). The environment tells the screens which
     // sign-in to offer before anyone is anybody, and says nothing secret.
+    // The B1 owner harness (local only) is how a browser becomes one of two
+    // fixed synthetic professionals, and says which one it is.
+    const isPublic = new Set(['demo.operator.enter', 'demo.environment', 'demo.toolkit.owner.choose', 'demo.toolkit.owner.read']);
     for (const op of demoOperations) {
-      const expected = op.name === 'demo.operator.enter' || op.name === 'demo.environment' ? 'public' : 'protected';
+      const expected = isPublic.has(op.name) ? 'public' : 'protected';
       expect({ name: op.name, kind: op.access.kind }).toEqual({ name: op.name, kind: expected });
     }
   });

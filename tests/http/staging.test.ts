@@ -403,6 +403,31 @@ describe('Google sign-in from an invitation (fake Google, real provider code and
   });
 });
 
+describe('no B1 toolkit on staging', () => {
+  it('a Google-signed-in account gets the generic 404 for every toolkit route, and nothing is written', async () => {
+    const op = await operator();
+    const shoot = await shootWithLinks(op);
+    const subject = newSubject();
+    const person = new Browser();
+    expect((await person.get(await callbackFor(person, shoot.modelLink, subject))).location).toBe(`/#/brief/${shoot.projectId}`);
+    // The session is real: the person's own shoot view answers.
+    expect((await person.get(`/shoots/${shoot.projectId}`)).status).toBe(200);
+
+    const profile = { displayName: 'Staging Person', profession: 'Model', biography: '' };
+    for (const [method, path, json] of [['GET', '/me/profile'], ['POST', '/me/profile', profile], ['GET', '/me/comp-card'], ['POST', '/me/comp-card', { tagline: '', slots: {} }]] as const) {
+      expect(staging.app.hasRoute({ method, url: path })).toBe(false);
+      const res = await person.request(method, path, json === undefined ? {} : { json });
+      expect({ method, path, status: res.status }).toEqual({ method, path, status: 404 });
+      expect(res.json()).toEqual({ error: { code: 'not_found', requestId: expect.any(String) } });
+    }
+    expect((await person.post('/demo/toolkit/owner', { owner: 'a' })).status).toBe(404);
+    const rows = await withClient(inject('migrationUrl'), async (c) =>
+      (await c.query<{ id: string }>('select p.id from professional_profile p join account a on a.id = p.account_id where a.provider_subject = $1', [subject])).rows,
+    );
+    expect(rows).toEqual([]);
+  });
+});
+
 describe('HTTPS cookies are __Host- named, and bare names are never read', () => {
   /** A cookie a plain-HTTP site on the same host name could set: bare name, any path. */
   const toss = (b: Browser, name: string, value: string) => b.jar.set(name, { value, path: '/' });

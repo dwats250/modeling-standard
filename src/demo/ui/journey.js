@@ -15,6 +15,11 @@
 // - neither.
 // An invitation credential is read from the address fragment and kept in
 // memory only; it is never stored in this browser or put in another URL.
+//
+// The professional toolkit (B1: #/me, #/me/card, #/me/card/preview) lives in
+// toolkit.js; this file routes to it and links to it.
+
+import { createToolkit } from './toolkit.js';
 
 const state = {
   annotations: { projects: {} },
@@ -346,6 +351,7 @@ function renderNoMode(root) {
       state.environment.operatorKeyRequired ? operatorKeyForm() : button('Continue as the demo operator', enterOperatorMode, 'btn primary block enter-operator'),
       el('p', { className: 'small muted', text: 'A demo convenience: the operator composes shoots, shares them and sends invitations. It is not a person in any shoot.' }),
     ]),
+    ...[toolkit.teaser()].filter(Boolean),
     aboutLink(),
   );
 }
@@ -359,6 +365,7 @@ function renderParticipantHome(root) {
       el('p', { className: 'muted', text: 'Open your invitation link to return to your shoot. The operator screens are not available while this browser is signed in.' }),
       button('Sign out', signOut, 'btn block sign-out'),
     ]),
+    ...[toolkit.teaser()].filter(Boolean),
     aboutLink(),
   );
 }
@@ -402,7 +409,8 @@ async function renderWelcome(root) {
             mine.map((p) => el('li', {}, [el('a', { attrs: { href: `#/shoots/${p.id}` } }, [el('span', { className: 'title', text: shootTitle(p.id) }), el('span', { className: 'chev', text: '›', attrs: { 'aria-hidden': 'true' } })])])),
           ),
         ])
-      : null,
+      : '', // nothing (an empty text node; Node.append would write a null as "null")
+    ...[toolkit.teaser()].filter(Boolean),
     el('p', { className: 'small muted operator-mode' }, [
       el('span', { text: 'You are the demo operator in this browser. ' }),
       button('Leave operator mode', signOut, 'text-btn leave-operator'),
@@ -466,6 +474,7 @@ function renderDemoMenu(root) {
       el('h2', { text: 'Tools' }),
       el('ul', { className: 'menu-list' }, [
         menuLink('About this demo', 'What is real, what is simulated, and what is not shown.', '#/about'),
+        ...(onStaging() ? [] : [menuLink('Professional toolkit', 'A private profile and comp card, as one of two synthetic professionals.', '#/me')]),
         menuLink('Inspector', 'Engineering aid: the whole stored record of every shoot — not what any one person sees.', '/inspector'),
         el('li', {}, [
           el('label', { className: 'switch-row', attrs: { for: 'eng-toggle' } }, [
@@ -1376,6 +1385,10 @@ function renderSignInOutcome(root, outcome) {
   );
 }
 
+// ---- The professional toolkit (toolkit.js) ----
+
+const toolkit = createToolkit({ el, api, button, link, toast, refusal, onStaging, signOut, rerender: (scrollTop) => rerender(scrollTop) });
+
 // ---- Routing ----
 
 let generation = 0;
@@ -1405,6 +1418,7 @@ async function renderScreen(scrollTop) {
     else if (hash === '#/shoots/new') renderCompose(next);
     else if (hash === '#/demo') renderDemoMenu(next);
     else if (hash === '#/about') renderAbout(next);
+    else if (hash === '#/me' || hash.startsWith('#/me/')) await toolkit.render(next, hash);
     else await renderWelcome(next);
   } catch (error) {
     if (error.status === 401) {
@@ -1426,7 +1440,9 @@ async function renderScreen(scrollTop) {
   if (mine !== generation) return;
   const y = window.scrollY;
   screen.replaceChildren(next);
-  document.body.dataset.screen = hash.includes('/as/')
+  document.body.dataset.screen = hash === '#/me' || hash.startsWith('#/me/')
+    ? 'toolkit'
+    : hash.includes('/as/')
     ? 'participant'
     : hash.startsWith('#/brief/')
       ? 'brief'
