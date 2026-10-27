@@ -22,7 +22,7 @@ A synthetic signed-in professional creates and edits a private profile (display 
 - Owner-only: every toolkit operation acts on the signed-in account's own rows, found from the server-side session. No route or body names an owner, profile or draft id.
 - Strict input and output (the operation boundary); unknown fixture keys refused.
 - Durable: rows in PostgreSQL; reviewed migrations; runtime role cannot delete rows or change ownership.
-- Production unchanged: no sign-in path, provider, invitation or Track A behavior changes. The synthetic owner harness is in `src/demo/`, excluded from the build.
+- Production unchanged: no sign-in path, provider, invitation or Track A behavior changes. The four toolkit operations are registered only by the local demo composition (`createDemoApplication` without staging settings), not by the production operation list or staging; the synthetic owner harness is in `src/demo/`, excluded from the build.
 
 ## In scope
 
@@ -41,7 +41,7 @@ See "As built" for the commands actually run and their results.
 
 ## Expected change surface
 
-`src/toolkit/*`, `src/app/operation-list.ts`, `drizzle.config.ts`, `migrations/0030*`, `migrations/0031*`, `migrations/meta/*`, `src/demo/{toolkit.ts,fixture-images.ts,operations.ts,application.ts,server.ts}`, `src/demo/ui/{toolkit.js,toolkit.css,journey.js,index.html}`, tests, `docs/engineering/DEMO.md`, `docs/engineering/README.md`.
+`src/toolkit/*`, `drizzle.config.ts`, `migrations/0030*`, `migrations/0031*`, `migrations/meta/*`, `src/demo/{toolkit.ts,fixture-images.ts,operations.ts,application.ts,server.ts}`, `src/demo/ui/{toolkit.js,toolkit.css,journey.js,index.html}`, tests, `docs/engineering/DEMO.md`, `docs/engineering/README.md`.
 
 ## Change-locality check
 
@@ -86,7 +86,24 @@ Every test command in this assignment ran with that `.env`, so `modeling_standar
 
 **Deliberately not done (deferred, not completed).** Sign-in for professionals: no sign-in screen, invitation-free onboarding, login link, Google change, or manual multi-device acceptance. The harness's two fixed synthetic professionals stand in for it, locally only.
 
-**Known limitations.** Last write wins between two tabs of the same owner. The toolkit routes are in the production operation list, so on synthetic staging a Google-signed-in account could call them directly; staging shows no toolkit screen and has no harness. Synthetic status comes from the account and environment; profile text is not stored with a `[synthetic]` mark. Fixture images are served only by the demo server.
+**Known limitations.** Last write wins between two tabs of the same owner. Synthetic status comes from the account and environment; profile text is not stored with a `[synthetic]` mark. Fixture images are served only by the demo server.
+
+**Exposure correction (2026-10-27).** As first committed (`c1ed4c9`), the four toolkit operations were in the production operation list, so on S13 staging any Google-signed-in account could call `GET`/`POST /me/profile` and `/me/comp-card` directly; hiding the screen was not authorization. Corrected: `src/app/operation-list.ts` no longer includes them; `src/demo/application.ts` adds `toolkitOperations` to the local composition only (not operator-wrapped, so the session's account is still the owner and a synthetic principal still gets the 404); staging adds neither the routes nor the harness. Owner authorization is unchanged. Tests:
+
+- `tests/http/toolkit.test.ts`: the production list has no `toolkit.*` or `/me` operation; the production app has no such route and answers each of the four with the generic `not_found` 404 to an authenticated account principal; the owner-only cases run on `createApp` with `toolkitOperations` added as the demo adds them.
+- `tests/http/staging.test.ts`: on the real staging wiring, a browser signed in through (fake) Google with a working session gets the generic 404 for all four routes and for `POST /demo/toolkit/owner`, and no profile row is written.
+- `tests/demo/toolkit.test.ts`: the local demo registers the four routes; through harness sessions B's reads and writes reach only B's rows, and a body naming an account is refused.
+- With the fix removed (routes back in the production list), the staging test fails and `tests/http/toolkit.test.ts` fails to register (duplicate routes).
+
+Commands (B1 instance only, `.env` on 127.0.0.1:5438):
+
+| Command | Result |
+|---|---|
+| `npx vitest run` on the six affected HTTP and demo files | 6 files, 132 tests passed |
+| `npm test` | 40 files, 617 tests passed (628 before: the production list's per-operation 401 cases in `tests/http/authorization.test.ts` no longer include the four toolkit routes, −14; three new tests, +3) |
+| `npm run test:demo` | run three times: 5 files, 31 tests passed twice; once one 2-test browser file failed in setup (29 passed, 2 skipped), output not captured, cause not established |
+| `npm run check` | exit 0; no schema changes; 32 migration files, no identifier over 63 bytes (a first run caught a lint error in the new staging test, fixed) |
+| `npm run build`; `dist/` inspected | built; no `dist/demo`; the built production operation list has 16 operations and none under `/me`, `/demo` or `/media` |
 
 **Resources.** `ms-b1-postgres` (volume `ms-b1-pgdata`) left running for inspection; stop with `docker stop ms-b1-postgres`. Demo servers started for inspection were stopped by exact PID. Nothing else was started or changed.
 

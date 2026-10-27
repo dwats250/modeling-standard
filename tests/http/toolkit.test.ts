@@ -3,14 +3,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { resolveAccountForLogin } from '../../src/accounts/account.ts';
 import { operations } from '../../src/app/operation-list.ts';
 import type { ResolvePrincipal } from '../../src/authorization/access.ts';
+import { validateOperations } from '../../src/http/operations.ts';
 import { DEFAULT_ARRANGEMENT, FIXTURE_MEDIA } from '../../src/toolkit/fixture-media.ts';
+import { toolkitOperations } from '../../src/toolkit/operations.ts';
 import { PRINCIPAL_HEADER, startTestApp, type TestApp } from '../support/app.ts';
 
 /**
- * B1 through the real application boundary (createApp + the production
- * operation list): owner-only access with the owner taken from the principal,
- * never from the request; strict input; no ids in any response; a refusal for
- * a synthetic principal; and durability across an application restart.
+ * B1 through the real application boundary: the production app (createApp +
+ * the production operation list) has no toolkit route at all; with the
+ * toolkit operations added, as only the local demo adds them, owner-only
+ * access with the owner taken from the principal, never from the request;
+ * strict input; no ids in any response; a refusal for a synthetic principal;
+ * and durability across an application restart.
  *
  * Principals: `x-test-account` stands for a signed-in account (what a session
  * resolves to); `x-test-principal` is a synthetic (operator or test) one.
@@ -25,15 +29,19 @@ const resolve: ResolvePrincipal = (request) => {
 };
 
 let t: TestApp;
+let production: TestApp;
 let ownerA: string;
 let ownerB: string;
+const withToolkit = () => startTestApp({ resolvePrincipal: resolve, additionalOperations: toolkitOperations });
 beforeAll(async () => {
-  t = await startTestApp({ resolvePrincipal: resolve });
+  t = await withToolkit();
+  production = await startTestApp({ resolvePrincipal: resolve });
   ownerA = (await resolveAccountForLogin(t.database.db, { provider: 'google', providerSubject: `http-toolkit-a-${randomUUID()}` })).id;
   ownerB = (await resolveAccountForLogin(t.database.db, { provider: 'google', providerSubject: `http-toolkit-b-${randomUUID()}` })).id;
 });
 afterAll(async () => {
   await t.close();
+  await production.close();
 });
 
 type Json = Record<string, unknown>;
@@ -45,11 +53,27 @@ const asAccount = (id: string) => ({ [ACCOUNT_HEADER]: id });
 const profile = { displayName: 'Amara Okafor', profession: 'Model', biography: 'Editorial and commercial.' };
 const card = (overrides: Json = {}) => ({ tagline: 'Available for editorial work', slots: { ...DEFAULT_ARRANGEMENT }, ...overrides });
 
-describe('the four toolkit routes are in the production surface', () => {
-  it('registers exactly these, all protected', () => {
-    const mine = operations.filter((op) => op.name.startsWith('toolkit.'));
-    expect(mine.map((op) => `${op.method} ${op.path}`)).toEqual(['GET /me/profile', 'POST /me/profile', 'GET /me/comp-card', 'POST /me/comp-card']);
-    expect(mine.every((op) => op.access.kind === 'protected')).toBe(true);
+const ROUTES = [['GET', '/me/profile'], ['POST', '/me/profile'], ['GET', '/me/comp-card'], ['POST', '/me/comp-card']] as const;
+
+describe('the toolkit routes are not in the production surface', () => {
+  it('the production operation list has none of them', () => {
+    expect(operations.filter((op) => op.name.startsWith('toolkit.') || op.path.startsWith('/me'))).toEqual([]);
+  });
+
+  it('the production app answers the generic 404 for each, even to a signed-in account, and writes nothing', async () => {
+    for (const [method, url] of ROUTES) {
+      expect(production.app.hasRoute({ method, url })).toBe(false);
+      const res = await call(production, method, url, asAccount(ownerA), method === 'POST' ? (url === '/me/profile' ? profile : card()) : undefined);
+      expect({ method, url, status: res.status }).toEqual({ method, url, status: 404 });
+      expect(res.json()).toEqual({ error: { code: 'not_found', requestId: expect.any(String) } });
+    }
+    expect((await call(t, 'GET', '/me/profile', asAccount(ownerA))).json()).toEqual({ profile: null });
+  });
+
+  it('the four operations, as the local demo registers them, pass registration validation and are all protected', () => {
+    expect(() => validateOperations(toolkitOperations)).not.toThrow();
+    expect(toolkitOperations.map((op) => `${op.method} ${op.path}`)).toEqual(ROUTES.map(([m, u]) => `${m} ${u}`));
+    expect(toolkitOperations.every((op) => op.access.kind === 'protected')).toBe(true);
   });
 });
 
@@ -187,7 +211,7 @@ describe('durability', () => {
     const arranged = { ...DEFAULT_ARRANGEMENT, hero: 'beauty-natural-light', beauty: 'studio-portrait-slate' };
     await call(t, 'POST', '/me/comp-card', asAccount(owner), card({ tagline: 'Kept', slots: arranged }));
 
-    const second = await startTestApp({ resolvePrincipal: resolve });
+    const second = await withToolkit();
     try {
       const view = (await call(second, 'GET', '/me/comp-card', asAccount(owner))).json() as { profile: Json; draft: Json };
       expect(view.profile).toMatchObject(profile);

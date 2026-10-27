@@ -197,20 +197,15 @@ describe('reading a project', () => {
 describe('creating a project grants no authority over anyone else', () => {
   it('exposes no operation that acts on another party, a signature or a payment', () => {
     // S12 adds sign-in, sign-out, the invitation claim and the signed-in
-    // participant's own-party routes; B1 adds the signed-in professional's own
-    // profile and comp card. None acts on a signature or a payment, and none
-    // takes a party in its input.
+    // participant's own-party routes; none acts on a signature or a payment,
+    // and none takes a party in its input.
     const productOperations = operations.filter((op) => !op.path.startsWith('/stage0') && op.path !== '/health');
     expect(productOperations.map((op) => `${op.method} ${op.path}`).sort()).toEqual([
-      'GET /me/comp-card',
-      'GET /me/profile',
       'GET /projects/:id',
       'GET /session',
       'GET /shoots/:projectId',
       'GET /sign-in/callback',
       'POST /invitations/claim',
-      'POST /me/comp-card',
-      'POST /me/profile',
       'POST /projects',
       'POST /shoots/:projectId/group-check',
       'POST /shoots/:projectId/items/:itemId/decline',

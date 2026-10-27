@@ -8,7 +8,7 @@
 - **Entry points:** `src/main.ts` for the compiled application, `src/app/operation-list.ts` for the registered HTTP operation surface, and `src/demo/` for synthetic demo/staging compositions.
 - **Core domains:** `src/projects/`, `src/participants/`, `src/identity/`, and `src/contracts/`, alongside live-brief and foundational modules. Inspect actual source paths and tests when changing behavior; this index is not a generated inventory.
 - **Evidence:** Final contracts are stored append-only under runtime-role restrictions. The synthetic operator/test finalization is **not** participant signing.
-- **Current priority:** Track B private synthetic professional profiles and comp-card drafts. B1 (`src/toolkit/`; [slice record](../slices/B1-profile-comp-card.md)) adds an owner-only profile and comp-card draft with a local-demo editor and preview; sign-in for professionals is deferred. Track A's collaboration and agreement foundations are already implemented in stages.
+- **Current priority:** Track B private synthetic professional profiles and comp-card drafts. B1 (`src/toolkit/`; [slice record](../slices/B1-profile-comp-card.md)) adds an owner-only profile and comp-card draft with a local-demo editor and preview, registered only in the local demo (not production or staging); sign-in for professionals is deferred. Track A's collaboration and agreement foundations are already implemented in stages.
 
 ## Environments and real-use boundary
 

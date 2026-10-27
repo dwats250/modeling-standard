@@ -105,6 +105,14 @@ describe('the toolkit through harness sessions', () => {
     expect(bView.draft.updatedAt).toBeNull();
     expect(JSON.stringify(bView)).not.toContain('Harness A');
     expect((await get('/me/comp-card', a)).json().draft.tagline).toBe('A tagline');
+
+    // B's writes land on B's rows only; naming an owner is refused outright.
+    expect((await post('/me/comp-card', b, { tagline: 'B tagline', slots: DEFAULT_ARRANGEMENT })).statusCode).toBe(200);
+    expect((await post('/me/profile', b, { displayName: 'Overwritten', profession: '', biography: '', accountId: randomUUID() })).statusCode).toBe(400);
+    const aView = (await get('/me/comp-card', a)).json();
+    expect(aView.profile.displayName).toBe('Harness A');
+    expect(aView.draft.tagline).toBe('A tagline');
+    expect((await get('/me/profile', b)).json().profile.displayName).toBe('Harness B');
   });
 
   it('a cookie-bearing write needs the demo origin (cross-site writes refused)', async () => {
@@ -122,9 +130,12 @@ describe('the toolkit through harness sessions', () => {
 });
 
 describe('composition', () => {
-  it('staging has no harness', () => {
+  it('the local demo registers the four toolkit routes; staging has no harness (and, tests/http/staging.test.ts, no toolkit routes)', () => {
+    for (const [method, url] of [['GET', '/me/profile'], ['POST', '/me/profile'], ['GET', '/me/comp-card'], ['POST', '/me/comp-card']] as const) {
+      expect(app.hasRoute({ method, url })).toBe(true);
+    }
     const staging = createDemoOperations(temporaryAnnotationStore(), { environment: { environment: 'staging', providers: ['google'], operatorKeyRequired: true } });
-    expect(staging.some((op) => op.path.startsWith('/demo/toolkit'))).toBe(false);
+    expect(staging.some((op) => op.path.startsWith('/demo/toolkit') || op.path.startsWith('/me'))).toBe(false);
   });
 });
 

@@ -5,6 +5,7 @@ import { clearCookie } from '../http/cookies.ts';
 import type { IdentityProvider } from '../identity/provider.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { newToken } from '../infrastructure/tokens.ts';
+import { toolkitOperations } from '../toolkit/operations.ts';
 import type { AnnotationStore } from './annotations.ts';
 import { OPERATOR_COOKIE, createDemoPrincipalResolver } from './demo.ts';
 import { createDemoOperations, type DemoEnvironment } from './operations.ts';
@@ -20,13 +21,14 @@ import { createTestIssuer, type TestIssuer } from './test-issuer.ts';
  * Two shapes:
  *
  * - **local** (`npm run demo`, LAN or loopback, plain HTTP): the local test
- *   identity provider, one-tap operator mode. `origins` is filled in by the
+ *   identity provider, one-tap operator mode, and B1's toolkit routes
+ *   (`/me/profile`, `/me/comp-card`) with their synthetic owner harness. `origins` is filled in by the
  *   caller once the server knows its port; the application and the test
  *   issuer read it at request time.
  * - **staging** (`npm run staging`, S13, behind a local HTTPS proxy): the
  *   given providers (Google) and no test issuer, exactly one allowed origin
  *   (the pinned public HTTPS origin), `Secure` cookies, and operator mode
- *   only with the server-validated operator key.
+ *   only with the server-validated operator key. No toolkit routes.
  */
 export interface DemoApplication {
   readonly app: FastifyInstance;
@@ -80,11 +82,17 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
     db: options.db,
     logger: options.logger,
     resolvePrincipal: createDemoPrincipalResolver(options.db, operatorSecret, secureCookies),
-    additionalOperations: createDemoOperations(options.annotations, {
-      secret: operatorSecret,
-      ...(staging ? { key: staging.operatorKey } : {}),
-      environment,
-    }),
+    additionalOperations: [
+      ...createDemoOperations(options.annotations, {
+        secret: operatorSecret,
+        ...(staging ? { key: staging.operatorKey } : {}),
+        environment,
+      }),
+      // B1's owner-only toolkit routes: the local synthetic demo only, never
+      // production or staging. Not operator-wrapped: they serve the signed-in
+      // account (here, a harness professional) and refuse a synthetic principal.
+      ...(staging ? [] : toolkitOperations),
+    ],
     allowedOrigins: origins,
     secureCookies,
     identity: { providers, clearOnSessionChange: [clearCookie(OPERATOR_COOKIE)] },

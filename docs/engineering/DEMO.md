@@ -67,7 +67,7 @@ A private professional profile and comp-card draft, in the same local demo (not 
 
 Every toolkit screen shows "Private draft · only you can see this", who is signed in, **Switch to A/B** and **Sign out**.
 
-**Built:** `src/toolkit/` (tables, owner-keyed data functions, fixture catalogue, `GET`/`POST /me/profile` and `GET`/`POST /me/comp-card` in the production operation list, owner from the session only), migrations 0030 and 0031, `src/demo/toolkit.ts` (the harness: `POST /demo/toolkit/owner` with `{ owner: 'a' | 'b' }`, origin-checked, local only; `GET /demo/toolkit/owner`), `src/demo/fixture-images.ts` (deterministic SVG at `/media/fixtures/<key>.svg`, generated from shapes, marked "Synthetic fixture"), `src/demo/ui/toolkit.js` and `toolkit.css`.
+**Built:** `src/toolkit/` (tables, owner-keyed data functions, fixture catalogue, `GET`/`POST /me/profile` and `GET`/`POST /me/comp-card`, owner from the session only; registered only by the local demo's `createDemoApplication`, never in the production operation list or on staging), migrations 0030 and 0031, `src/demo/toolkit.ts` (the harness: `POST /demo/toolkit/owner` with `{ owner: 'a' | 'b' }`, origin-checked, local only; `GET /demo/toolkit/owner`), `src/demo/fixture-images.ts` (deterministic SVG at `/media/fixtures/<key>.svg`, generated from shapes, marked "Synthetic fixture"), `src/demo/ui/toolkit.js` and `toolkit.css`.
 
 ## How it is built
 
@@ -102,7 +102,7 @@ Every toolkit screen shows "Private draft · only you can see this", who is sign
 - **Multi-party** shoots show no overall readiness (it could reveal another pair's private fee).
 - The **inspector** is an engineering aid showing the whole record; its walkthrough's "Settle together" form predates the participant screens.
 - The snapshot covers the inspector only.
-- **Toolkit:** two fixed synthetic professionals instead of sign-in; fixture images only (no uploads, no real images); one profile and one draft per account; no sharing, public page, discovery, measurements or contact details. The toolkit's routes are in the production operation list (owner-only, session-derived), but the screens and the harness exist only in the local demo.
+- **Toolkit:** two fixed synthetic professionals instead of sign-in; fixture images only (no uploads, no real images); one profile and one draft per account; no sharing, public page, discovery, measurements or contact details. The toolkit's routes, screens and harness exist only in the local demo: production and staging have no `/me/*` route and answer the generic 404, even to a signed-in account.
 
 ## Regression
 

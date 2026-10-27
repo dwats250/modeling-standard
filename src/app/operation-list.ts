@@ -7,7 +7,6 @@ import {
   createSyntheticResourceOperation,
   readSyntheticResourceOperation,
 } from '../stage0/synthetic-resource.ts';
-import { toolkitOperations } from '../toolkit/operations.ts';
 
 /**
  * Every operation the application exposes. This list is the whole HTTP
@@ -15,6 +14,10 @@ import { toolkitOperations } from '../toolkit/operations.ts';
  * iterates exactly these. The identity operations take their registered
  * providers as an argument; the routes, access and shapes do not depend on
  * which providers are registered.
+ *
+ * B1's toolkit routes (`src/toolkit/operations.ts`) are not here: they are
+ * a private synthetic feature, registered only by the local demo
+ * (`createDemoApplication` without staging settings).
  */
 export function createOperationList(identity: IdentityOptions = NO_IDENTITY): readonly AnyOperation[] {
   return [
@@ -25,7 +28,6 @@ export function createOperationList(identity: IdentityOptions = NO_IDENTITY): re
     readProjectOperation,
     ...createIdentityOperations(identity),
     ...participantOperations,
-    ...toolkitOperations,
   ];
 }
 

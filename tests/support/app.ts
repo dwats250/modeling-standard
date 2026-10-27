@@ -4,13 +4,15 @@ import { inject } from 'vitest';
 import { createApp } from '../../src/app/create-app.ts';
 import { createLogger } from '../../src/app/logger.ts';
 import type { ResolvePrincipal } from '../../src/authorization/access.ts';
+import type { AnyOperation } from '../../src/http/operations.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
 
 /**
  * Test harness for the real application. It calls the production `createApp`
  * with the production operation list; the only substitutions are the
  * principal source (tests need principals; production has none) and where
- * log lines go.
+ * log lines go. A test of operations that only a demo composition registers
+ * (B1's toolkit) passes them as `additionalOperations`, as the demo does.
  */
 
 export const PRINCIPAL_HEADER = 'x-test-principal';
@@ -47,7 +49,7 @@ export interface TestApp {
 }
 
 export async function startTestApp(
-  options: { resolvePrincipal?: ResolvePrincipal; databaseUrl?: string } = {},
+  options: { resolvePrincipal?: ResolvePrincipal; databaseUrl?: string; additionalOperations?: readonly AnyOperation[] } = {},
 ): Promise<TestApp> {
   const logs = new LogCapture();
   const logger = createLogger('info', logs);
@@ -56,6 +58,7 @@ export async function startTestApp(
     db: database.db,
     logger,
     resolvePrincipal: options.resolvePrincipal ?? headerPrincipal,
+    ...(options.additionalOperations ? { additionalOperations: options.additionalOperations } : {}),
   });
   await app.ready();
   return {
