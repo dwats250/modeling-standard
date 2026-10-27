@@ -2,7 +2,7 @@
 
 <!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
-Status: Implemented locally on `feat/b2-private-portfolio-drafts`, stacked on B1 (`feat/b1-profile-comp-card` at `bee9f4e`, PR #41, not merged). Not pushed. See "As built".
+Status: Implemented and pushed on `feat/b2-private-portfolio-drafts`, PR #43, stacked on B1 (`feat/b1-profile-comp-card` at `bee9f4e`, PR #41, open). See "As built".
 Owner: Dustin (assignment); builder session `ms-builder`.
 
 ## Outcome
@@ -61,4 +61,4 @@ Real uploads or image bytes, external URLs, captions, public profiles or states,
 
 **Known limitations.** Last write wins between two tabs of the same owner. A fixture key removed from the catalogue later would stay in saved drafts (the database checks shape, not membership) and the screens would label it "Fixture". The phone preview with very few images leaves blank space beside the second. Sign-in for professionals remains deferred.
 
-**Next action.** Independent review of this commit; then Dustin decides on push and a PR stacked on PR #41.
+**Next action.** Review PR #43 and its CI; integrate only after its B1 dependency (PR #41) and owner authorization. Real sign-in and manual acceptance remain a separate later gate.
