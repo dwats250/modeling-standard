@@ -5,6 +5,7 @@ import { clearCookie } from '../http/cookies.ts';
 import type { IdentityProvider } from '../identity/provider.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { newToken } from '../infrastructure/tokens.ts';
+import { participantFinalRecordOperations } from '../participants/final-record.ts';
 import type { AnnotationStore } from './annotations.ts';
 import { OPERATOR_COOKIE, createDemoPrincipalResolver } from './demo.ts';
 import { createDemoOperations, type DemoEnvironment } from './operations.ts';
@@ -80,11 +81,16 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
     db: options.db,
     logger: options.logger,
     resolvePrincipal: createDemoPrincipalResolver(options.db, operatorSecret, secureCookies),
-    additionalOperations: createDemoOperations(options.annotations, {
-      secret: operatorSecret,
-      ...(staging ? { key: staging.operatorKey } : {}),
-      environment,
-    }),
+    additionalOperations: [
+      ...createDemoOperations(options.annotations, {
+        secret: operatorSecret,
+        ...(staging ? { key: staging.operatorKey } : {}),
+        environment,
+      }),
+      // The per-account final-record view is a synthetic local-demo surface.
+      // S13 staging and production do not expose this participant presentation.
+      ...(staging ? [] : participantFinalRecordOperations),
+    ],
     allowedOrigins: origins,
     secureCookies,
     identity: { providers, clearOnSessionChange: [clearCookie(OPERATOR_COOKIE)] },

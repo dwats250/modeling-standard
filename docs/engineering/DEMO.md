@@ -84,10 +84,10 @@ Stored demo text keeps its `[synthetic]` mark; the journey shows it without repe
 - **Operator acts.** Composing, presence, sharing, entering agreed values and sending invitations are operator acts; who does them in the product is open.
 - **Who composes, who shares, who enters a decide-together value** are open questions for Cory; here they are operator acts, labelled as such.
 - **READY TO SIGN is structural.** It means everything currently in the brief is resolved and green for everyone who must tick it; the required-term catalogue is not drafted, so it does not mean the brief is complete.
-- **No signing act.** The only way to a final contract is the inspector's operator-only, synthetic finalize (S11); people never sign, and never see a frozen or final brief or a contract. **No no-means-no** term or placeholder (D04 wording is Cory's). **No walking away** from a collaboration.
+- **No signing act.** The only way to a final contract is the inspector's operator-only, synthetic finalize (S11); no participant signs. After this synthetic finalization, a signed-in person can open a read-only final-record preview containing the shared terms and only payment clauses for pairs they belong to (D10). The preview is local-demo-only, carries an explicit synthetic disclaimer, and omits signature evidence; production and staging do not expose it. **No no-means-no** term or placeholder (D04 wording is Cory's). **No walking away** from a collaboration.
 - **Multi-party** shoots show no overall readiness (it could reveal another pair's private fee).
 - The **inspector** is an engineering aid showing the whole record; its walkthrough's "Settle together" form predates the participant screens.
-- The snapshot covers the inspector only.
+- The snapshot covers the inspector only; participant browser tests also capture the synthetic final-record preview at phone width.
 
 ## Regression
 

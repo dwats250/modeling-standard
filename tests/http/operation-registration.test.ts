@@ -144,6 +144,7 @@ describe('the real application exposes nothing outside the operation list', () =
     for (const op of operations) {
       expect(t.app.hasRoute({ method: op.method, url: op.path })).toBe(true);
     }
+    expect(t.app.hasRoute({ method: 'GET', url: '/shoots/:projectId/final-record' })).toBe(false);
   });
 
   it('does not answer HEAD or other implicit routes', async () => {
