@@ -16,7 +16,7 @@
 // An invitation credential is read from the address fragment and kept in
 // memory only; it is never stored in this browser or put in another URL.
 //
-// The professional toolkit (B1: #/me, #/me/card, #/me/card/preview) lives in
+// The professional toolkit (B1, B2: #/me, #/me/card[/preview], #/me/portfolio[/preview]) lives in
 // toolkit.js; this file routes to it and links to it.
 
 import { createToolkit } from './toolkit.js';
@@ -474,7 +474,7 @@ function renderDemoMenu(root) {
       el('h2', { text: 'Tools' }),
       el('ul', { className: 'menu-list' }, [
         menuLink('About this demo', 'What is real, what is simulated, and what is not shown.', '#/about'),
-        ...(onStaging() ? [] : [menuLink('Professional toolkit', 'A private profile and comp card, as one of two synthetic professionals.', '#/me')]),
+        ...(onStaging() ? [] : [menuLink('Professional toolkit', 'A private profile, comp card and portfolio, as one of two synthetic professionals.', '#/me')]),
         menuLink('Inspector', 'Engineering aid: the whole stored record of every shoot — not what any one person sees.', '/inspector'),
         el('li', {}, [
           el('label', { className: 'switch-row', attrs: { for: 'eng-toggle' } }, [

@@ -1,17 +1,19 @@
-// The professional toolkit screens (slice B1, Track B) for the local synthetic
-// demo: a private profile, a comp-card draft arranged from five fixture-backed
-// slots, and its preview. Plain browser JavaScript, no build step. Every value
+// The professional toolkit screens (slices B1 and B2, Track B) for the local
+// synthetic demo: a private profile, a comp-card draft arranged from five
+// fixture-backed slots, a portfolio draft of ordered fixture images, and
+// their previews. Plain browser JavaScript, no build step. Every value
 // from the server or typed by a person is written with textContent, never as
 // HTML.
 //
-// Routes: #/me (profile), #/me/card (arrange), #/me/card/preview.
+// Routes: #/me (profile), #/me/card (arrange), #/me/card/preview,
+// #/me/portfolio (organize), #/me/portfolio/preview.
 //
 // Who the owner is comes from the server's session, never from this page.
 // Locally, the demo's harness signs a browser in as one of two fixed
 // synthetic professionals (POST /demo/toolkit/owner). That is a demo stand-in
 // for a sign-in, not one: login for professionals is not built yet.
 //
-// Unsaved edits are kept in memory while moving between the three tabs, so a
+// Unsaved edits are kept in memory while moving between the tabs, so a
 // look at the preview does not lose them; nothing is stored in the browser.
 
 export const SLOTS = [
@@ -35,10 +37,10 @@ export function createToolkit(h) {
   const { el, api, button, link, toast, refusal } = h;
 
   // Unsaved edits for the signed-in owner; dropped when the owner changes.
-  const memory = { owner: undefined, profile: null, card: null };
+  const memory = { owner: undefined, profile: null, card: null, portfolio: null };
 
   function forOwner(owner) {
-    if (memory.owner !== owner) Object.assign(memory, { owner, profile: null, card: null });
+    if (memory.owner !== owner) Object.assign(memory, { owner, profile: null, card: null, portfolio: null });
   }
 
   async function choose(owner) {
@@ -59,8 +61,8 @@ export function createToolkit(h) {
   function chooser(mode) {
     return el('section', { className: 'hero tk-chooser', attrs: { 'data-mode': 'toolkit-chooser' } }, [
       el('p', { className: 'eyebrow', text: 'Professional toolkit' }),
-      el('h1', { text: 'Your profile and comp card' }),
-      el('p', { className: 'lede', text: 'Write a short professional profile and arrange a comp card. It stays private: only you can see it.' }),
+      el('h1', { text: 'Your profile, comp card and portfolio' }),
+      el('p', { className: 'lede', text: 'Write a short professional profile, arrange a comp card and put a portfolio in order. It stays private: only you can see it.' }),
       button('Continue as Synthetic professional A', () => choose('a'), 'btn primary block tk-choose', { 'data-owner': 'a' }),
       button('Continue as Synthetic professional B', () => choose('b'), 'btn block tk-choose', { 'data-owner': 'b' }),
       el('p', {
@@ -84,13 +86,26 @@ export function createToolkit(h) {
     ]);
   }
 
+  /** The three sections, and inside the comp card and the portfolio, editing and preview. */
   function tabs(hash) {
-    const tab = (text, href) => el('a', { className: 'tk-tab', text, attrs: { href, 'aria-current': hash === href ? 'page' : 'false' } });
-    return el('nav', { className: 'tk-tabs', attrs: { 'aria-label': 'Professional toolkit' } }, [
-      tab('Profile', '#/me'),
-      tab('Comp card', '#/me/card'),
-      tab('Preview', '#/me/card/preview'),
+    const section = hash.startsWith('#/me/card') ? 'card' : hash.startsWith('#/me/portfolio') ? 'portfolio' : 'profile';
+    const current = (href, inSection) => (hash === href ? 'page' : inSection ? 'true' : 'false');
+    const tab = (text, href, key) => el('a', { className: 'tk-tab', text, attrs: { href, 'aria-current': current(href, section === key) } });
+    const nav = el('nav', { className: 'tk-tabs', attrs: { 'aria-label': 'Professional toolkit' } }, [
+      tab('Profile', '#/me', 'profile'),
+      tab('Comp card', '#/me/card', 'card'),
+      tab('Portfolio', '#/me/portfolio', 'portfolio'),
     ]);
+    if (section === 'profile') return [nav];
+    const base = section === 'card' ? '#/me/card' : '#/me/portfolio';
+    const sub = (text, href) => el('a', { className: 'tk-subtab', text, attrs: { href, 'aria-current': current(href, false) } });
+    return [
+      nav,
+      el('nav', { className: 'tk-subtabs', attrs: { 'aria-label': section === 'card' ? 'Comp card' : 'Portfolio' } }, [
+        sub(section === 'card' ? 'Arrange' : 'Organize', base),
+        sub('Preview', `${base}/preview`),
+      ]),
+    ];
   }
 
   function counter(input, max) {
@@ -300,11 +315,11 @@ export function createToolkit(h) {
 
   // ---- Screen: arrange the comp card ----
 
-  function noProfileYet(root) {
+  function noProfileYet(root, what = 'comp card') {
     root.append(
       el('section', { className: 'state tk-empty', attrs: { 'data-empty': 'no-profile' } }, [
         el('h2', { text: 'Start with your profile' }),
-        el('p', { text: 'Your comp card shows your name and profession, so save your profile first.' }),
+        el('p', { text: `Your ${what} shows your name and profession, so save your profile first.` }),
         link('Go to your profile', '#/me', 'btn primary block'),
       ]),
     );
@@ -477,6 +492,240 @@ export function createToolkit(h) {
     root.append(compCard({ profile: view.profile, draft, fixtures: view.fixtures }, 'full'), link('Back to editing', '#/me/card', 'btn block tk-back'));
   }
 
+  // ---- The portfolio itself (editor preview and the preview screen) ----
+
+  function portfolioSheet({ profile, items, fixtures }, size = 'compact') {
+    const labelOf = (key) => fixtures.find((f) => f.key === key)?.label ?? 'Fixture';
+    const number = (i) => String(i + 1).padStart(2, '0');
+    return el('div', { className: `pf-sheet ${size}`, attrs: { 'data-portfolio-preview': '' } }, [
+      el('header', { className: 'pf-head' }, [
+        el('p', { className: 'pf-kicker', text: 'Portfolio' }),
+        el('h2', { className: 'pf-name', text: profile?.displayName || 'Your name' }),
+        profile?.profession ? el('p', { className: 'pf-profession', text: profile.profession }) : null,
+      ]),
+      items.length === 0
+        ? el('p', { className: 'pf-blank', attrs: { 'data-empty': 'portfolio' }, text: 'No images yet' })
+        : el(
+            'ol',
+            { className: 'pf-grid' },
+            items.map((key, i) =>
+              el('li', { attrs: { 'data-key': key } }, [
+                el('figure', {}, [
+                  el('img', { attrs: { src: fixtureSrc(key), alt: `${i + 1}. ${labelOf(key)} (synthetic fixture)`, width: '400', height: '500', decoding: 'async' } }),
+                  el('figcaption', { attrs: { 'aria-hidden': 'true' }, text: number(i) }),
+                ]),
+              ]),
+            ),
+          ),
+      el('p', { className: 'pf-foot', text: 'Private draft · synthetic fixture images' }),
+    ]);
+  }
+
+  // ---- Screen: organize the portfolio ----
+
+  async function renderPortfolio(root) {
+    const view = await api('GET', '/me/portfolio');
+    const max = view.maxItems;
+    root.append(
+      el('header', { className: 'page-head' }, [
+        el('p', { className: 'eyebrow', text: 'Portfolio draft' }),
+        el('h1', { text: 'Organize your portfolio' }),
+        el('p', { className: 'muted', text: `Choose up to ${max} images and put them in order. The first leads. Save keeps it.` }),
+      ]),
+    );
+    if (!view.profile) return noProfileYet(root, 'portfolio');
+
+    let saved = [...view.draft.items];
+    const items = memory.portfolio ? [...memory.portfolio] : [...saved];
+    const labelOf = (key) => view.fixtures.find((f) => f.key === key)?.label ?? 'Fixture';
+    const status = statusLine();
+    const previewHolder = el('div', { className: 'tk-preview-holder' });
+    const count = el('p', { className: 'pf-count', attrs: { 'aria-live': 'polite' } });
+    const order = el('ol', { className: 'pf-order', attrs: { 'aria-label': 'Your selection, in order' } });
+    const emptyNote = el('p', { className: 'pf-note', attrs: { 'data-empty': 'selection' }, text: 'Nothing selected yet. Add images from the fixtures below.' });
+    const fullNote = el('p', { className: 'pf-note', attrs: { 'data-full': '' }, text: `Your portfolio is full. Remove an image to add another.` });
+    const catalogue = el('ul', { className: 'pf-catalogue' });
+
+    const same = () => items.length === saved.length && items.every((k, i) => k === saved[i]);
+    const refresh = () => {
+      const changed = !same();
+      memory.portfolio = changed ? [...items] : null;
+      if (changed) status.set('dirty', 'Unsaved changes');
+      else if (view.draft.updatedAt === null) status.set('new', 'Not saved yet');
+      else status.set('saved', savedAt(view.draft.updatedAt));
+      previewHolder.replaceChildren(portfolioSheet({ profile: view.profile, items, fixtures: view.fixtures }));
+    };
+
+    /** Redraws the ordered list and the catalogue; `focus` names a control to return focus to. */
+    const paint = (focus) => {
+      count.textContent = `${items.length} of ${max} selected`;
+      emptyNote.hidden = items.length > 0;
+      fullNote.hidden = items.length < max;
+      order.replaceChildren(
+        ...items.map((key, i) => {
+          const label = labelOf(key);
+          const control = (text, action, aria, disabled) =>
+            el('button', { className: `pf-move`, text, attrs: { type: 'button', 'data-action': action, 'aria-label': aria, ...(disabled ? { disabled: '' } : {}) } });
+          return el('li', { className: 'pf-item', attrs: { 'data-key': key } }, [
+            el('img', { attrs: { src: fixtureSrc(key), alt: '', width: '400', height: '500', decoding: 'async' } }),
+            el('span', { className: 'pf-pos', attrs: { 'aria-hidden': 'true' }, text: String(i + 1) }),
+            el('span', { className: 'pf-label', text: label }),
+            el('span', { className: 'pf-controls' }, [
+              control('↑', 'up', `Move ${label} earlier`, i === 0),
+              control('↓', 'down', `Move ${label} later`, i === items.length - 1),
+              control('Remove', 'remove', `Remove ${label}`, false),
+            ]),
+          ]);
+        }),
+      );
+      catalogue.replaceChildren(
+        ...view.fixtures.map((fixture) => {
+          const at = items.indexOf(fixture.key);
+          const picked = at >= 0;
+          const pick = el(
+            'button',
+            {
+              className: 'pf-pick',
+              attrs: {
+                type: 'button',
+                'data-key': fixture.key,
+                'aria-pressed': String(picked),
+                ...(!picked && items.length >= max ? { disabled: '' } : {}),
+              },
+            },
+            [
+              el('img', { attrs: { src: fixtureSrc(fixture.key), alt: '', width: '400', height: '500', loading: 'lazy', decoding: 'async' } }),
+              el('span', { className: 'pf-pick-label', text: fixture.label }),
+              el('span', { className: 'pf-pick-state', text: picked ? `Added · ${at + 1}` : 'Add' }),
+            ],
+          );
+          return el('li', {}, [pick]);
+        }),
+      );
+      if (focus) {
+        const target =
+          focus.action === 'pick'
+            ? catalogue.querySelector(`.pf-pick[data-key="${focus.key}"]`)
+            : order.querySelector(`.pf-item[data-key="${focus.key}"] [data-action="${focus.action}"]:not([disabled])`) ??
+              order.querySelector(`.pf-item[data-key="${focus.key}"] .pf-move:not([disabled])`);
+        (target ?? order.querySelector('.pf-move') ?? catalogue.querySelector('.pf-pick:not([disabled])'))?.focus();
+      }
+      refresh();
+    };
+
+    order.addEventListener('click', (event) => {
+      const control = event.target.closest('.pf-move');
+      if (!control || control.disabled) return;
+      const key = control.closest('.pf-item').dataset.key;
+      const at = items.indexOf(key);
+      const action = control.dataset.action;
+      if (action === 'remove') {
+        items.splice(at, 1);
+        toast(`Removed ${labelOf(key)}.`);
+        // Focus moves to the item that took its place, or the one before it.
+        const next = items[Math.min(at, items.length - 1)];
+        return paint(next ? { key: next, action: 'remove' } : { action: 'pick', key });
+      }
+      const to = action === 'up' ? at - 1 : at + 1;
+      [items[at], items[to]] = [items[to], items[at]];
+      paint({ key, action });
+    });
+
+    catalogue.addEventListener('click', (event) => {
+      const pick = event.target.closest('.pf-pick');
+      if (!pick || pick.disabled) return;
+      const key = pick.dataset.key;
+      const at = items.indexOf(key);
+      if (at >= 0) items.splice(at, 1);
+      else items.push(key);
+      paint({ key, action: 'pick' });
+    });
+
+    const save = el('button', { className: 'btn primary tk-save', text: 'Save portfolio', attrs: { type: 'submit' } });
+    const asideSave = el('button', { className: 'btn primary block tk-save', text: 'Save portfolio', attrs: { type: 'submit', form: 'tk-portfolio-form' } });
+    const saves = [save, asideSave];
+    const form = el('form', { className: 'tk-form tk-portfolio', attrs: { id: 'tk-portfolio-form', novalidate: '', 'aria-label': 'Portfolio' } }, [
+      el('section', { className: 'section-card pf-selection' }, [
+        el('header', { className: 'pf-section-head' }, [el('h2', { text: 'Your selection' }), count]),
+        emptyNote,
+        fullNote,
+        order,
+      ]),
+      el('section', { className: 'section-card pf-add' }, [
+        el('header', {}, [el('h2', { text: 'Add images' }), el('p', { text: 'Synthetic fixture images stand in for your own work. Each can appear once.' })]),
+        catalogue,
+      ]),
+      el('div', { className: 'sticky-footer tk-footer' }, [el('div', { className: 'tk-actions' }, [status.node, save])]),
+    ]);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (save.disabled) return;
+      saves.forEach((b) => {
+        b.disabled = true;
+        b.setAttribute('aria-busy', 'true');
+      });
+      try {
+        const result = await api('POST', '/me/portfolio', { items: [...items] });
+        view.draft = result.draft;
+        saved = [...result.draft.items];
+        items.splice(0, items.length, ...saved);
+        paint();
+        toast('Portfolio saved.');
+      } catch (error) {
+        if (error.status === 409) status.set('error', 'Not saved. Save your profile first.');
+        else status.set('error', `Not saved. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
+      } finally {
+        saves.forEach((b) => {
+          b.disabled = false;
+          b.removeAttribute('aria-busy');
+        });
+      }
+    });
+
+    paint();
+
+    root.append(
+      el('div', { className: 'tk-workspace' }, [
+        form,
+        el('aside', { className: 'tk-aside', attrs: { 'aria-label': 'Live preview' } }, [
+          el('p', { className: 'eyebrow', text: 'Live preview' }),
+          previewHolder,
+          el('div', { className: 'tk-aside-actions' }, [status.extra(), asideSave]),
+          link('Open the full preview', '#/me/portfolio/preview', 'link'),
+        ]),
+      ]),
+    );
+  }
+
+  // ---- Screen: portfolio preview ----
+
+  async function renderPortfolioPreview(root) {
+    const view = await api('GET', '/me/portfolio');
+    root.append(
+      el('header', { className: 'page-head' }, [
+        el('p', { className: 'eyebrow', text: 'Preview' }),
+        el('h1', { text: 'Your portfolio' }),
+        el('p', { className: 'muted', text: 'In order, as your draft stands. Private: only you can see it.' }),
+      ]),
+    );
+    if (!view.profile) return noProfileYet(root, 'portfolio');
+    const items = memory.portfolio ?? view.draft.items;
+    if (memory.portfolio || memory.profile) {
+      root.append(
+        el('p', { className: 'tk-notice', attrs: { 'data-unsaved': '' } }, [
+          el('span', { text: memory.portfolio ? 'Showing unsaved changes to your portfolio. ' : 'Your profile has unsaved changes, not shown here. ' }),
+          link(memory.portfolio ? 'Back to save them' : 'Back to your profile', memory.portfolio ? '#/me/portfolio' : '#/me', 'link'),
+        ]),
+      );
+    } else if (items.length === 0) {
+      root.append(el('p', { className: 'tk-notice' }, [el('span', { text: 'Your portfolio has no images yet. ' }), link('Choose some', '#/me/portfolio', 'link')]));
+    } else if (view.draft.updatedAt === null) {
+      root.append(el('p', { className: 'tk-notice' }, [el('span', { text: 'This portfolio isn’t saved yet. ' }), link('Save it', '#/me/portfolio', 'link')]));
+    }
+    root.append(portfolioSheet({ profile: view.profile, items, fixtures: view.fixtures }, 'full'), link('Back to editing', '#/me/portfolio', 'btn block tk-back'));
+  }
+
   // ---- Router entry ----
 
   async function render(root, hash) {
@@ -491,10 +740,12 @@ export function createToolkit(h) {
       return;
     }
     forOwner(who.owner ?? 'account');
-    root.append(band(who), tabs(hash));
+    root.append(band(who), ...tabs(hash));
     if (hash === '#/me') await renderProfile(root);
     else if (hash === '#/me/card') await renderCard(root);
     else if (hash === '#/me/card/preview') await renderPreview(root);
+    else if (hash === '#/me/portfolio') await renderPortfolio(root);
+    else if (hash === '#/me/portfolio/preview') await renderPortfolioPreview(root);
     else root.append(el('section', { className: 'state' }, [el('p', { text: 'There is no such page in your toolkit.' })]), link('Your profile', '#/me', 'btn block'));
   }
 
@@ -503,8 +754,8 @@ export function createToolkit(h) {
     if (h.onStaging()) return null;
     return el('section', { className: 'quiet-card tk-teaser' }, [
       el('p', { className: 'eyebrow', text: 'Professional toolkit' }),
-      el('h2', { text: 'Your profile and comp card' }),
-      el('p', { className: 'muted', text: 'A private profile and a comp card you arrange and preview. Only you can see them.' }),
+      el('h2', { text: 'Your profile, comp card and portfolio' }),
+      el('p', { className: 'muted', text: 'A private profile, a comp card and a portfolio you arrange and preview. Only you can see them.' }),
       link('Open your toolkit', '#/me', 'link tk-open'),
     ]);
   }

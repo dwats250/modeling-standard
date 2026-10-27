@@ -8,7 +8,7 @@
 - **Entry points:** `src/main.ts` for the compiled application, `src/app/operation-list.ts` for the registered HTTP operation surface, and `src/demo/` for synthetic demo/staging compositions.
 - **Core domains:** `src/projects/`, `src/participants/`, `src/identity/`, and `src/contracts/`, alongside live-brief and foundational modules. Inspect actual source paths and tests when changing behavior; this index is not a generated inventory.
 - **Evidence:** Final contracts are stored append-only under runtime-role restrictions. The synthetic operator/test finalization is **not** participant signing.
-- **Current priority:** Track B private synthetic professional profiles and comp-card drafts. B1 (`src/toolkit/`; [slice record](../slices/B1-profile-comp-card.md)) adds an owner-only profile and comp-card draft with a local-demo editor and preview, registered only in the local demo (not production or staging); sign-in for professionals is deferred. Track A's collaboration and agreement foundations are already implemented in stages.
+- **Current priority:** Track B private synthetic professional profiles, comp-card drafts and portfolio drafts. B1 (`src/toolkit/`; [slice record](../slices/B1-profile-comp-card.md)) adds an owner-only profile and comp-card draft with a local-demo editor and preview, registered only in the local demo (not production or staging); B2 ([slice record](../slices/B2-portfolio-draft.md)) adds an owner-only, ordered portfolio draft of fixture images on the same terms; sign-in for professionals is deferred. Track A's collaboration and agreement foundations are already implemented in stages.
 
 ## Environments and real-use boundary
 
@@ -46,6 +46,7 @@ The [root README](../../README.md#engineering-and-local-development) contains se
 - [S12](S12-PARTICIPANT-ACCESS.md): participant access.
 - [S13](S13-STAGING.md): Google sign-in and synthetic staging; [acceptance/continuation](S13-CONTINUATION.md).
 - [B1](../slices/B1-profile-comp-card.md): private professional profile and comp-card draft (Track B), with its as-built record.
+- [B2](../slices/B2-portfolio-draft.md): private portfolio draft (Track B), stacked on B1, with its as-built record.
 - [OCTOBER-SEMANTIC-IMPACT.md](OCTOBER-SEMANTIC-IMPACT.md): later rulings superseding earlier slice assumptions.
 - [S03–S05](S03-TERM-UNITS.md): superseded implementation records ([S04](S04-PRESENTED-VERSIONS.md), [S05](S05-TERM-AFFIRMATION.md)), retained as history.
 

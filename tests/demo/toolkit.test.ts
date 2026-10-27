@@ -115,6 +115,21 @@ describe('the toolkit through harness sessions', () => {
     expect((await get('/me/profile', b)).json().profile.displayName).toBe('Harness B');
   });
 
+  it('keeps A’s and B’s portfolio drafts apart (B2)', async () => {
+    const a = sessionFrom((await choose('a')).headers['set-cookie']);
+    const b = sessionFrom((await choose('b')).headers['set-cookie']);
+    await post('/me/profile', a, { displayName: 'Harness A', profession: '', biography: '' });
+    await post('/me/profile', b, { displayName: 'Harness B', profession: '', biography: '' });
+    const aItems = [FIXTURE_MEDIA[3]!.key, FIXTURE_MEDIA[0]!.key];
+    expect((await post('/me/portfolio', a, { items: aItems })).statusCode).toBe(200);
+    expect((await post('/me/portfolio', b, { items: [FIXTURE_MEDIA[9]!.key] })).statusCode).toBe(200);
+    expect((await post('/me/portfolio', b, { items: [], accountId: randomUUID() })).statusCode).toBe(400);
+    const bView = (await get('/me/portfolio', b)).json();
+    expect(bView.draft.items).toEqual([FIXTURE_MEDIA[9]!.key]);
+    expect(JSON.stringify(bView)).not.toContain('Harness A');
+    expect((await get('/me/portfolio', a)).json().draft.items).toEqual(aItems);
+  });
+
   it('a cookie-bearing write needs the demo origin (cross-site writes refused)', async () => {
     const a = sessionFrom((await choose('a')).headers['set-cookie']);
     const res = await app.inject({ method: 'POST', url: '/me/profile', headers: { cookie: a, origin: 'http://evil.example' }, payload: { displayName: 'X', profession: '', biography: '' } });
@@ -130,8 +145,8 @@ describe('the toolkit through harness sessions', () => {
 });
 
 describe('composition', () => {
-  it('the local demo registers the four toolkit routes; staging has no harness (and, tests/http/staging.test.ts, no toolkit routes)', () => {
-    for (const [method, url] of [['GET', '/me/profile'], ['POST', '/me/profile'], ['GET', '/me/comp-card'], ['POST', '/me/comp-card']] as const) {
+  it('the local demo registers the six toolkit routes (B1, B2); staging has no harness (and, tests/http/staging.test.ts, no toolkit routes)', () => {
+    for (const [method, url] of [['GET', '/me/profile'], ['POST', '/me/profile'], ['GET', '/me/comp-card'], ['POST', '/me/comp-card'], ['GET', '/me/portfolio'], ['POST', '/me/portfolio']] as const) {
       expect(app.hasRoute({ method, url })).toBe(true);
     }
     const staging = createDemoOperations(temporaryAnnotationStore(), { environment: { environment: 'staging', providers: ['google'], operatorKeyRequired: true } });
