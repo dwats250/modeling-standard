@@ -202,6 +202,38 @@ describe('two people, two browsers, one shoot', () => {
     expect(await model.page.locator('[data-mode="none"]').count()).toBe(1);
     pageErrors.splice(before);
 
+    // The operator's local synthetic finalization is not participant signing.
+    // It enables a read-only D10-filtered final-record preview for each person.
+    const finalized = await operator.page.evaluate(async (id) => {
+      const response = await fetch(`/demo/projects/${id}/record`);
+      const record = await response.json() as { brief: { id: string } };
+      const result = await fetch(`/demo/sim/briefs/${record.brief.id}/finalize`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      return { status: result.status, body: await result.json() };
+    }, projectId);
+    expect(finalized.status).toBe(200);
+    const previewResponse = await photographer.page.evaluate(async (id) => {
+      const response = await fetch(`/shoots/${id}/final-record`);
+      return { status: response.status, body: await response.text() };
+    }, projectId);
+    expect(previewResponse.status, previewResponse.body).toBe(200);
+    await photographer.page.reload();
+    await idle(photographer.page);
+    const visible = await photographer.page.locator('#screen').innerText();
+    expect(visible).toContain('Your final record preview');
+    expect(visible).toContain('No participant performed a signing act');
+    expect(await photographer.page.locator('.sim-controls').count()).toBe(0);
+    expect(await photographer.page.locator('button:not(.sign-out)').count()).toBe(0);
+    await shot(photographer.page, 'final-record-preview');
+    // The live brief's generic 404 is the expected transition into the
+    // separately authorized read-only final-record route.
+    expect(pageErrors.splice(0)).toEqual([
+      'photographer: Failed to load resource: the server responded with a status of 404 (Not Found)',
+    ]);
+
     for (const c of [operator, model, photographer]) await c.ctx.close();
   });
 

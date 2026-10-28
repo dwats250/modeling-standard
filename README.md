@@ -34,7 +34,7 @@ The repository has progressed well beyond a planning exercise. Its implemented f
 | Live briefs | Draft/live lifecycle, participant-specific views, explicit terms, resolution actions, deliberate ticks, and readiness for signing | Ticking a term is **not** signing; some demonstrations use an operator |
 | Participant access | Invitation-led account sessions and routes constrained to a person's own party | No complete production participant-facing application |
 | Google and staging | Google sign-in integration and a separate synthetic HTTPS staging environment | Real-Google acceptance is partial; sign-in does not establish identity or age verification |
-| Final contract records | Operator/test-only finalization of a frozen brief, append-only contract storage, and a recomputable signature chain | No actual participant signing or participant contract interface |
+| Final contract records | Operator/test-only finalization of a frozen brief, append-only contract storage, a recomputable signature chain, and a local-demo-only D10-filtered final-record preview | The preview is synthetic and read-only; no participant signing or production/staging contract interface |
 | Development tools | Local demo, record inspector, portable snapshot, database and HTTP tests, and browser regressions | Demo exports are not the finished document-delivery experience |
 
 The current brief model has **one live brief before signing**, not a retained intermediate version history. Earlier presented-version and per-term evidence implementations were superseded; final agreement evidence belongs to the final contract.

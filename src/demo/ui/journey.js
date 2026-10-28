@@ -967,6 +967,15 @@ async function renderParticipant(root, projectId, route) {
     view = await api('GET', route.base);
   } catch (error) {
     if (error.status === 404) {
+      if (!route.simulated) {
+        try {
+          const result = await api('GET', `/shoots/${projectId}/final-record`);
+          root.append(renderFinalRecord(result.record, projectId));
+          return;
+        } catch (recordError) {
+          if (recordError.status !== 404 && recordError.status !== 401) throw recordError;
+        }
+      }
       root.append(
         el('section', { className: 'card' }, route.simulated
           ? [
@@ -1038,6 +1047,44 @@ async function renderParticipant(root, projectId, route) {
     ...(route.simulated ? [renderDemoControl(view, projectId)].filter(Boolean) : []),
     aboutLink(),
   );
+}
+
+/** A local synthetic rendering of the D10-filtered final record. */
+function renderFinalRecord(record, projectId) {
+  const label = labeller(projectId, record.parties.map((party) => party.id));
+  const doc = el('section', { className: 'doc', attrs: { 'aria-label': 'Synthetic final record preview' } });
+  let number = 0;
+  for (const layer of LAYER_ORDER) {
+    const clauses = record.clauses.filter((clause) => clause.layer === layer);
+    if (!clauses.length) continue;
+    const list = el('ol', { className: 'terms' });
+    for (const clause of clauses) {
+      number += 1;
+      list.append(el('li', { className: 'term' }, [
+        el('span', { className: 'num', text: String(number) }),
+        el('p', { className: 'term-text', text: clean(clause.content) }),
+        clause.value === null ? null : el('p', { className: 'term-value', text: clean(clause.value) }),
+        clause.layer === 'money' && clause.between
+          ? el('p', { className: 'term-notes', text: `Private payment terms for ${clause.between.map(label).join(' and ')}.` })
+          : null,
+      ]));
+    }
+    doc.append(el('div', { className: 'doc-section', attrs: { 'data-layer': layer } }, [
+      el('header', {}, [el('h3', { text: SECTIONS[layer].title })]),
+      list,
+    ]));
+  }
+  return el('div', { className: 'participant-final-record' }, [
+    renderSignedIn(label(record.partyId)),
+    el('section', { className: 'card' }, [
+      el('p', { className: 'eyebrow', text: 'Synthetic demonstration' }),
+      el('h1', { text: 'Your final record preview' }),
+      el('p', { className: 'simulation-note', text: 'This view uses the local operator/test finalization path. No participant performed a signing act; this is not evidence of participant signing or authorization for a real collaboration.' }),
+      el('p', { className: 'small muted', text: 'Only shared terms and your own payment terms are shown.' }),
+    ]),
+    doc,
+    link('Back to home', '#/', 'btn block'),
+  ]);
 }
 
 /** The signed-in participant's band: who they are here, and the way out. No switch to anyone else. */

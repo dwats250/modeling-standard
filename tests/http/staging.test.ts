@@ -165,6 +165,10 @@ async function accountsWithSubject(subject: string) {
 }
 
 describe('staging environment and front door', () => {
+  it('does not expose the local synthetic final-record preview', () => {
+    expect(staging.app.hasRoute({ method: 'GET', url: '/shoots/:projectId/final-record' })).toBe(false);
+  });
+
   it('tells the screens it is staging, offers Google only, and requires the operator key', async () => {
     const res = await new Browser().get('/demo/environment');
     expect(res.status).toBe(200);

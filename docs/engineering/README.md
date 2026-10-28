@@ -7,7 +7,7 @@
 - **Runtime:** One Node 24 / TypeScript / Fastify application with Zod request/response validation, explicit principal resolution, authorization policies, PostgreSQL, and reviewed Drizzle migrations.
 - **Entry points:** `src/main.ts` for the compiled application, `src/app/operation-list.ts` for the registered HTTP operation surface, and `src/demo/` for synthetic demo/staging compositions.
 - **Core domains:** `src/projects/`, `src/participants/`, `src/identity/`, and `src/contracts/`, alongside live-brief and foundational modules. Inspect actual source paths and tests when changing behavior; this index is not a generated inventory.
-- **Evidence:** Final contracts are stored append-only under runtime-role restrictions. The synthetic operator/test finalization is **not** participant signing.
+- **Evidence:** Final contracts are stored append-only under runtime-role restrictions. The local synthetic demo can show each authenticated participant a read-only, D10-filtered final-record preview after operator/test finalization; this is **not** participant signing.
 - **Current priority:** Track B private synthetic professional profiles and comp-card drafts, not implemented at the baseline of this index. Track A's collaboration and agreement foundations are already implemented in stages.
 
 ## Environments and real-use boundary
@@ -36,6 +36,8 @@ npm run build       # compiles the application
 
 The [root README](../../README.md#engineering-and-local-development) contains setup commands; the [demo runbook](DEMO.md) and [staging runbook](S13-STAGING.md) provide environment-specific instructions.
 
+The concise owner-only review steps for the private toolkit draft and synthetic final-record preview are in [manual acceptance](MANUAL-ACCEPTANCE.md). This is visual/interaction review, not real-use authorization.
+
 ## Where to find implementation evidence
 
 - [STAGE-0.md](STAGE-0.md): original foundation **at its stage**, not the current whole-app state.
@@ -45,6 +47,7 @@ The [root README](../../README.md#engineering-and-local-development) contains se
 - [S11](S11-FINAL-CONTRACT.md): test/operator final-contract storage.
 - [S12](S12-PARTICIPANT-ACCESS.md): participant access.
 - [S13](S13-STAGING.md): Google sign-in and synthetic staging; [acceptance/continuation](S13-CONTINUATION.md).
+- [S14](../slices/S14-synthetic-final-record-view.md): local-demo-only, read-only participant view of a synthetic final record.
 - [OCTOBER-SEMANTIC-IMPACT.md](OCTOBER-SEMANTIC-IMPACT.md): later rulings superseding earlier slice assumptions.
 - [S03–S05](S03-TERM-UNITS.md): superseded implementation records ([S04](S04-PRESENTED-VERSIONS.md), [S05](S05-TERM-AFFIRMATION.md)), retained as history.
 
