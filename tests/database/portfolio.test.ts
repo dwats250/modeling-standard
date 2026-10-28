@@ -7,14 +7,15 @@ import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/data
 import { FIXTURE_KEYS } from '../../src/toolkit/fixture-media.ts';
 import { findPortfolioForAccount, savePortfolioForAccount } from '../../src/toolkit/portfolio.ts';
 import { ProfileRequiredError, saveProfileForAccount } from '../../src/toolkit/profile.ts';
-import { PORTFOLIO_MAX_ITEMS } from '../../src/toolkit/tables.ts';
+import { PORTFOLIO_CAPTION_MAX, PORTFOLIO_MAX_ITEMS } from '../../src/toolkit/tables.ts';
 import { CHECK_VIOLATION, INSUFFICIENT_PRIVILEGE, sqlErrorCode, withClient } from '../support/sql.ts';
 
 /**
  * B2 portfolio draft, against real PostgreSQL as the runtime role: one draft
  * per profile, the order kept as saved, owner-keyed data functions, and the
  * database's own limits (count, key shape, no repeats, no deletes, no owner
- * or time changes) even by direct SQL.
+ * or time changes) even by direct SQL. B3 adds one optional caption per
+ * item, kept beside its item (same position) and bounded by the database.
  */
 
 let database: DatabaseHandle;
@@ -61,6 +62,17 @@ describe('data functions', () => {
     expect((await savePortfolioForAccount(db(), accountId, keys(PORTFOLIO_MAX_ITEMS))).items).toEqual(keys(PORTFOLIO_MAX_ITEMS));
   });
 
+  it('keeps a caption beside its item through reorder and removal (B3)', async () => {
+    const { accountId } = await withProfile();
+    const saved = await savePortfolioForAccount(db(), accountId, [key(2), key(5), key(7)], ['Second', '', 'Seventh']);
+    expect(saved.captions).toEqual(['Second', '', 'Seventh']);
+    // Without captions given, every caption is blank.
+    expect((await savePortfolioForAccount(db(), accountId, [key(1)])).captions).toEqual(['']);
+    await savePortfolioForAccount(db(), accountId, [key(7), key(2)], ['Seventh', 'Second']);
+    expect(await findPortfolioForAccount(db(), accountId)).toMatchObject({ items: [key(7), key(2)], captions: ['Seventh', 'Second'] });
+    expect((await savePortfolioForAccount(db(), accountId, [], [])).captions).toEqual([]);
+  });
+
   it('never reaches another account’s draft', async () => {
     const a = await withProfile();
     const b = await withProfile();
@@ -75,7 +87,9 @@ describe('database guards (runtime role, direct SQL)', () => {
   it('refuses more than the maximum, repeats, non-key items, NULL items and a non-list array', async () => {
     const { profileId } = await withProfile();
     await withClient(inject('runtimeUrl'), async (c) => {
-      const insert = (items: unknown) => sqlErrorCode(c, 'insert into portfolio_draft (profile_id, items) values ($1, $2::text[])', [profileId, items]);
+      // Blank captions, one per item, so these refusals are about the items (B3 keeps the pair aligned).
+      const insert = (items: unknown) =>
+        sqlErrorCode(c, `insert into portfolio_draft (profile_id, items, captions) values ($1, $2::text[], array_fill(''::text, ARRAY[cardinality($2::text[])]))`, [profileId, items]);
       expect(await insert([...FIXTURE_KEYS.slice(0, PORTFOLIO_MAX_ITEMS), key(PORTFOLIO_MAX_ITEMS)])).toBe(CHECK_VIOLATION);
       expect(await insert([key(0), key(1), key(0)])).toBe(CHECK_VIOLATION);
       for (const bad of ['Not A Key', '../../etc/passwd', '', 'https://example.com/x.jpg', 'a,b', 'x'.repeat(41)]) {
@@ -86,8 +100,30 @@ describe('database guards (runtime role, direct SQL)', () => {
       expect(await sqlErrorCode(c, `insert into portfolio_draft (profile_id, items) values ($1, '[0:1]={a,b}')`, [profileId])).toBe(CHECK_VIOLATION);
       // Nothing above was written; a valid list still is.
       expect(await insert(keys(PORTFOLIO_MAX_ITEMS))).toBeNull();
-      expect(await sqlErrorCode(c, 'update portfolio_draft set items = $1::text[] where profile_id = $2', [[key(2), key(2)], profileId])).toBe(CHECK_VIOLATION);
+      expect(await sqlErrorCode(c, 'update portfolio_draft set items = $1::text[], captions = $2::text[] where profile_id = $3', [[key(2), key(2)], ['', ''], profileId])).toBe(CHECK_VIOLATION);
       expect(await sqlErrorCode(c, 'insert into portfolio_draft (profile_id, items) values ($1, $2::text[])', [profileId, []])).toBe('23505');
+    });
+  });
+
+  it('refuses captions that do not match the items one to one, NULL captions and overlong captions (B3)', async () => {
+    const { profileId } = await withProfile();
+    await withClient(inject('runtimeUrl'), async (c) => {
+      const insert = (items: unknown, captions: unknown) =>
+        sqlErrorCode(c, 'insert into portfolio_draft (profile_id, items, captions) values ($1, $2::text[], $3::text[])', [profileId, items, captions]);
+      expect(await insert([key(0), key(1)], ['one'])).toBe(CHECK_VIOLATION);
+      expect(await insert([key(0)], ['one', 'two'])).toBe(CHECK_VIOLATION);
+      expect(await insert([], ['stray'])).toBe(CHECK_VIOLATION);
+      expect(await insert([key(0)], [null])).toBe(CHECK_VIOLATION);
+      expect(await insert([key(0)], ['x'.repeat(PORTFOLIO_CAPTION_MAX + 1)])).toBe(CHECK_VIOLATION);
+      expect(await sqlErrorCode(c, `insert into portfolio_draft (profile_id, items, captions) values ($1, '{a}', '{{a},{b}}')`, [profileId])).toBe(CHECK_VIOLATION);
+      // Nothing above was written; blank, short and maximum-length captions are kept.
+      expect(await insert([key(0), key(1), key(2)], ['', 'short', 'y'.repeat(PORTFOLIO_CAPTION_MAX)])).toBeNull();
+      // Changing the items alone leaves the pair misaligned; the write is refused.
+      expect(await sqlErrorCode(c, 'update portfolio_draft set items = $1::text[] where profile_id = $2', [[key(0)], profileId])).toBe(CHECK_VIOLATION);
+      expect(await sqlErrorCode(c, 'update portfolio_draft set items = $1::text[], captions = $2::text[] where profile_id = $3', [[key(0)], ['only'], profileId])).toBeNull();
+      expect(await sqlErrorCode(c, 'update portfolio_draft set captions = $1::text[] where profile_id = $2', [['x'.repeat(PORTFOLIO_CAPTION_MAX + 1)], profileId])).toBe(CHECK_VIOLATION);
+      const row = await c.query<{ captions: string[] }>('select captions from portfolio_draft where profile_id = $1', [profileId]);
+      expect(row.rows[0]!.captions).toEqual(['only']);
     });
   });
 
@@ -107,7 +143,7 @@ describe('database guards (runtime role, direct SQL)', () => {
       expect(await sqlErrorCode(c, 'update portfolio_draft set updated_at = now() where profile_id = $1', [profileId])).toBe(INSUFFICIENT_PRIVILEGE);
       expect(await sqlErrorCode(c, 'truncate portfolio_draft')).toBe(INSUFFICIENT_PRIVILEGE);
       const before = await c.query<{ created_at: Date }>('select created_at from portfolio_draft where profile_id = $1', [profileId]);
-      await c.query('update portfolio_draft set items = $1::text[] where profile_id = $2', [keys(2), profileId]);
+      await c.query('update portfolio_draft set items = $1::text[], captions = $2::text[] where profile_id = $3', [keys(2), ['', ''], profileId]);
       const after = await c.query<{ created_at: Date; updated_at: Date }>('select created_at, updated_at from portfolio_draft where profile_id = $1', [profileId]);
       expect(after.rows[0]!.created_at).toEqual(before.rows[0]!.created_at);
       expect(after.rows[0]!.updated_at.getTime()).toBeGreaterThanOrEqual(before.rows[0]!.created_at.getTime());
@@ -117,5 +153,6 @@ describe('database guards (runtime role, direct SQL)', () => {
 
   it('the maximum is below the catalogue size, so the limit is a real one', () => {
     expect(FIXTURE_KEYS.length).toBeGreaterThan(PORTFOLIO_MAX_ITEMS);
+    expect(PORTFOLIO_CAPTION_MAX).toBe(120);
   });
 });

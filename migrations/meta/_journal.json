@@ -239,6 +239,20 @@
       "when": 1793132281419,
       "tag": "0033_portfolio_guards_and_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793162753501,
+      "tag": "0034_portfolio_captions",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793162771700,
+      "tag": "0035_portfolio_caption_guards_and_grants",
+      "breakpoints": true
     }
   ]
 }

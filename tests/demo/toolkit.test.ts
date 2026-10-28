@@ -115,19 +115,20 @@ describe('the toolkit through harness sessions', () => {
     expect((await get('/me/profile', b)).json().profile.displayName).toBe('Harness B');
   });
 
-  it('keeps A’s and B’s portfolio drafts apart (B2)', async () => {
+  it('keeps A’s and B’s portfolio drafts and captions apart (B2, B3)', async () => {
     const a = sessionFrom((await choose('a')).headers['set-cookie']);
     const b = sessionFrom((await choose('b')).headers['set-cookie']);
     await post('/me/profile', a, { displayName: 'Harness A', profession: '', biography: '' });
     await post('/me/profile', b, { displayName: 'Harness B', profession: '', biography: '' });
     const aItems = [FIXTURE_MEDIA[3]!.key, FIXTURE_MEDIA[0]!.key];
-    expect((await post('/me/portfolio', a, { items: aItems })).statusCode).toBe(200);
+    expect((await post('/me/portfolio', a, { items: aItems, captions: { [aItems[0]!]: 'Only A reads this' } })).statusCode).toBe(200);
     expect((await post('/me/portfolio', b, { items: [FIXTURE_MEDIA[9]!.key] })).statusCode).toBe(200);
     expect((await post('/me/portfolio', b, { items: [], accountId: randomUUID() })).statusCode).toBe(400);
     const bView = (await get('/me/portfolio', b)).json();
     expect(bView.draft.items).toEqual([FIXTURE_MEDIA[9]!.key]);
     expect(JSON.stringify(bView)).not.toContain('Harness A');
-    expect((await get('/me/portfolio', a)).json().draft.items).toEqual(aItems);
+    expect(JSON.stringify(bView)).not.toContain('Only A reads this');
+    expect((await get('/me/portfolio', a)).json().draft).toMatchObject({ items: aItems, captions: { [aItems[0]!]: 'Only A reads this' } });
   });
 
   it('a cookie-bearing write needs the demo origin (cross-site writes refused)', async () => {

@@ -21,7 +21,7 @@ import { createTestIssuer, type TestIssuer } from './test-issuer.ts';
  * Two shapes:
  *
  * - **local** (`npm run demo`, LAN or loopback, plain HTTP): the local test
- *   identity provider, one-tap operator mode, and B1/B2's toolkit routes
+ *   identity provider, one-tap operator mode, and the B1–B3 toolkit routes
  *   (`/me/profile`, `/me/comp-card`, `/me/portfolio`) with their synthetic
  *   owner harness. `origins` is filled in by the caller once the server knows
  *   its port; the application and the test issuer read it at request time.
@@ -88,7 +88,7 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
         ...(staging ? { key: staging.operatorKey } : {}),
         environment,
       }),
-      // B1/B2's owner-only toolkit routes: the local synthetic demo only,
+      // The owner-only toolkit routes: local synthetic demo only,
       // never production or staging. Not operator-wrapped: they serve the
       // signed-in account (here, a harness professional) and refuse a synthetic principal.
       ...(staging ? [] : toolkitOperations),

@@ -3,8 +3,8 @@ import { check, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-co
 import { account } from '../accounts/tables.ts';
 
 /**
- * Slices B1 and B2 (Track B): a private professional profile, its comp-card
- * draft and its portfolio draft. Synthetic and provisional: the fields, lengths and the five slot
+ * Slices B1, B2 and B3 (Track B): a private professional profile, its comp-card
+ * draft and its portfolio draft with optional captions. Synthetic and provisional: the fields, lengths and the five slot
  * names are reversible design choices, not product policy.
  *
  * Owner-only. A profile belongs to exactly one sign-in account and is read
@@ -14,7 +14,7 @@ import { account } from '../accounts/tables.ts';
  *
  * Deliberately absent: measurements, contact details, location, date of
  * birth, age, images or image bytes (slots and portfolio items hold fixture
- * keys only), captions, public
+ * keys only), public
  * or share state, visibility, payment or plan, and history.
  *
  * Privileges and the database-time stamps are hand-written SQL in
@@ -101,16 +101,22 @@ export const compCardDraft = pgTable(
 
 /** The most images a portfolio draft holds (B2; provisional). */
 export const PORTFOLIO_MAX_ITEMS = 8;
+/** The longest caption under one portfolio image, in characters (B3; provisional). */
+export const PORTFOLIO_CAPTION_MAX = 120;
 
 /**
- * One profile's portfolio draft (B2): an ordered list of fixture keys, first
- * shown first. Runtime role: SELECT, INSERT, and UPDATE of `items` only. No
- * DELETE; `profile_id` never changes. An empty list is a valid draft.
+ * One profile's portfolio draft (B2), extended in B3: an ordered list of
+ * fixture keys, first shown first, and one plain-text caption per item at
+ * the same position, '' when blank. Runtime role: SELECT, INSERT, and
+ * UPDATE of `items` and `captions` only. No DELETE; `profile_id` never
+ * changes. An empty list is a
+ * valid draft.
  *
- * The CHECKs bound the count and the array's shape; each key's shape and
- * that no key repeats are checked by a trigger (migrations/0033), since a
- * CHECK cannot look inside an array element by element. Which keys exist is
- * the application's fixture catalogue.
+ * The CHECKs bound the count, the arrays' shape and that there are exactly
+ * as many captions as items; each key's shape, that no key repeats, and each
+ * caption's presence and length are checked by a trigger (migrations/0033,
+ * 0035), since a CHECK cannot look inside an array element by element. Which
+ * keys exist is the application's fixture catalogue.
  */
 export const portfolioDraft = pgTable(
   'portfolio_draft',
@@ -120,6 +126,7 @@ export const portfolioDraft = pgTable(
       .notNull()
       .references(() => professionalProfile.id),
     items: text('items').array().notNull().default(sql`'{}'::text[]`),
+    captions: text('captions').array().notNull().default(sql`'{}'::text[]`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -128,6 +135,10 @@ export const portfolioDraft = pgTable(
     check(
       'portfolio_draft_items_bounded',
       sql.raw(`cardinality("portfolio_draft"."items") = 0 or (cardinality("portfolio_draft"."items") <= ${PORTFOLIO_MAX_ITEMS} and array_ndims("portfolio_draft"."items") = 1 and array_lower("portfolio_draft"."items", 1) = 1)`),
+    ),
+    check(
+      'portfolio_draft_captions_aligned',
+      sql.raw(`cardinality("portfolio_draft"."captions") = cardinality("portfolio_draft"."items") and (cardinality("portfolio_draft"."captions") = 0 or (array_ndims("portfolio_draft"."captions") = 1 and array_lower("portfolio_draft"."captions", 1) = 1))`),
     ),
   ],
 );
