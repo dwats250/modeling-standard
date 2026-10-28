@@ -14,13 +14,13 @@ import {
   type DraftFields,
   type ProfileRecord,
 } from './profile.ts';
-import { findPortfolioForAccount, savePortfolioForAccount } from './portfolio.ts';
+import { StaleRevisionError, UNSAVED_REVISION, findPortfolioForAccount, savePortfolioForAccount } from './portfolio.ts';
 import { PORTFOLIO_CAPTION_MAX, PORTFOLIO_MAX_ITEMS } from './tables.ts';
 
 /**
  * The signed-in professional's own profile and comp-card draft (slice B1,
- * Track B) and portfolio draft (B2) with optional captions (B3). Synthetic
- * and provisional.
+ * Track B) and portfolio draft (B2) with optional captions (B3) and
+ * stale-save protection (B4). Synthetic and provisional.
  *
  * Owner-only by construction. The owner is the signed-in account the
  * session names, resolved on the server; no address or body names an
@@ -80,6 +80,14 @@ const compCardBody = z.strictObject({ tagline: oneLine(80), slots: slotsSchema }
  */
 const captionsBody = z.partialRecord(fixtureKey, oneLine(PORTFOLIO_CAPTION_MAX)).default({});
 
+/**
+ * B4: the revision the edit was based on, as `GET /me/portfolio` issued it;
+ * 0 when there was no saved draft. Required, so a client cannot save blind.
+ * Bounded to a PostgreSQL integer so an absurd value is refused as input,
+ * not as a database error.
+ */
+const expectedRevisionBody = z.number().int().min(UNSAVED_REVISION).max(2_147_483_647);
+
 const portfolioBody = z
   .strictObject({
     items: z
@@ -87,6 +95,7 @@ const portfolioBody = z
       .max(PORTFOLIO_MAX_ITEMS, `A portfolio holds up to ${PORTFOLIO_MAX_ITEMS} images.`)
       .refine((items) => new Set(items).size === items.length, { message: 'Each image can appear once only.' }),
     captions: captionsBody,
+    expectedRevision: expectedRevisionBody,
   })
   .refine((body) => Object.keys(body.captions).every((key) => body.items.includes(key)), {
     message: 'A caption belongs to a selected image.',
@@ -137,6 +146,8 @@ const portfolioDto = z.strictObject({
     items: z.array(z.string()),
     /** B3: the non-blank captions, by fixture key; every key is in `items`. */
     captions: z.record(z.string(), z.string()),
+    /** B4: the saved draft's revision, to send back as `expectedRevision`; 0 until first saved. */
+    revision: z.number().int().nonnegative(),
     /** Null until the draft is first saved. */
     updatedAt: z.iso.datetime().nullable(),
   }),
@@ -153,6 +164,7 @@ async function portfolioView(db: Executor, accountId: string) {
     draft: {
       items: draft ? [...draft.items] : [],
       captions: draft ? Object.fromEntries(draft.items.flatMap((key, i) => (draft.captions[i] ? [[key, draft.captions[i]]] : []))) : {},
+      revision: draft ? draft.revision : UNSAVED_REVISION,
       updatedAt: draft ? draft.updatedAt.toISOString() : null,
     },
     maxItems: PORTFOLIO_MAX_ITEMS,
@@ -224,6 +236,13 @@ export const readOwnPortfolioOperation = defineOperation({
   run: async (_input, { db, target }) => portfolioView(db, target.accountId),
 });
 
+/**
+ * B4: a save names the revision it was based on. A draft that has moved on
+ * since (another tab, another window) is answered with a distinct, generic
+ * 409 `stale_revision`: nothing is written and the response carries no draft
+ * data and no revision, so the client keeps its own edits and asks for the
+ * saved version deliberately.
+ */
 export const saveOwnPortfolioOperation = defineOperation({
   name: 'toolkit.portfolio.save',
   method: 'POST',
@@ -233,19 +252,14 @@ export const saveOwnPortfolioOperation = defineOperation({
   access,
   run: async (input, { db, target }) => {
     try {
-      const { items, captions } = input.body;
+      const { items, captions, expectedRevision } = input.body;
       await db.transaction(
-        (tx) =>
-          savePortfolioForAccount(
-            tx,
-            target.accountId,
-            items,
-            items.map((key) => captions[key] ?? ''),
-          ),
+        (tx) => savePortfolioForAccount(tx, target.accountId, { items, captions: items.map((key) => captions[key] ?? ''), expectedRevision }),
         { isolationLevel: 'read committed' },
       );
     } catch (error) {
       if (error instanceof ProfileRequiredError) throw new AppError(409, 'profile_required');
+      if (error instanceof StaleRevisionError) throw new AppError(409, 'stale_revision');
       throw error;
     }
     return portfolioView(db, target.accountId);
