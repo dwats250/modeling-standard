@@ -2,8 +2,7 @@
 
 <!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
-Status: Implemented locally on `feat/b3-portfolio-captions` (not pushed), stacked on B2 (`feat/b2-private-portfolio-drafts` at `08eb2c7`, PR #43). See "As built".
-Owner: Dustin (assignment); builder session `ms-builder`.
+Status: Implemented as a synthetic, private local-demo slice on `feat/b3-portfolio-captions`, stacked on B2 (`feat/b2-private-portfolio-drafts` at `08eb2c7`, PR #43). See "As built".
 
 ## Outcome
 
@@ -29,7 +28,7 @@ Uploads or image bytes, external URLs, public profiles, directory, sharing, mess
 
 **Model.** `portfolio_draft.captions text[] default '{}'`, positional beside `items` ('' = no caption). CHECK `portfolio_draft_captions_aligned`: as many captions as items, one-dimensional, 1-based. The B2 trigger function `portfolio_draft_check_items` (same name, replaced) also refuses a NULL caption or one over 120 characters (`check_violation`, constraint `portfolio_draft_caption_length`). Migration 0034 (generated, plus one hand-written backfill of blank captions for existing drafts) and 0035 (hand-written: the function, `GRANT UPDATE (captions)`).
 
-**HTTP.** `GET`/`POST /me/portfolio` views now carry `draft.captions` (an object of the non-blank captions by fixture key) and `maxCaptionLength`. `POST` takes `{ items, captions? }` where `captions` is an object keyed by selected fixture keys; a blank or omitted caption is none; a caption for an unselected or unknown key, over 120 characters, with a line break or control character, a non-string, or a non-object `captions`: 400. B2's `caption` singular field remains refused.
+**HTTP.** `GET`/`POST /me/portfolio` views now carry `draft.captions` (an object of the non-blank captions by fixture key) and `maxCaptionLength`. `POST` takes `{ items, captions? }` where `captions` is an object keyed by selected fixture keys; a blank or omitted caption is none; a caption for an unselected or unknown key, over 120 characters, with a line break or control character, a non-string, or a non-object `captions`: 400. A singular `caption` field is refused; only the keyed `captions` object is accepted.
 
 **Screens.** Organize: a "Caption (optional)" text field under each selected image (maxlength 120, 44 px tall, labelled "Caption for <image>"); typing updates the live preview and the save status; captions go with their image through ↑ ↓ and out with Remove. Preview (compact and full): the caption, when there is one, under its numbered image. Unsaved captions carry to the full preview and back.
 
@@ -50,4 +49,4 @@ Uploads or image bytes, external URLs, public profiles, directory, sharing, mess
 
 **Known limitations.** Last write wins between two tabs. A caption refused by the server (only possible by a crafted request, since the field enforces the length) is reported on the save status line, not beside the field. The preview grid's first, larger image leaves its caption below the frame at the same small size as the rest.
 
-**Next action.** Independent review (Codex); integrate only after B1 and B2 and owner authorization.
+**Integration gate.** This private synthetic slice does not authorize real use. Integrate only after B1 and B2 and owner authorization.

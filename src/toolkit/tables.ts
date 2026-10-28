@@ -105,10 +105,11 @@ export const PORTFOLIO_MAX_ITEMS = 8;
 export const PORTFOLIO_CAPTION_MAX = 120;
 
 /**
- * One profile's portfolio draft (B2): an ordered list of fixture keys, first
- * shown first, and (B3) one plain-text caption per item at the same position,
- * '' when blank. Runtime role: SELECT, INSERT, and UPDATE of `items` and
- * `captions` only. No DELETE; `profile_id` never changes. An empty list is a
+ * One profile's portfolio draft (B2), extended in B3: an ordered list of
+ * fixture keys, first shown first, and one plain-text caption per item at
+ * the same position, '' when blank. Runtime role: SELECT, INSERT, and
+ * UPDATE of `items` and `captions` only. No DELETE; `profile_id` never
+ * changes. An empty list is a
  * valid draft.
  *
  * The CHECKs bound the count, the arrays' shape and that there are exactly

@@ -1,4 +1,4 @@
-// The professional toolkit screens (slices B1 and B2, Track B) for the local
+// The professional toolkit screens (slices B1–B3, Track B) for the local
 // synthetic demo: a private profile, a comp-card draft arranged from five
 // fixture-backed slots, a portfolio draft of ordered fixture images with an
 // optional short caption under each (B3), and
