@@ -277,7 +277,7 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
 .pf-item {
   display: grid;
   grid-template-columns: 44px auto minmax(0, 1fr);
-  grid-template-areas: 'thumb pos label' 'thumb controls controls';
+  grid-template-areas: 'thumb pos label' 'thumb controls controls' 'caption caption caption';
   align-items: center;
   gap: 4px 10px;
   padding: 10px 0;
@@ -288,6 +288,7 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
 .pf-pos { grid-area: pos; min-width: 1.6em; font: 600 15px/1 var(--serif); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .pf-label { grid-area: label; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .pf-controls { grid-area: controls; display: flex; gap: 6px; }
+.pf-caption { grid-area: caption; min-height: 44px; margin-top: 4px; font-size: 15px; }
 .pf-move {
   min-width: 44px;
   min-height: 44px;
@@ -331,7 +332,7 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
 .pf-pick:disabled .pf-pick-state { color: var(--ink-3); }
 
 @media (min-width: 960px) {
-  .pf-item { grid-template-columns: 52px auto minmax(0, 1fr) auto; grid-template-areas: 'thumb pos label controls'; }
+  .pf-item { grid-template-columns: 52px auto minmax(0, 1fr) auto; grid-template-areas: 'thumb pos label controls' 'thumb caption caption caption'; }
   .pf-item img { width: 52px; }
   .pf-catalogue { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
@@ -367,9 +368,11 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
 }
 .pf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 .pf-grid li:first-child { grid-column: span 2; grid-row: span 2; }
-.pf-grid figure { position: relative; margin: 0; height: 100%; overflow: hidden; background: #eee7dc; }
+.pf-grid figure { display: flex; flex-direction: column; margin: 0; height: 100%; }
+.pf-frame { position: relative; flex: 1; overflow: hidden; background: #eee7dc; }
 .pf-grid img { display: block; width: 100%; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
-.pf-grid figcaption {
+.pf-cap { padding: 4px 2px 0; font-size: 9px; line-height: 1.3; color: var(--pf-ink-2); overflow-wrap: anywhere; }
+.pf-num {
   position: absolute;
   left: 6px;
   bottom: 4px;
@@ -385,7 +388,8 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
 .pf-sheet.full .pf-name { font-size: clamp(22px, 6vw, 34px); }
 .pf-sheet.full .pf-profession { font-size: 12px; }
 .pf-sheet.full .pf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.pf-sheet.full .pf-grid figcaption { left: 10px; bottom: 8px; font-size: 12px; }
+.pf-sheet.full .pf-num { left: 10px; bottom: 8px; font-size: 12px; }
+.pf-sheet.full .pf-cap { padding-top: 6px; font-size: 13px; }
 .pf-sheet.full .pf-foot { font-size: 10px; }
 @media (min-width: 760px) {
   .pf-sheet.full .pf-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

@@ -1,6 +1,7 @@
 // The professional toolkit screens (slices B1 and B2, Track B) for the local
 // synthetic demo: a private profile, a comp-card draft arranged from five
-// fixture-backed slots, a portfolio draft of ordered fixture images, and
+// fixture-backed slots, a portfolio draft of ordered fixture images with an
+// optional short caption under each (B3), and
 // their previews. Plain browser JavaScript, no build step. Every value
 // from the server or typed by a person is written with textContent, never as
 // HTML.
@@ -494,7 +495,7 @@ export function createToolkit(h) {
 
   // ---- The portfolio itself (editor preview and the preview screen) ----
 
-  function portfolioSheet({ profile, items, fixtures }, size = 'compact') {
+  function portfolioSheet({ profile, items, captions = {}, fixtures }, size = 'compact') {
     const labelOf = (key) => fixtures.find((f) => f.key === key)?.label ?? 'Fixture';
     const number = (i) => String(i + 1).padStart(2, '0');
     return el('div', { className: `pf-sheet ${size}`, attrs: { 'data-portfolio-preview': '' } }, [
@@ -508,14 +509,19 @@ export function createToolkit(h) {
         : el(
             'ol',
             { className: 'pf-grid' },
-            items.map((key, i) =>
-              el('li', { attrs: { 'data-key': key } }, [
+            items.map((key, i) => {
+              const caption = (captions[key] ?? '').trim();
+              return el('li', { attrs: { 'data-key': key } }, [
                 el('figure', {}, [
-                  el('img', { attrs: { src: fixtureSrc(key), alt: `${i + 1}. ${labelOf(key)} (synthetic fixture)`, width: '400', height: '500', decoding: 'async' } }),
-                  el('figcaption', { attrs: { 'aria-hidden': 'true' }, text: number(i) }),
+                  el('div', { className: 'pf-frame' }, [
+                    el('img', { attrs: { src: fixtureSrc(key), alt: `${i + 1}. ${labelOf(key)} (synthetic fixture)`, width: '400', height: '500', decoding: 'async' } }),
+                    el('span', { className: 'pf-num', attrs: { 'aria-hidden': 'true' }, text: number(i) }),
+                  ]),
+                  // The caption is the owner's own text, written as text only (never markup).
+                  caption ? el('figcaption', { className: 'pf-cap', text: caption }) : null,
                 ]),
-              ]),
-            ),
+              ]);
+            }),
           ),
       el('p', { className: 'pf-foot', text: 'Private draft · synthetic fixture images' }),
     ]);
@@ -530,13 +536,17 @@ export function createToolkit(h) {
       el('header', { className: 'page-head' }, [
         el('p', { className: 'eyebrow', text: 'Portfolio draft' }),
         el('h1', { text: 'Organize your portfolio' }),
-        el('p', { className: 'muted', text: `Choose up to ${max} images and put them in order. The first leads. Save keeps it.` }),
+        el('p', { className: 'muted', text: `Choose up to ${max} images, put them in order and add a short caption to any of them. The first leads. Save keeps it.` }),
       ]),
     );
     if (!view.profile) return noProfileYet(root, 'portfolio');
 
     let saved = [...view.draft.items];
-    const items = memory.portfolio ? [...memory.portfolio] : [...saved];
+    let savedCaptions = { ...view.draft.captions };
+    const items = memory.portfolio ? [...memory.portfolio.items] : [...saved];
+    // Captions by fixture key, as typed; only the selected keys are kept and sent.
+    const captions = memory.portfolio ? { ...memory.portfolio.captions } : { ...savedCaptions };
+    const captionMax = view.maxCaptionLength;
     const labelOf = (key) => view.fixtures.find((f) => f.key === key)?.label ?? 'Fixture';
     const status = statusLine();
     const previewHolder = el('div', { className: 'tk-preview-holder' });
@@ -546,14 +556,15 @@ export function createToolkit(h) {
     const fullNote = el('p', { className: 'pf-note', attrs: { 'data-full': '' }, text: `Your portfolio is full. Remove an image to add another.` });
     const catalogue = el('ul', { className: 'pf-catalogue' });
 
-    const same = () => items.length === saved.length && items.every((k, i) => k === saved[i]);
+    const captionOf = (key) => (captions[key] ?? '').trim();
+    const same = () => items.length === saved.length && items.every((k, i) => k === saved[i] && captionOf(k) === (savedCaptions[k] ?? ''));
     const refresh = () => {
       const changed = !same();
-      memory.portfolio = changed ? [...items] : null;
+      memory.portfolio = changed ? { items: [...items], captions: { ...captions } } : null;
       if (changed) status.set('dirty', 'Unsaved changes');
       else if (view.draft.updatedAt === null) status.set('new', 'Not saved yet');
       else status.set('saved', savedAt(view.draft.updatedAt));
-      previewHolder.replaceChildren(portfolioSheet({ profile: view.profile, items, fixtures: view.fixtures }));
+      previewHolder.replaceChildren(portfolioSheet({ profile: view.profile, items, captions, fixtures: view.fixtures }));
     };
 
     /** Redraws the ordered list and the catalogue; `focus` names a control to return focus to. */
@@ -566,6 +577,22 @@ export function createToolkit(h) {
           const label = labelOf(key);
           const control = (text, action, aria, disabled) =>
             el('button', { className: `pf-move`, text, attrs: { type: 'button', 'data-action': action, 'aria-label': aria, ...(disabled ? { disabled: '' } : {}) } });
+          const captionInput = el('input', {
+            className: 'input pf-caption',
+            attrs: {
+              type: 'text',
+              name: `caption-${key}`,
+              maxlength: String(captionMax),
+              autocomplete: 'off',
+              placeholder: 'Caption (optional)',
+              'aria-label': `Caption for ${label}`,
+            },
+          });
+          captionInput.value = captions[key] ?? '';
+          captionInput.addEventListener('input', () => {
+            captions[key] = captionInput.value;
+            refresh();
+          });
           return el('li', { className: 'pf-item', attrs: { 'data-key': key } }, [
             el('img', { attrs: { src: fixtureSrc(key), alt: '', width: '400', height: '500', decoding: 'async' } }),
             el('span', { className: 'pf-pos', attrs: { 'aria-hidden': 'true' }, text: String(i + 1) }),
@@ -575,6 +602,7 @@ export function createToolkit(h) {
               control('↓', 'down', `Move ${label} later`, i === items.length - 1),
               control('Remove', 'remove', `Remove ${label}`, false),
             ]),
+            captionInput,
           ]);
         }),
       );
@@ -621,6 +649,7 @@ export function createToolkit(h) {
       const action = control.dataset.action;
       if (action === 'remove') {
         items.splice(at, 1);
+        delete captions[key]; // an image taken out loses its caption; added again, it starts blank
         toast(`Removed ${labelOf(key)}.`);
         // Focus moves to the item that took its place, or the one before it.
         const next = items[Math.min(at, items.length - 1)];
@@ -636,8 +665,10 @@ export function createToolkit(h) {
       if (!pick || pick.disabled) return;
       const key = pick.dataset.key;
       const at = items.indexOf(key);
-      if (at >= 0) items.splice(at, 1);
-      else items.push(key);
+      if (at >= 0) {
+        items.splice(at, 1);
+        delete captions[key];
+      } else items.push(key);
       paint({ key, action: 'pick' });
     });
 
@@ -652,7 +683,7 @@ export function createToolkit(h) {
         order,
       ]),
       el('section', { className: 'section-card pf-add' }, [
-        el('header', {}, [el('h2', { text: 'Add images' }), el('p', { text: 'Synthetic fixture images stand in for your own work. Each can appear once.' })]),
+        el('header', {}, [el('h2', { text: 'Add images' }), el('p', { text: `Synthetic fixture images stand in for your own work. Each can appear once, with a caption of up to ${captionMax} characters.` })]),
         catalogue,
       ]),
       el('div', { className: 'sticky-footer tk-footer' }, [el('div', { className: 'tk-actions' }, [status.node, save])]),
@@ -666,10 +697,14 @@ export function createToolkit(h) {
         b.setAttribute('aria-busy', 'true');
       });
       try {
-        const result = await api('POST', '/me/portfolio', { items: [...items] });
+        const sent = Object.fromEntries(items.flatMap((key) => (captionOf(key) ? [[key, captionOf(key)]] : [])));
+        const result = await api('POST', '/me/portfolio', { items: [...items], captions: sent });
         view.draft = result.draft;
         saved = [...result.draft.items];
+        savedCaptions = { ...result.draft.captions };
         items.splice(0, items.length, ...saved);
+        Object.keys(captions).forEach((key) => delete captions[key]);
+        Object.assign(captions, savedCaptions);
         paint();
         toast('Portfolio saved.');
       } catch (error) {
@@ -710,7 +745,8 @@ export function createToolkit(h) {
       ]),
     );
     if (!view.profile) return noProfileYet(root, 'portfolio');
-    const items = memory.portfolio ?? view.draft.items;
+    const items = memory.portfolio ? memory.portfolio.items : view.draft.items;
+    const captions = memory.portfolio ? memory.portfolio.captions : view.draft.captions;
     if (memory.portfolio || memory.profile) {
       root.append(
         el('p', { className: 'tk-notice', attrs: { 'data-unsaved': '' } }, [
@@ -723,7 +759,7 @@ export function createToolkit(h) {
     } else if (view.draft.updatedAt === null) {
       root.append(el('p', { className: 'tk-notice' }, [el('span', { text: 'This portfolio isn’t saved yet. ' }), link('Save it', '#/me/portfolio', 'link')]));
     }
-    root.append(portfolioSheet({ profile: view.profile, items, fixtures: view.fixtures }, 'full'), link('Back to editing', '#/me/portfolio', 'btn block tk-back'));
+    root.append(portfolioSheet({ profile: view.profile, items, captions, fixtures: view.fixtures }, 'full'), link('Back to editing', '#/me/portfolio', 'btn block tk-back'));
   }
 
   // ---- Router entry ----

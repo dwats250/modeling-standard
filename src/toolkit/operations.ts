@@ -15,11 +15,12 @@ import {
   type ProfileRecord,
 } from './profile.ts';
 import { findPortfolioForAccount, savePortfolioForAccount } from './portfolio.ts';
-import { PORTFOLIO_MAX_ITEMS } from './tables.ts';
+import { PORTFOLIO_CAPTION_MAX, PORTFOLIO_MAX_ITEMS } from './tables.ts';
 
 /**
  * The signed-in professional's own profile and comp-card draft (slice B1,
- * Track B) and portfolio draft (B2). Synthetic and provisional.
+ * Track B) and portfolio draft (B2) with optional captions (B3). Synthetic
+ * and provisional.
  *
  * Owner-only by construction. The owner is the signed-in account the
  * session names, resolved on the server; no address or body names an
@@ -71,12 +72,26 @@ const slotsSchema = z
 
 const compCardBody = z.strictObject({ tagline: oneLine(80), slots: slotsSchema });
 
-const portfolioBody = z.strictObject({
-  items: z
-    .array(fixtureKey)
-    .max(PORTFOLIO_MAX_ITEMS, `A portfolio holds up to ${PORTFOLIO_MAX_ITEMS} images.`)
-    .refine((items) => new Set(items).size === items.length, { message: 'Each image can appear once only.' }),
-});
+/**
+ * B3: at most one caption per selected image, keyed by its fixture key. A
+ * caption is one trimmed line of plain text within the limit; a blank one is
+ * the same as none. A key that is not among `items` is refused, so a caption
+ * can never outlive or precede its image.
+ */
+const captionsBody = z.partialRecord(fixtureKey, oneLine(PORTFOLIO_CAPTION_MAX)).default({});
+
+const portfolioBody = z
+  .strictObject({
+    items: z
+      .array(fixtureKey)
+      .max(PORTFOLIO_MAX_ITEMS, `A portfolio holds up to ${PORTFOLIO_MAX_ITEMS} images.`)
+      .refine((items) => new Set(items).size === items.length, { message: 'Each image can appear once only.' }),
+    captions: captionsBody,
+  })
+  .refine((body) => Object.keys(body.captions).every((key) => body.items.includes(key)), {
+    message: 'A caption belongs to a selected image.',
+    path: ['captions'],
+  });
 
 // ---- Output: no ids, no owner ----
 
@@ -120,10 +135,13 @@ const portfolioDto = z.strictObject({
   draft: z.strictObject({
     /** Fixture keys, first shown first. Empty until the owner adds some. */
     items: z.array(z.string()),
+    /** B3: the non-blank captions, by fixture key; every key is in `items`. */
+    captions: z.record(z.string(), z.string()),
     /** Null until the draft is first saved. */
     updatedAt: z.iso.datetime().nullable(),
   }),
   maxItems: z.number().int().positive(),
+  maxCaptionLength: z.number().int().positive(),
   fixtures: z.array(z.strictObject({ key: z.string(), label: z.string() })),
 });
 
@@ -132,8 +150,13 @@ async function portfolioView(db: Executor, accountId: string) {
   const draft = profile ? await findPortfolioForAccount(db, accountId) : undefined;
   return {
     profile: profile ? toProfileDto(profile) : null,
-    draft: { items: draft ? [...draft.items] : [], updatedAt: draft ? draft.updatedAt.toISOString() : null },
+    draft: {
+      items: draft ? [...draft.items] : [],
+      captions: draft ? Object.fromEntries(draft.items.flatMap((key, i) => (draft.captions[i] ? [[key, draft.captions[i]]] : []))) : {},
+      updatedAt: draft ? draft.updatedAt.toISOString() : null,
+    },
     maxItems: PORTFOLIO_MAX_ITEMS,
+    maxCaptionLength: PORTFOLIO_CAPTION_MAX,
     fixtures: FIXTURE_MEDIA.map((f) => ({ key: f.key, label: f.label })),
   };
 }
@@ -210,7 +233,17 @@ export const saveOwnPortfolioOperation = defineOperation({
   access,
   run: async (input, { db, target }) => {
     try {
-      await db.transaction((tx) => savePortfolioForAccount(tx, target.accountId, input.body.items), { isolationLevel: 'read committed' });
+      const { items, captions } = input.body;
+      await db.transaction(
+        (tx) =>
+          savePortfolioForAccount(
+            tx,
+            target.accountId,
+            items,
+            items.map((key) => captions[key] ?? ''),
+          ),
+        { isolationLevel: 'read committed' },
+      );
     } catch (error) {
       if (error instanceof ProfileRequiredError) throw new AppError(409, 'profile_required');
       throw error;

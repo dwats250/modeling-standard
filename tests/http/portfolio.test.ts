@@ -4,7 +4,7 @@ import { resolveAccountForLogin } from '../../src/accounts/account.ts';
 import type { ResolvePrincipal } from '../../src/authorization/access.ts';
 import { FIXTURE_KEYS } from '../../src/toolkit/fixture-media.ts';
 import { toolkitOperations } from '../../src/toolkit/operations.ts';
-import { PORTFOLIO_MAX_ITEMS } from '../../src/toolkit/tables.ts';
+import { PORTFOLIO_CAPTION_MAX, PORTFOLIO_MAX_ITEMS } from '../../src/toolkit/tables.ts';
 import { PRINCIPAL_HEADER, startTestApp, type TestApp } from '../support/app.ts';
 
 /**
@@ -12,7 +12,8 @@ import { PRINCIPAL_HEADER, startTestApp, type TestApp } from '../support/app.ts'
  * operations added as only the local demo adds them (production has none:
  * tests/http/toolkit.test.ts). Owner-only with the owner taken from the
  * principal; strict input; the order kept; empty and full drafts; no ids in
- * any response; durability across an application restart.
+ * any response; durability across an application restart. B3: one optional
+ * plain-text caption per selected image, keyed by its fixture key.
  *
  * Principals as in tests/http/toolkit.test.ts: `x-test-account` is a
  * signed-in account, `x-test-principal` a synthetic one.
@@ -38,8 +39,9 @@ afterAll(async () => {
 type Json = Record<string, unknown>;
 interface View {
   profile: Json | null;
-  draft: { items: string[]; updatedAt: string | null };
+  draft: { items: string[]; captions: Record<string, string>; updatedAt: string | null };
   maxItems: number;
+  maxCaptionLength: number;
   fixtures: { key: string; label: string }[];
 }
 async function call(app: TestApp, method: 'GET' | 'POST', url: string, as: Record<string, string>, payload?: unknown) {
@@ -65,7 +67,7 @@ describe('access', () => {
       expect(res.status).toBe(404);
       expect(res.json<Json>()).toEqual({ error: { code: 'not_found', requestId: expect.any(String) } });
     }
-    expect((await call(t, 'GET', '/me/portfolio', asAccount(owner))).json().draft).toEqual({ items: [], updatedAt: null });
+    expect((await call(t, 'GET', '/me/portfolio', asAccount(owner))).json().draft).toEqual({ items: [], captions: {}, updatedAt: null });
   });
 
   it('owner B cannot read or change owner A’s draft, by any body or query', async () => {
@@ -73,7 +75,7 @@ describe('access', () => {
     const b = await newOwner('Jun Park');
     expect((await call(t, 'POST', '/me/portfolio', asAccount(a), { items: keys(3, 1, 5) })).status).toBe(200);
     const bView = (await call(t, 'GET', '/me/portfolio', asAccount(b))).json();
-    expect(bView.draft).toEqual({ items: [], updatedAt: null });
+    expect(bView.draft).toEqual({ items: [], captions: {}, updatedAt: null });
     expect(bView.profile).toMatchObject({ displayName: 'Jun Park' });
     expect(JSON.stringify(bView)).not.toContain('Amara');
 
@@ -112,8 +114,9 @@ describe('the draft', () => {
     expect(res.json<Json>()).toMatchObject({ error: { code: 'profile_required' } });
     expect((await call(t, 'GET', '/me/portfolio', asAccount(owner))).json()).toEqual({
       profile: null,
-      draft: { items: [], updatedAt: null },
+      draft: { items: [], captions: {}, updatedAt: null },
       maxItems: PORTFOLIO_MAX_ITEMS,
+      maxCaptionLength: PORTFOLIO_CAPTION_MAX,
       fixtures: expect.any(Array),
     });
   });
@@ -126,7 +129,7 @@ describe('the draft', () => {
 
     const first = await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: keys(2, 0, 7, 4) });
     expect(first.status).toBe(200);
-    expect(first.json().draft).toEqual({ items: keys(2, 0, 7, 4), updatedAt: expect.any(String) });
+    expect(first.json().draft).toEqual({ items: keys(2, 0, 7, 4), captions: {}, updatedAt: expect.any(String) });
     // Remove one, move the last to the front.
     await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: keys(4, 2, 7) });
     expect((await call(t, 'GET', '/me/portfolio', asAccount(owner))).json().draft.items).toEqual(keys(4, 2, 7));
@@ -136,7 +139,7 @@ describe('the draft', () => {
     const owner = await newOwner('Edges');
     const empty = await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: [] });
     expect(empty.status).toBe(200);
-    expect(empty.json().draft).toEqual({ items: [], updatedAt: expect.any(String) });
+    expect(empty.json().draft).toEqual({ items: [], captions: {}, updatedAt: expect.any(String) });
     const full = FIXTURE_KEYS.slice(0, PORTFOLIO_MAX_ITEMS);
     expect((await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: full })).json().draft.items).toEqual(full);
   });
@@ -158,6 +161,18 @@ describe('the draft', () => {
       { items: [{ key: FIXTURE_KEYS[0] }] },
       { items: FIXTURE_KEYS[0] },
       { items: keys(0), caption: 'Hello' },
+      // B3: captions only for selected keys, as plain one-line text within the limit
+      { items: keys(0), captions: { [FIXTURE_KEYS[1]!]: 'Not selected' } },
+      { items: keys(0), captions: { 'not-a-fixture': 'Unknown' } },
+      { items: keys(0), captions: { [FIXTURE_KEYS[0]]: 'x'.repeat(PORTFOLIO_CAPTION_MAX + 1) } },
+      { items: keys(0), captions: { [FIXTURE_KEYS[0]]: 'two\nlines' } },
+      { items: keys(0), captions: { [FIXTURE_KEYS[0]]: 42 } },
+      { items: keys(0), captions: { [FIXTURE_KEYS[0]]: null } },
+      { items: keys(0), captions: { [FIXTURE_KEYS[0]]: { text: 'Hi' } } },
+      { items: keys(0), captions: ['Hello'] },
+      { items: keys(0), captions: 'Hello' },
+      { items: keys(0), captions: null },
+      { items: [], captions: { [FIXTURE_KEYS[0]]: 'Nothing selected' } },
       { items: keys(0), public: true },
       {},
     ]) {
@@ -168,12 +183,51 @@ describe('the draft', () => {
     expect((await call(t, 'GET', '/me/portfolio', asAccount(owner))).json()).toEqual(before);
   });
 
+  it('keeps a caption with its image: set, edit, clear, reorder, remove and re-add (B3)', async () => {
+    const owner = await newOwner('Captioner');
+    const [a, b, c] = keys(1, 4, 6);
+    const set = (items: string[], captions: Record<string, string>) => call(t, 'POST', '/me/portfolio', asAccount(owner), { items, captions });
+    // Set two; the blank third is omitted. Surrounding space is trimmed.
+    let res = await set([a!, b!, c!], { [a!]: '  On set, early morning ', [b!]: '', [c!]: 'Studio' });
+    expect(res.status).toBe(200);
+    expect(res.json().draft.captions).toEqual({ [a!]: 'On set, early morning', [c!]: 'Studio' });
+    // Reorder: each caption stays with its key.
+    res = await set([c!, a!, b!], { [a!]: 'On set, early morning', [c!]: 'Studio' });
+    expect(res.json().draft).toMatchObject({ items: [c, a, b], captions: { [a!]: 'On set, early morning', [c!]: 'Studio' } });
+    // Edit one, clear one by omission, and one at exactly the limit.
+    const longest = 'y'.repeat(PORTFOLIO_CAPTION_MAX);
+    res = await set([c!, a!, b!], { [a!]: 'Edited', [b!]: longest });
+    expect(res.json().draft.captions).toEqual({ [a!]: 'Edited', [b!]: longest });
+    expect((await call(t, 'GET', '/me/portfolio', asAccount(owner))).json().draft.captions).toEqual({ [a!]: 'Edited', [b!]: longest });
+    // Remove an image: its caption goes; adding it again starts blank.
+    res = await set([c!, b!], { [b!]: longest });
+    expect(res.json().draft).toMatchObject({ items: [c, b], captions: { [b!]: longest } });
+    res = await set([c!, b!, a!], { [b!]: longest });
+    expect(res.json().draft.captions).toEqual({ [b!]: longest });
+    // Captions are optional; omitted, every caption is cleared. Markup stays text.
+    res = await set([c!, b!, a!], { [c!]: '<b>Bold</b> & "quoted"' });
+    expect(res.json().draft.captions).toEqual({ [c!]: '<b>Bold</b> & "quoted"' });
+    res = await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: [c!, b!] });
+    expect(res.status).toBe(200);
+    expect(res.json().draft).toEqual({ items: [c, b], captions: {}, updatedAt: expect.any(String) });
+  });
+
+  it('owner B cannot read or change owner A’s captions (B3)', async () => {
+    const a = await newOwner('Caption A');
+    const b = await newOwner('Caption B');
+    await call(t, 'POST', '/me/portfolio', asAccount(a), { items: keys(2), captions: { [FIXTURE_KEYS[2]!]: 'Private to A' } });
+    expect((await call(t, 'GET', '/me/portfolio', asAccount(b))).body).not.toContain('Private to A');
+    expect((await call(t, 'POST', '/me/portfolio', asAccount(b), { items: keys(2), captions: { [FIXTURE_KEYS[2]!]: 'B wrote this' }, accountId: a })).status).toBe(400);
+    await call(t, 'POST', '/me/portfolio', asAccount(b), { items: keys(2), captions: { [FIXTURE_KEYS[2]!]: 'B wrote this' } });
+    expect((await call(t, 'GET', '/me/portfolio', asAccount(a))).json().draft.captions).toEqual({ [FIXTURE_KEYS[2]!]: 'Private to A' });
+  });
+
   it('survives an application restart', async () => {
     const owner = await newOwner('Restart');
-    await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: keys(6, 3, 8) });
+    await call(t, 'POST', '/me/portfolio', asAccount(owner), { items: keys(6, 3, 8), captions: { [FIXTURE_KEYS[3]!]: 'Kept' } });
     const second = await start();
     try {
-      expect((await call(second, 'GET', '/me/portfolio', asAccount(owner))).json().draft.items).toEqual(keys(6, 3, 8));
+      expect((await call(second, 'GET', '/me/portfolio', asAccount(owner))).json().draft).toEqual({ items: keys(6, 3, 8), captions: { [FIXTURE_KEYS[3]!]: 'Kept' }, updatedAt: expect.any(String) });
     } finally {
       await second.close();
     }
