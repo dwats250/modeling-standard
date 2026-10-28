@@ -121,14 +121,19 @@ describe('the toolkit through harness sessions', () => {
     await post('/me/profile', a, { displayName: 'Harness A', profession: '', biography: '' });
     await post('/me/profile', b, { displayName: 'Harness B', profession: '', biography: '' });
     const aItems = [FIXTURE_MEDIA[3]!.key, FIXTURE_MEDIA[0]!.key];
-    expect((await post('/me/portfolio', a, { items: aItems, captions: { [aItems[0]!]: 'Only A reads this' } })).statusCode).toBe(200);
-    expect((await post('/me/portfolio', b, { items: [FIXTURE_MEDIA[9]!.key] })).statusCode).toBe(200);
-    expect((await post('/me/portfolio', b, { items: [], accountId: randomUUID() })).statusCode).toBe(400);
+    expect((await post('/me/portfolio', a, { items: aItems, captions: { [aItems[0]!]: 'Only A reads this' }, expectedRevision: 0 })).statusCode).toBe(200);
+    expect((await post('/me/portfolio', b, { items: [FIXTURE_MEDIA[9]!.key], expectedRevision: 0 })).statusCode).toBe(200);
+    expect((await post('/me/portfolio', b, { items: [], accountId: randomUUID(), expectedRevision: 1 })).statusCode).toBe(400);
+    // B4: B's own revision is 1; naming A's current revision does not help B, and a stale save tells B nothing of A.
+    const stale = await post('/me/portfolio', b, { items: [], expectedRevision: 2 });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json()).toEqual({ error: { code: 'stale_revision', requestId: expect.any(String) } });
     const bView = (await get('/me/portfolio', b)).json();
     expect(bView.draft.items).toEqual([FIXTURE_MEDIA[9]!.key]);
     expect(JSON.stringify(bView)).not.toContain('Harness A');
     expect(JSON.stringify(bView)).not.toContain('Only A reads this');
-    expect((await get('/me/portfolio', a)).json().draft).toMatchObject({ items: aItems, captions: { [aItems[0]!]: 'Only A reads this' } });
+    expect((await get('/me/portfolio', a)).json().draft).toMatchObject({ items: aItems, captions: { [aItems[0]!]: 'Only A reads this' }, revision: 1 });
+    expect(bView.draft.revision).toBe(1);
   });
 
   it('a cookie-bearing write needs the demo origin (cross-site writes refused)', async () => {

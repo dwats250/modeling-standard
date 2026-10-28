@@ -1,7 +1,8 @@
-// The professional toolkit screens (slices B1–B3, Track B) for the local
+// The professional toolkit screens (slices B1–B4, Track B) for the local
 // synthetic demo: a private profile, a comp-card draft arranged from five
 // fixture-backed slots, a portfolio draft of ordered fixture images with an
-// optional short caption under each (B3), and
+// optional short caption under each (B3) and a save that is refused, with the
+// edits kept, when the draft changed elsewhere since it was opened (B4), and
 // their previews. Plain browser JavaScript, no build step. Every value
 // from the server or typed by a person is written with textContent, never as
 // HTML.
@@ -550,6 +551,10 @@ export function createToolkit(h) {
     const labelOf = (key) => view.fixtures.find((f) => f.key === key)?.label ?? 'Fixture';
     const status = statusLine();
     const previewHolder = el('div', { className: 'tk-preview-holder' });
+    // B4: shown only after a save was refused because the draft changed
+    // elsewhere. The edits on this screen are kept as they are; nothing is
+    // reloaded, discarded or overwritten until the person says so.
+    const conflict = el('section', { className: 'pf-conflict', attrs: { 'data-conflict': '', role: 'alert', 'aria-label': 'Save refused', hidden: '' } });
     const count = el('p', { className: 'pf-count', attrs: { 'aria-live': 'polite' } });
     const order = el('ol', { className: 'pf-order', attrs: { 'aria-label': 'Your selection, in order' } });
     const emptyNote = el('p', { className: 'pf-note', attrs: { 'data-empty': 'selection' }, text: 'Nothing selected yet. Add images from the fixtures below.' });
@@ -558,10 +563,73 @@ export function createToolkit(h) {
 
     const captionOf = (key) => (captions[key] ?? '').trim();
     const same = () => items.length === saved.length && items.every((k, i) => k === saved[i] && captionOf(k) === (savedCaptions[k] ?? ''));
+    /** Takes a saved draft from the server as the one this screen is based on. */
+    const adopt = (draft) => {
+      view.draft = draft;
+      saved = [...draft.items];
+      savedCaptions = { ...draft.captions };
+    };
+    /** Replaces the edits on this screen with the saved draft; only ever on an explicit action. */
+    const load = (draft) => {
+      adopt(draft);
+      items.splice(0, items.length, ...saved);
+      Object.keys(captions).forEach((key) => delete captions[key]);
+      Object.assign(captions, savedCaptions);
+    };
+    const hideConflict = () => {
+      conflict.hidden = true;
+      conflict.replaceChildren();
+    };
+    /** The warning after a refused save: what happened, that nothing was lost, and the deliberate ways on. */
+    const showConflict = () => {
+      const latest = el('div', { className: 'pf-conflict-latest', attrs: { 'data-conflict-latest': '' } });
+      const review = el('button', { className: 'btn pf-conflict-review', text: 'Review the saved version', attrs: { type: 'button', 'data-action': 'review' } });
+      conflict.replaceChildren(
+        el('h2', { text: 'Not saved: this portfolio changed elsewhere' }),
+        el('p', {
+          text: 'It was saved from another tab or window after you opened it here. Your edits on this screen are kept and nothing has been overwritten. Review the saved version before deciding what to keep.',
+        }),
+        el('div', { className: 'pf-conflict-actions' }, [review]),
+        latest,
+      );
+      review.addEventListener('click', async () => {
+        review.disabled = true;
+        let fresh;
+        try {
+          fresh = await api('GET', '/me/portfolio');
+        } catch (error) {
+          review.disabled = false;
+          status.set('error', `Could not load the saved version. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
+          return;
+        }
+        // From here on, Save replaces the version just reviewed with the edits on this screen: a deliberate choice, named as such.
+        adopt(fresh.draft);
+        const list = el('ol', { className: 'pf-conflict-list' }, fresh.draft.items.map((key) => el('li', { attrs: { 'data-key': key } }, [el('span', { text: labelOf(key) }), ...(fresh.draft.captions[key] ? [el('span', { className: 'pf-conflict-cap', text: fresh.draft.captions[key] })] : [])])));
+        const useSaved = el('button', { className: 'btn pf-conflict-load', text: 'Replace my edits with the saved version', attrs: { type: 'button', 'data-action': 'load' } });
+        useSaved.addEventListener('click', () => {
+          load(fresh.draft);
+          hideConflict();
+          paint();
+          toast('Showing the saved version. Your edits here were set aside.');
+        });
+        latest.replaceChildren(
+          el('h3', { text: fresh.draft.items.length ? `Saved version (${fresh.draft.items.length} ${fresh.draft.items.length === 1 ? 'image' : 'images'}, ${savedAt(fresh.draft.updatedAt).toLowerCase()})` : `Saved version (no images, ${savedAt(fresh.draft.updatedAt).toLowerCase()})` }),
+          ...(fresh.draft.items.length ? [list] : []),
+          el('p', { text: 'Keep your edits and press Save to replace the saved version with them, or:' }),
+          el('div', { className: 'pf-conflict-actions' }, [useSaved]),
+        );
+        review.hidden = true;
+        refresh();
+        useSaved.focus();
+      });
+      conflict.hidden = false;
+      conflict.scrollIntoView?.({ block: 'nearest' });
+    };
     const refresh = () => {
       const changed = !same();
       memory.portfolio = changed ? { items: [...items], captions: { ...captions } } : null;
-      if (changed) status.set('dirty', 'Unsaved changes');
+      if (!conflict.hidden && changed) status.set('error', 'Not saved. See the warning above.');
+      else if (changed) status.set('dirty', 'Unsaved changes');
       else if (view.draft.updatedAt === null) status.set('new', 'Not saved yet');
       else status.set('saved', savedAt(view.draft.updatedAt));
       previewHolder.replaceChildren(portfolioSheet({ profile: view.profile, items, captions, fixtures: view.fixtures }));
@@ -676,6 +744,7 @@ export function createToolkit(h) {
     const asideSave = el('button', { className: 'btn primary block tk-save', text: 'Save portfolio', attrs: { type: 'submit', form: 'tk-portfolio-form' } });
     const saves = [save, asideSave];
     const form = el('form', { className: 'tk-form tk-portfolio', attrs: { id: 'tk-portfolio-form', novalidate: '', 'aria-label': 'Portfolio' } }, [
+      conflict,
       el('section', { className: 'section-card pf-selection' }, [
         el('header', { className: 'pf-section-head' }, [el('h2', { text: 'Your selection' }), count]),
         emptyNote,
@@ -698,17 +767,17 @@ export function createToolkit(h) {
       });
       try {
         const sent = Object.fromEntries(items.flatMap((key) => (captionOf(key) ? [[key, captionOf(key)]] : [])));
-        const result = await api('POST', '/me/portfolio', { items: [...items], captions: sent });
-        view.draft = result.draft;
-        saved = [...result.draft.items];
-        savedCaptions = { ...result.draft.captions };
-        items.splice(0, items.length, ...saved);
-        Object.keys(captions).forEach((key) => delete captions[key]);
-        Object.assign(captions, savedCaptions);
+        // B4: the save names the revision this screen is based on; the server refuses it if the draft moved on.
+        const result = await api('POST', '/me/portfolio', { items: [...items], captions: sent, expectedRevision: view.draft.revision });
+        load(result.draft);
+        hideConflict();
         paint();
         toast('Portfolio saved.');
       } catch (error) {
-        if (error.status === 409) status.set('error', 'Not saved. Save your profile first.');
+        if (error.status === 409 && error.code === 'stale_revision') {
+          showConflict();
+          refresh();
+        } else if (error.status === 409) status.set('error', 'Not saved. Save your profile first.');
         else status.set('error', `Not saved. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
       } finally {
         saves.forEach((b) => {

@@ -1,10 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { check, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { check, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { account } from '../accounts/tables.ts';
 
 /**
- * Slices B1, B2 and B3 (Track B): a private professional profile, its comp-card
- * draft and its portfolio draft with optional captions. Synthetic and provisional: the fields, lengths and the five slot
+ * Slices B1 to B4 (Track B): a private professional profile, its comp-card
+ * draft and its portfolio draft with optional captions and a save revision. Synthetic and provisional: the fields, lengths and the five slot
  * names are reversible design choices, not product policy.
  *
  * Owner-only. A profile belongs to exactly one sign-in account and is read
@@ -112,6 +112,12 @@ export const PORTFOLIO_CAPTION_MAX = 120;
  * changes. An empty list is a
  * valid draft.
  *
+ * B4: `revision` is the draft's save count, set only by the database
+ * (migrations/0037: 1 on insert, +1 on every update; the runtime role cannot
+ * set it). A save names the revision it was based on and is applied by one
+ * compare-and-swap statement (`portfolio.ts`), so a stale save never
+ * overwrites a newer one.
+ *
  * The CHECKs bound the count, the arrays' shape and that there are exactly
  * as many captions as items; each key's shape, that no key repeats, and each
  * caption's presence and length are checked by a trigger (migrations/0033,
@@ -127,6 +133,7 @@ export const portfolioDraft = pgTable(
       .references(() => professionalProfile.id),
     items: text('items').array().notNull().default(sql`'{}'::text[]`),
     captions: text('captions').array().notNull().default(sql`'{}'::text[]`),
+    revision: integer('revision').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -140,5 +147,6 @@ export const portfolioDraft = pgTable(
       'portfolio_draft_captions_aligned',
       sql.raw(`cardinality("portfolio_draft"."captions") = cardinality("portfolio_draft"."items") and (cardinality("portfolio_draft"."captions") = 0 or (array_ndims("portfolio_draft"."captions") = 1 and array_lower("portfolio_draft"."captions", 1) = 1))`),
     ),
+    check('portfolio_draft_revision_positive', sql`${table.revision} >= 1`),
   ],
 );

@@ -47,6 +47,6 @@ Uploads or image bytes, external URLs, public profiles, directory, sharing, mess
 
 **Visual evidence.** `test-results/demo/toolkit-{desktop-portfolio,desktop-portfolio-preview,phone-portfolio,phone-portfolio-preview,phone-portfolio-empty}.png` (untracked, regenerated per run).
 
-**Known limitations.** Last write wins between two tabs. A caption refused by the server (only possible by a crafted request, since the field enforces the length) is reported on the save status line, not beside the field. The preview grid's first, larger image leaves its caption below the frame at the same small size as the rest.
+**Known limitations.** Last write wins between two tabs (addressed by B4, `B4-portfolio-stale-save.md`). A caption refused by the server (only possible by a crafted request, since the field enforces the length) is reported on the save status line, not beside the field. The preview grid's first, larger image leaves its caption below the frame at the same small size as the rest.
 
 **Integration gate.** This private synthetic slice does not authorize real use. Integrate only after B1 and B2 and owner authorization.
