@@ -1,5 +1,19 @@
 # Demonstration session — continuation note
 
+## Recovery and reviewer-readiness checkpoint — 2026-10-29
+
+This is the latest verified integration checkpoint; older branch/session pointers below are historical context only.
+
+- **Remote main:** `aa9d686aa33c8d3e905a1dd9c07f366831c2242b`. All six requested PR heads were fetched and unchanged from the rehearsal: #45 `87064ba`, #41 `bee9f4e`, #42 `a70be0e`, #43 `08eb2c7`, #44 `0578151`, #46 `aaff4d6`.
+- **Preserved combined candidate:** `/home/dustin/Projects/modeling-standard-integration-20261029`, branch `test/combined-integration-20261029`, clean at `d0b111432f654ab49ab37ceb725e569f3914c3b9`, exactly 18 commits ahead of main and containing each of those six heads once in the required order. It is a local test candidate, not a merge or deployment.
+- **Rehearsal evidence at that unchanged candidate:** migration/check verification, build, dependency audit (zero findings), 42 test files / 647 automated tests, and 5 browser test files / 33 demo tests passed against task-owned PostgreSQL. Browser artifacts include desktop/phone toolkit previews, the portfolio conflict screen, and S14 final-record views. This checkpoint reuses that recorded run; it was not rerun during the current documentation update.
+- **Integration seam:** local merge commits are #45 `d2595c7`, #41 `55271fb`, #42 `21a2687`, #43 `0da421a`, #44 `053ca9a`, #46 `d0b1114`. Mechanical overlaps in `docs/engineering/DEMO.md`, `docs/engineering/README.md`, and `src/demo/application.ts` were resolved additively, retaining both S14 participant final-record behavior and Track B demo operations. The combined test/build/browser run passed after resolution.
+- **PR review state:** #41–#46 remain open, with hosted CI and GitGuardian green; no PR has an independent GitHub review recorded. B2 #43 is stacked on B1 #41, B3 #44 on #43, and B4 #46 on #44. Recommended integration order remains #45 → #41 → #42 → #43 → #44 → #46.
+- **Reviewer access:** current inspection found no `ms-staging` or `ms-demo` session, no listener on 3130/8443, and no staging process on loopback port 3130. Asher's Tailscale Serve exposes only the unrelated Options Observatory on port 80. No staging data, Tailscale policy, or access grant was changed. Remote reviewer access is not ready; do not point Cory at port 80 or expose the local synthetic-account chooser remotely.
+- **Current next step:** complete the six-PR integration only under Dustin's integration authority. Then prepare an explicitly restricted reviewer endpoint/access path before sending Cory a bookmark. The revised [manual acceptance](MANUAL-ACCEPTANCE.md) contains the single synthetic walkthrough and Windows 11 checklist; its remote link is intentionally pending.
+
+The candidate's test database was task-owned and stopped after verification; its retained volume is not a shared development or staging database. The active `ms-builder` session is in the B4 worktree and was left untouched.
+
 Work item: *Modeling Standard — Demonstration Session PRD*, v2 (2026-10-20), increments A, B, C, D and F, as amended by Dustin's authorization of 2026-10-20 (summarized below). This note lets the work resume after a session reset. It is not a product decision.
 
 - Base: `main` at `820e1bf9445ba3293ce59308d6a2c35a02e5870c` (verified locally and on `origin`).
