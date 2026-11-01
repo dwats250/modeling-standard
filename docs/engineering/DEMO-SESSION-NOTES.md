@@ -1,8 +1,21 @@
 # Demonstration session — continuation note
 
+## Integration and reviewer-readiness checkpoint — 2026-10-31
+
+This supersedes the October 29 integration checkpoint below for current state. The earlier candidate and evidence remain preserved and unchanged.
+
+- **Remote main:** `aa9d686aa33c8d3e905a1dd9c07f366831c2242b`. PR #45 was updated for the newly published `minimatch` advisory to `35993411a58bd247640146d52b608c47b16fe63d`; PRs #41 `bee9f4e`, #42 `a70be0e`, #43 `08eb2c7`, #44 `0578151`, and #46 `aaff4d6` remain unchanged. All six feature PRs are open and mergeable; hosted CI and GitGuardian are green. No independent GitHub reviews are recorded.
+- **New combined candidate:** `/home/dustin/Projects/modeling-standard-integration-final-20261031`, branch `test/combined-integration-20261031`, local commit `32797b2c4d0ae2cc5839b4d05b2665f56c5717c4`. It contains the six PR heads once each in order #45 → #41 → #42 → #43 → #44 → #46. The October 29 candidate at `d0b1114` was not modified.
+- **Integration seam:** expected overlaps in `docs/engineering/DEMO.md`, `docs/engineering/README.md`, and `src/demo/application.ts` were reconciled additively. The local synthetic demo retains both the participant final-record view and toolkit routes; neither is registered in production or S13 staging. Migration journal/schema drift checks pass with migrations 0030–0037 present.
+- **Fresh verification on the new candidate:** `npm ci` reported zero vulnerabilities; `npm run check`, `npm run build`, `npm test` (42 files / 647 tests), `npm run test:demo` (5 files / 33 browser tests, Chrome at `/usr/bin/google-chrome`), and `npm audit --audit-level=low` all passed. The combined test and demo runs used the task-owned PostgreSQL container `ms-integration-20261031-postgres` on `127.0.0.1:5446`; shared development and staging databases were not used. `dist/demo` is absent after the production build.
+- **Dependency correction:** PR #45 now pins the dev-toolchain `minimatch` override to `11.0.1`. Its refreshed hosted CI and GitGuardian checks passed. The new combined install and audit also report zero findings.
+- **Reviewer access:** Asher is online on Tailscale, but its only Serve route is the unrelated Options Observatory at `/`. There is no listener on ports 3130 or 8443 and no `ms-demo` or `ms-staging` tmux session. The `ms-staging-postgres` container remains present on loopback port 5435 and was left untouched. No reviewer endpoint or access grant is ready.
+- **Claude builder:** the canonical `ms-builder` session remains in the B4 worktree and was not cleared or restarted. Its local view shows an older unsent stop/report prompt and Remote Control disconnected; no new Claude implementation task has been started.
+- **Recommended integration order:** #45 → #41 → #42 → #43 → #44 → #46. PR #47 is documentation-only, based on #42, and contains the consolidated B1–B4/S14 acceptance walkthrough; it should follow the application stack and must not be treated as acceptance or deployment authorization.
+
 ## Recovery and reviewer-readiness checkpoint — 2026-10-29
 
-This is the latest verified integration checkpoint; older branch/session pointers below are historical context only.
+This was the latest verified integration checkpoint at the time; it is superseded by the 2026-10-31 checkpoint above. Older branch/session pointers below are historical context only.
 
 - **Remote main:** `aa9d686aa33c8d3e905a1dd9c07f366831c2242b`. All six requested PR heads were fetched and unchanged from the rehearsal: #45 `87064ba`, #41 `bee9f4e`, #42 `a70be0e`, #43 `08eb2c7`, #44 `0578151`, #46 `aaff4d6`.
 - **Preserved combined candidate:** `/home/dustin/Projects/modeling-standard-integration-20261029`, branch `test/combined-integration-20261029`, clean at `d0b111432f654ab49ab37ceb725e569f3914c3b9`, exactly 18 commits ahead of main and containing each of those six heads once in the required order. It is a local test candidate, not a merge or deployment.
