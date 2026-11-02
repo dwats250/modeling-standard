@@ -17,6 +17,7 @@ import { OPERATOR_COOKIE } from './demo.ts';
 import { participantOperations } from './participant.ts';
 import { createShootOperations } from './shoots.ts';
 import { createSimulatorOperations } from './simulator.ts';
+import { createToolkitHarnessOperations } from './toolkit.ts';
 
 /**
  * Read-only operations for the local synthetic demo's record inspector.
@@ -329,7 +330,8 @@ function operatorOnly(op: AnyOperation): AnyOperation {
 /**
  * Every demo operation: the inspector's reads, the simulator, the composer
  * and scenario cards, the operator's participant simulation, Invite, the
- * explicit operator-mode action and the environment the screens read. The
+ * explicit operator-mode action, the environment the screens read and, locally
+ * only, the toolkit's synthetic owner harness (B1). The
  * operations that write demo labels are given the annotation store they
  * write to. Every protected one refuses a
  * signed-in account.
@@ -338,6 +340,7 @@ export function createDemoOperations(
   annotations: AnnotationStore,
   operator: { secret?: string; key?: string; environment?: DemoEnvironment } = {},
 ): readonly AnyOperation[] {
+  const environment = operator.environment ?? LOCAL_ENVIRONMENT;
   return [
     listDemoProjectsOperation,
     readDemoProjectRecordOperation,
@@ -346,6 +349,8 @@ export function createDemoOperations(
     ...participantOperations,
     inviteDemoPartiesOperation,
     enterOperatorModeOperation(operator.secret, operator.key),
-    environmentOperation(operator.environment ?? LOCAL_ENVIRONMENT),
+    environmentOperation(environment),
+    // B1's two synthetic professionals: the local demo only, never staging.
+    ...(environment.environment === 'local' ? createToolkitHarnessOperations() : []),
   ].map(operatorOnly);
 }

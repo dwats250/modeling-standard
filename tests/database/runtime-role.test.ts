@@ -27,7 +27,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09, S11 and S12 set', async () => {
+  it('runtime effective table privileges are exactly the Stage 0 and S01, S02, S06 to S09, S11, S12 and B1 set', async () => {
     // has_table_privilege accounts for PUBLIC and inherited roles, so a grant
     // to PUBLIC or to any role ms_runtime belongs to also shows up here.
     const privileges = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
@@ -51,9 +51,12 @@ describe('runtime and migration credentials', () => {
       contract_party: ['SELECT', 'INSERT'],
       contract_item: ['SELECT', 'INSERT'],
       contract_signature: ['SELECT', 'INSERT'],
+      // B1: the owner's profile and comp-card draft; no delete.
+      professional_profile: ['SELECT', 'INSERT'],
+      comp_card_draft: ['SELECT', 'INSERT'],
     };
-    // Column-level UPDATE only (S08, S09, S12); no table may be updated wholesale.
-    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence', 'account_session']);
+    // Column-level UPDATE only (S08, S09, S12, B1); no table may be updated wholesale.
+    const columnUpdatable = new Set(['brief_item', 'live_brief', 'brief_party_presence', 'account_session', 'professional_profile', 'comp_card_draft']);
     await withClient(inject('runtimeUrl'), async (c) => {
       const tables = await c.query<{ table_name: string }>(
         `select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
@@ -83,6 +86,21 @@ describe('runtime and migration credentials', () => {
           expect({ table, privilege, held: col.rows[0]?.held }).toEqual({ table, privilege, held: expectedHeld });
         }
       }
+    });
+  });
+
+  it('runtime role may update exactly the B1 profile text and the draft tagline and slots, never owner, id or time', async () => {
+    await withClient(inject('runtimeUrl'), async (c) => {
+      const updatable = async (table: string) =>
+        (
+          await c.query<{ column_name: string }>(
+            `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1
+               and has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE') order by column_name`,
+            [table],
+          )
+        ).rows.map((r) => r.column_name);
+      expect(await updatable('professional_profile')).toEqual(['biography', 'display_name', 'profession']);
+      expect(await updatable('comp_card_draft')).toEqual(['slot_beauty', 'slot_full_body', 'slot_hero', 'slot_lifestyle', 'slot_profile_view', 'tagline']);
     });
   });
 

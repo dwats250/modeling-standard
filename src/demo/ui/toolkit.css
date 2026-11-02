@@ -1,0 +1,249 @@
+/*
+ * The professional toolkit (B1): profile, comp-card arrangement and preview.
+ * Uses journey.css's tokens and components; adds only what the toolkit needs.
+ * The comp card is drawn as a printed object: light paper in either theme.
+ */
+
+body[data-screen='toolkit'] .screen { max-width: 1120px; }
+
+/* ---- Entry from other screens ---- */
+
+.tk-teaser .link { display: inline-flex; align-items: center; min-height: 44px; }
+.tk-chooser .btn + .btn { margin-top: 10px; }
+.tk-chooser .small { margin-top: 14px; }
+
+/* ---- Band: private status, who, the way out ---- */
+
+.tk-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.tk-private { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.tk-lock {
+  position: relative;
+  width: 10px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--ink-3);
+}
+.tk-lock::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 6px;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--ink-3);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+}
+.tk-who { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
+.tk-owner { font-size: 14.5px; }
+
+/* ---- Tabs ---- */
+
+.tk-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  max-width: 480px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tk-tab {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.tk-tab[aria-current='page'] { background: var(--accent); color: var(--accent-ink); }
+
+/* ---- Forms ---- */
+
+.tk-form .field:first-child { padding-top: 0; }
+.tk-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.tk-label-row label { font-weight: 600; margin-bottom: 4px; }
+.tk-count { font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tk-count.over { color: var(--error); font-weight: 600; }
+.tk-form textarea.input { min-height: 150px; line-height: 1.5; }
+
+.tk-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 18px; }
+.tk-actions .btn { min-width: 180px; }
+.tk-status { font-size: 14.5px; color: var(--ink-2); min-height: 22px; }
+.tk-status[data-state='saved'] { color: var(--accent); font-weight: 600; }
+.tk-status[data-state='saved']::before { content: '✓ '; }
+.tk-status[data-state='dirty']::before { content: '● '; color: #c9962f; }
+.tk-status[data-state='error'] { color: var(--error); font-weight: 600; }
+.tk-next .link { display: inline-flex; align-items: center; min-height: 44px; }
+
+.tk-notice { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--ink-2); font-size: 14.5px; }
+.tk-empty > * + * { margin-top: 10px; }
+.tk-empty .btn { margin-top: 16px; }
+
+/* ---- Arrange: slots of thumbnails ---- */
+
+.tk-workspace { display: grid; gap: 20px; align-items: start; }
+.tk-workspace > * { min-width: 0; }
+.tk-card > * + * { margin-top: 16px; }
+.tk-aside > * + * { margin-top: 10px; }
+.tk-aside .link { display: inline-flex; align-items: center; min-height: 44px; }
+
+.tk-slot { margin: 0; padding: 14px 0 4px; border: 0; border-top: 1px solid var(--line); min-width: 0; }
+.tk-slots header + .tk-slot { border-top: 0; }
+.tk-slot legend { padding: 0; font-size: 15.5px; }
+.tk-current { display: block; margin: 2px 0 8px; font-size: 14px; color: var(--ink-2); }
+.tk-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 68px;
+  gap: 8px;
+  padding: 4px 4px 10px;
+  margin: 0 -4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.tk-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--line);
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+.tk-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tk-thumb input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tk-thumb:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.tk-thumb:has(input:checked)::after {
+  content: '✓';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.tk-thumb:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tk-footer { margin: 16px 0 0; border-radius: var(--radius-sm); }
+.tk-footer .tk-actions { margin-top: 0; }
+
+/* Phone: the preview leads, so a change is seen where it is made. */
+.tk-aside-actions { display: grid; gap: 8px; padding-top: 6px; }
+@media (max-width: 959px) {
+  .tk-aside { order: -1; }
+  .tk-aside-actions { display: none; }
+  .tk-footer { margin-left: -20px; margin-right: -20px; border-radius: 0; }
+  .tk-actions .btn { flex: 1 1 100%; }
+}
+
+@media (min-width: 960px) {
+  .tk-workspace { grid-template-columns: minmax(0, 1fr) 420px; gap: 32px; }
+  .tk-aside { position: sticky; top: 76px; }
+  .tk-footer { display: none; }
+  .tk-strip { grid-auto-flow: row; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-auto-columns: auto; gap: 6px; overflow: visible; margin: 0; padding: 4px 0 10px; }
+}
+
+/* ---- The comp card ---- */
+
+.cc-card {
+  --cc-paper: #fffdf9;
+  --cc-ink: #1d1b18;
+  --cc-ink-2: #6a645a;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  color: var(--cc-ink);
+}
+.cc-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 7%;
+  background: var(--cc-paper);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(30 20 5 / 0.08), 0 10px 30px rgb(30 20 5 / 0.12);
+}
+.cc-side figure { margin: 0; position: relative; overflow: hidden; background: #eee7dc; }
+.cc-side img { display: block; width: 100%; height: 100%; object-fit: cover; aspect-ratio: 4 / 5; }
+.cc-nameplate { padding-top: 8%; text-align: center; }
+.cc-name {
+  font: 600 clamp(14px, 4.2vw, 22px) / 1.1 var(--serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.cc-profession { margin-top: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cc-ink-2); overflow-wrap: anywhere; }
+.cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.cc-grid figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 6px 4px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.38));
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.cc-meta { padding-top: 7%; }
+.cc-meta > * + * { margin-top: 6px; }
+.cc-name-small { font: 600 11px/1.2 var(--serif); letter-spacing: 0.16em; text-transform: uppercase; overflow-wrap: anywhere; }
+.cc-tagline { font: italic 400 12.5px/1.35 var(--serif); color: var(--cc-ink); overflow-wrap: anywhere; }
+.cc-bio {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--cc-ink-2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+.cc-foot { margin-top: auto; padding-top: 8%; font-size: 8.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #a39b8e; }
+
+/* The full preview: larger type, the whole biography, side by side when there is room. */
+.cc-card.full { grid-template-columns: 1fr; gap: 24px; max-width: 980px; margin-left: auto; margin-right: auto; }
+.cc-card.full .cc-name { font-size: clamp(22px, 6vw, 34px); }
+.cc-card.full .cc-profession { font-size: 12px; }
+.cc-card.full .cc-grid { gap: 8px; }
+.cc-card.full .cc-grid figcaption { font-size: 11px; padding: 14px 10px 6px; }
+.cc-card.full .cc-name-small { font-size: 14px; }
+.cc-card.full .cc-tagline { font-size: 17px; }
+.cc-card.full .cc-bio { font-size: 14px; -webkit-line-clamp: unset; display: block; }
+.cc-card.full .cc-foot { font-size: 10px; }
+@media (min-width: 760px) {
+  .cc-card.full { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 960px) {
+  .cc-card.compact .cc-name { font-size: 18px; }
+}
+.tk-back { max-width: 480px; margin-left: auto; margin-right: auto; }
