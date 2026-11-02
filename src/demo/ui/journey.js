@@ -16,7 +16,7 @@
 // An invitation credential is read from the address fragment and kept in
 // memory only; it is never stored in this browser or put in another URL.
 //
-// The professional toolkit (B1, B2: #/me, #/me/card[/preview], #/me/portfolio[/preview]) lives in
+// The professional toolkit (B1–B3: #/me, #/me/card[/preview], #/me/portfolio[/preview]) lives in
 // toolkit.js; this file routes to it and links to it.
 
 import { createToolkit } from './toolkit.js';

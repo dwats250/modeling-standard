@@ -18,7 +18,7 @@ import { PORTFOLIO_MAX_ITEMS } from '../../src/toolkit/tables.ts';
 import { requireEnv } from '../support/urls.ts';
 
 /**
- * B1 and B2 in a real browser: two synthetic professionals in two separate
+ * B1, B2 and B3 in a real browser: two synthetic professionals in two separate
  * browser contexts, A at desktop width (1280) and B at phone width (390), each
  * building their own private profile, comp-card draft and portfolio draft
  * with pointer and keyboard; unsafe text shown as text; save, reload, and a full application
@@ -114,6 +114,18 @@ const orderKeys = (page: Page) => keysIn(page, '.pf-order .pf-item');
 const previewKeys = (page: Page) => keysIn(page, '.tk-aside .pf-grid li, .pf-sheet.full .pf-grid li');
 const pick = (page: Page, key: string) => page.locator(`.pf-pick[data-key="${key}"]`);
 const move = (page: Page, key: string, action: 'up' | 'down' | 'remove') => page.locator(`.pf-item[data-key="${key}"] [data-action="${action}"]`);
+const caption = (page: Page, key: string) => page.locator(`.pf-item[data-key="${key}"] .pf-caption`);
+/** The captions shown under the preview's images, by key (B3); only images with a caption appear. */
+const previewCaptions = (page: Page, scope: '.tk-aside' | '.pf-sheet.full') =>
+  page.locator(`${scope} .pf-grid li`).evaluateAll((nodes) =>
+    Object.fromEntries(
+      nodes.flatMap((node) => {
+        const n = node as unknown as { dataset: { key: string }; querySelector(selector: string): { textContent: string | null } | null };
+        const cap = n.querySelector('.pf-cap');
+        return cap ? [[n.dataset.key, cap.textContent]] : [];
+      }),
+    ),
+  );
 const focusedLabel = (page: Page) => page.evaluate<string | null>("document.activeElement?.getAttribute('aria-label') ?? null");
 const k = (i: number) => FIXTURE_KEYS[i]!;
 const heroSrc = (page: Page) => page.locator('.tk-aside .cc-hero img, .cc-card.full .cc-hero img').first().getAttribute('src');
@@ -310,14 +322,37 @@ describe('the professional toolkit', () => {
     expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
     expect(await status(a.page).innerText()).toBe('Unsaved changes');
 
+    // ---- B3: captions stay with their image; unsafe text is text; blank is nothing ----
+    expect(await previewCaptions(a.page, '.tk-aside')).toEqual({});
+    await caption(a.page, k(3)).fill('Studio, late light');
+    await caption(a.page, k(0)).fill(UNSAFE);
+    expect(await previewCaptions(a.page, '.tk-aside')).toEqual({ [k(0)]: UNSAFE, [k(3)]: 'Studio, late light' });
+    expect(await a.page.evaluate('window.__pwned')).toBeUndefined();
+    expect(await a.page.locator('.tk-aside .pf-cap b').count()).toBe(0);
+    await move(a.page, k(3), 'up').click();
+    expect(await orderKeys(a.page)).toEqual([k(3), k(0)]);
+    expect(await caption(a.page, k(3)).inputValue()).toBe('Studio, late light');
+    expect(await caption(a.page, k(0)).inputValue()).toBe(UNSAFE);
+    expect(await previewCaptions(a.page, '.tk-aside')).toEqual({ [k(0)]: UNSAFE, [k(3)]: 'Studio, late light' });
+    await move(a.page, k(0), 'remove').click();
+    await pick(a.page, k(0)).click(); // back again, with no caption
+    expect(await orderKeys(a.page)).toEqual([k(3), k(0)]);
+    expect(await caption(a.page, k(0)).inputValue()).toBe('');
+    expect(await previewCaptions(a.page, '.tk-aside')).toEqual({ [k(3)]: 'Studio, late light' });
+    expect(await caption(a.page, k(3)).getAttribute('maxlength')).toBe('120');
+    await move(a.page, k(3), 'down').click(); // back to the B2 order
+    expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
+
     // ---- Unsaved edits go to the preview and back ----
     await a.page.locator('.tk-subtab[href="#/me/portfolio/preview"]').click();
     await idle(a.page);
     expect(await a.page.locator('[data-unsaved]').innerText()).toContain('Showing unsaved changes');
     expect(await previewKeys(a.page)).toEqual([k(0), k(3)]);
+    expect(await previewCaptions(a.page, '.pf-sheet.full')).toEqual({ [k(3)]: 'Studio, late light' });
     await a.page.locator('.tk-subtab[href="#/me/portfolio"]').click();
     await idle(a.page);
     expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
+    expect(await caption(a.page, k(3)).inputValue()).toBe('Studio, late light');
 
     // ---- Save, reload, the same order ----
     await a.page.locator('button.tk-save:visible').click();
@@ -328,6 +363,20 @@ describe('the professional toolkit', () => {
     expect(await orderKeys(a.page)).toEqual([k(0), k(3)]);
     expect(await previewKeys(a.page)).toEqual([k(0), k(3)]);
     expect(await status(a.page).getAttribute('data-state')).toBe('saved');
+    expect(await caption(a.page, k(3)).inputValue()).toBe('Studio, late light');
+    expect(await previewCaptions(a.page, '.tk-aside')).toEqual({ [k(3)]: 'Studio, late light' });
+    // A caption edit alone is an unsaved change; clearing it back is not.
+    await caption(a.page, k(3)).fill('Studio, late light, edited');
+    expect(await status(a.page).innerText()).toBe('Unsaved changes');
+    await caption(a.page, k(3)).fill('Studio, late light');
+    expect(await status(a.page).getAttribute('data-state')).toBe('saved');
+    await caption(a.page, k(3)).fill('');
+    expect(await status(a.page).innerText()).toBe('Unsaved changes');
+    await a.page.locator('button.tk-save:visible').click();
+    await idle(a.page);
+    await expect.poll(() => status(a.page).getAttribute('data-state')).toBe('saved');
+    expect(await previewCaptions(a.page, '.tk-aside')).toEqual({});
+    await caption(a.page, k(0)).fill('Opening image');
 
     // ---- Up to the maximum: then nothing more can be added ----
     const full = [k(0), k(3), ...FIXTURE_KEYS.filter((key) => key !== k(0) && key !== k(3)).slice(0, PORTFOLIO_MAX_ITEMS - 2)];
@@ -346,6 +395,7 @@ describe('the professional toolkit', () => {
     expect(await a.page.locator('.pf-sheet.full .pf-name').innerText()).toBe('AMARA OKAFOR');
     expect(await a.page.locator('.pf-sheet.full .pf-foot').innerText()).toMatch(/private draft/i);
     expect(await a.page.locator('[data-unsaved]').count()).toBe(0);
+    expect(await previewCaptions(a.page, '.pf-sheet.full')).toEqual({ [k(0)]: 'Opening image' });
     await shot(a.page, 'desktop-portfolio-preview');
 
     // ---- B on the phone: none of A's, its own order ----
@@ -356,7 +406,9 @@ describe('the professional toolkit', () => {
     await pick(b.page, k(1)).click();
     await move(b.page, k(1), 'up').click();
     expect(await orderKeys(b.page)).toEqual([k(1), k(9)]);
-    for (const control of [...(await b.page.locator('.pf-move').all()), ...(await b.page.locator('.pf-pick').all()).slice(0, 3), ...(await b.page.locator('.tk-subtab').all()), b.page.locator('button.tk-save:visible')]) {
+    await caption(b.page, k(9)).fill('B’s own words');
+    expect(await b.page.content()).not.toContain('Opening image');
+    for (const control of [...(await b.page.locator('.pf-move').all()), ...(await b.page.locator('.pf-caption').all()), ...(await b.page.locator('.pf-pick').all()).slice(0, 3), ...(await b.page.locator('.tk-subtab').all()), b.page.locator('button.tk-save:visible')]) {
       expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     }
     await b.page.locator('button.tk-save:visible').click();
@@ -366,16 +418,26 @@ describe('the professional toolkit', () => {
     await go(b.page, '#/me/portfolio/preview');
     expect(await previewKeys(b.page)).toEqual([k(1), k(9)]);
     expect(await b.page.locator('.pf-sheet.full .pf-name').innerText()).toBe('JUN PARK');
+    expect(await previewCaptions(b.page, '.pf-sheet.full')).toEqual({ [k(9)]: 'B’s own words' });
     await shot(b.page, 'phone-portfolio-preview');
 
     // ---- Crafted requests from B's browser reach only B ----
     const origin = { origin: running.base };
-    for (const data of [{ items: [k(0)], accountId: 'a' }, { items: FIXTURE_KEYS.slice(0, PORTFOLIO_MAX_ITEMS + 1) }, { items: [k(0), k(0)] }, { items: ['https://example.com/x.jpg'] }]) {
+    for (const data of [
+      { items: [k(0)], accountId: 'a' },
+      { items: FIXTURE_KEYS.slice(0, PORTFOLIO_MAX_ITEMS + 1) },
+      { items: [k(0), k(0)] },
+      { items: ['https://example.com/x.jpg'] },
+      { items: [k(1), k(9)], captions: { [k(0)]: 'Not mine to caption' } },
+      { items: [k(1), k(9)], captions: { [k(9)]: 'x'.repeat(121) } },
+    ]) {
       expect((await b.page.request.post(`${running.base}/me/portfolio`, { headers: origin, data })).status()).toBe(400);
     }
-    type Portfolio = { draft: { items: string[] } };
-    expect(((await (await b.page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft.items).toEqual([k(1), k(9)]);
-    expect(((await (await a.page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft.items).toEqual(full);
+    type Portfolio = { draft: { items: string[]; captions: Record<string, string> } };
+    const bDraft = ((await (await b.page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft;
+    expect(bDraft).toMatchObject({ items: [k(1), k(9)], captions: { [k(9)]: 'B’s own words' } });
+    const aDraft = ((await (await a.page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft;
+    expect(aDraft).toMatchObject({ items: full, captions: { [k(0)]: 'Opening image' } });
 
     // ---- B empties the portfolio and saves: an empty draft, said plainly ----
     await go(b.page, '#/me/portfolio');
@@ -408,6 +470,9 @@ describe('the professional toolkit', () => {
     expect((await orderKeys(page)).length).toBe(PORTFOLIO_MAX_ITEMS);
     expect((await orderKeys(page)).slice(0, 2)).toEqual([k(0), k(3)]);
     expect(await status(page).getAttribute('data-state')).toBe('saved');
+    expect(await caption(page, k(0)).inputValue()).toBe('Opening image');
+    expect(await caption(page, k(3)).inputValue()).toBe('');
+    expect(await previewCaptions(page, '.tk-aside')).toEqual({ [k(0)]: 'Opening image' });
     await ctx.close();
   });
 

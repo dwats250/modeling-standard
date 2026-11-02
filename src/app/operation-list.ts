@@ -15,7 +15,7 @@ import {
  * providers as an argument; the routes, access and shapes do not depend on
  * which providers are registered.
  *
- * B1's toolkit routes (`src/toolkit/operations.ts`) are not here: they are
+ * Track B's toolkit routes (`src/toolkit/operations.ts`) are not here: they are
  * a private synthetic feature, registered only by the local demo
  * (`createDemoApplication` without staging settings).
  */

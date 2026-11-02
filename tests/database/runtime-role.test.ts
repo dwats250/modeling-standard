@@ -91,7 +91,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime role may update exactly the B1 profile text, the draft tagline and slots, and the B2 portfolio items, never owner, id or time', async () => {
+  it('runtime role may update exactly the B1 profile text, the draft tagline and slots, and the B2 portfolio items and B3 captions, never owner, id or time', async () => {
     await withClient(inject('runtimeUrl'), async (c) => {
       const updatable = async (table: string) =>
         (
@@ -103,7 +103,7 @@ describe('runtime and migration credentials', () => {
         ).rows.map((r) => r.column_name);
       expect(await updatable('professional_profile')).toEqual(['biography', 'display_name', 'profession']);
       expect(await updatable('comp_card_draft')).toEqual(['slot_beauty', 'slot_full_body', 'slot_hero', 'slot_lifestyle', 'slot_profile_view', 'tagline']);
-      expect(await updatable('portfolio_draft')).toEqual(['items']);
+      expect(await updatable('portfolio_draft')).toEqual(['captions', 'items']);
     });
   });
 
