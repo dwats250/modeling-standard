@@ -1,0 +1,1876 @@
+{
+  "id": "cacc6cb5-1dc3-4322-9e06-aa5cd9c3f3ed",
+  "prevId": "a2da9f76-627a-4493-96a9-e407f266c804",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.synthetic_evidence": {
+      "name": "synthetic_evidence",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "payload": {
+          "name": "payload",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "synthetic_evidence_sha256_matches_payload": {
+          "name": "synthetic_evidence_sha256_matches_payload",
+          "value": "\"synthetic_evidence\".\"sha256\" = sha256(\"synthetic_evidence\".\"payload\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.synthetic_resource": {
+      "name": "synthetic_resource",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_principal_id": {
+          "name": "owner_principal_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.pairwise_agreement": {
+      "name": "pairwise_agreement",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_one_id": {
+          "name": "party_one_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_two_id": {
+          "name": "party_two_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pairwise_agreement_project_id_project_id_fk": {
+          "name": "pairwise_agreement_project_id_project_id_fk",
+          "tableFrom": "pairwise_agreement",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pairwise_agreement_party_one_in_project_fk": {
+          "name": "pairwise_agreement_party_one_in_project_fk",
+          "tableFrom": "pairwise_agreement",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_one_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pairwise_agreement_party_two_in_project_fk": {
+          "name": "pairwise_agreement_party_two_in_project_fk",
+          "tableFrom": "pairwise_agreement",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_two_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "pairwise_agreement_one_per_pair": {
+          "name": "pairwise_agreement_one_per_pair",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "party_one_id",
+            "party_two_id"
+          ]
+        },
+        "pairwise_agreement_project_id_id_unique": {
+          "name": "pairwise_agreement_project_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "pairwise_agreement_distinct_parties": {
+          "name": "pairwise_agreement_distinct_parties",
+          "value": "\"pairwise_agreement\".\"party_one_id\" <> \"pairwise_agreement\".\"party_two_id\""
+        },
+        "pairwise_agreement_canonical_order": {
+          "name": "pairwise_agreement_canonical_order",
+          "value": "\"pairwise_agreement\".\"party_one_id\" < \"pairwise_agreement\".\"party_two_id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.project": {
+      "name": "project",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_by_principal_id": {
+          "name": "created_by_principal_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_party": {
+      "name": "project_party",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_party_project_id_project_id_fk": {
+          "name": "project_party_project_id_project_id_fk",
+          "tableFrom": "project_party",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "project_party_project_id_id_unique": {
+          "name": "project_party_project_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.account": {
+      "name": "account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "login_provider": {
+          "name": "login_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_subject": {
+          "name": "provider_subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_login_unique": {
+          "name": "account_login_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "login_provider",
+            "provider_subject"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "account_login_provider_known": {
+          "name": "account_login_provider_known",
+          "value": "\"account\".\"login_provider\" in ('google', 'apple')"
+        },
+        "account_provider_subject_nonblank": {
+          "name": "account_provider_subject_nonblank",
+          "value": "\"account\".\"provider_subject\" ~ '[^[:space:]]'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.party_account_binding": {
+      "name": "party_account_binding",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bound_at": {
+          "name": "bound_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "party_account_binding_project_id_project_id_fk": {
+          "name": "party_account_binding_project_id_project_id_fk",
+          "tableFrom": "party_account_binding",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "party_account_binding_account_id_account_id_fk": {
+          "name": "party_account_binding_account_id_account_id_fk",
+          "tableFrom": "party_account_binding",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "party_account_binding_party_in_project_fk": {
+          "name": "party_account_binding_party_in_project_fk",
+          "tableFrom": "party_account_binding",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "party_account_binding_one_per_party": {
+          "name": "party_account_binding_one_per_party",
+          "nullsNotDistinct": false,
+          "columns": [
+            "party_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.direct_invitation": {
+      "name": "direct_invitation",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "credential_digest": {
+          "name": "credential_digest",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "direct_invitation_project_id_project_id_fk": {
+          "name": "direct_invitation_project_id_project_id_fk",
+          "tableFrom": "direct_invitation",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "direct_invitation_party_in_project_fk": {
+          "name": "direct_invitation_party_in_project_fk",
+          "tableFrom": "direct_invitation",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "direct_invitation_digest_unique": {
+          "name": "direct_invitation_digest_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "credential_digest"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "direct_invitation_digest_sha256_length": {
+          "name": "direct_invitation_digest_sha256_length",
+          "value": "octet_length(\"direct_invitation\".\"credential_digest\") = 32"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.brief_item": {
+      "name": "brief_item",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "brief_id": {
+          "name": "brief_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "layer": {
+          "name": "layer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pairwise_agreement_id": {
+          "name": "pairwise_agreement_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_party_id": {
+          "name": "subject_party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shape": {
+          "name": "shape",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "item_key": {
+          "name": "item_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pending": {
+          "name": "pending",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "brief_item_one_fee_per_pair": {
+          "name": "brief_item_one_fee_per_pair",
+          "columns": [
+            {
+              "expression": "pairwise_agreement_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"brief_item\".\"item_key\" = 'fee'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "brief_item_in_brief_fk": {
+          "name": "brief_item_in_brief_fk",
+          "tableFrom": "brief_item",
+          "tableTo": "live_brief",
+          "columnsFrom": [
+            "brief_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "brief_item_pair_in_project_fk": {
+          "name": "brief_item_pair_in_project_fk",
+          "tableFrom": "brief_item",
+          "tableTo": "pairwise_agreement",
+          "columnsFrom": [
+            "project_id",
+            "pairwise_agreement_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "brief_item_subject_in_project_fk": {
+          "name": "brief_item_subject_in_project_fk",
+          "tableFrom": "brief_item",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "subject_party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "brief_item_id_project_unique": {
+          "name": "brief_item_id_project_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "project_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "brief_item_layer_known": {
+          "name": "brief_item_layer_known",
+          "value": "\"brief_item\".\"layer\" in ('universal', 'shared', 'money')"
+        },
+        "brief_item_shape_known": {
+          "name": "brief_item_shape_known",
+          "value": "\"brief_item\".\"shape\" in ('declaration', 'request', 'open_parameter')"
+        },
+        "brief_item_item_key_known": {
+          "name": "brief_item_item_key_known",
+          "value": "\"brief_item\".\"item_key\" in ('fee', 'no_means_no', 'coverage_level', 'physical_contact', 'stop_rule')"
+        },
+        "brief_item_pending_known": {
+          "name": "brief_item_pending_known",
+          "value": "\"brief_item\".\"pending\" in ('decide_together', 'subject')"
+        },
+        "brief_item_content_nonblank": {
+          "name": "brief_item_content_nonblank",
+          "value": "\"brief_item\".\"content\" ~ '[^[:space:]]'"
+        },
+        "brief_item_value_nonblank": {
+          "name": "brief_item_value_nonblank",
+          "value": "\"brief_item\".\"value\" ~ '[^[:space:]]'"
+        },
+        "brief_item_money_is_pair_scoped": {
+          "name": "brief_item_money_is_pair_scoped",
+          "value": "\"brief_item\".\"layer\" <> 'money' OR \"brief_item\".\"pairwise_agreement_id\" IS NOT NULL"
+        },
+        "brief_item_money_is_fee": {
+          "name": "brief_item_money_is_fee",
+          "value": "\"brief_item\".\"layer\" <> 'money' OR \"brief_item\".\"item_key\" IS NOT DISTINCT FROM 'fee'"
+        },
+        "brief_item_fee_is_money": {
+          "name": "brief_item_fee_is_money",
+          "value": "\"brief_item\".\"item_key\" IS DISTINCT FROM 'fee' OR \"brief_item\".\"layer\" = 'money'"
+        },
+        "brief_item_universal_is_project_wide": {
+          "name": "brief_item_universal_is_project_wide",
+          "value": "\"brief_item\".\"layer\" <> 'universal' OR \"brief_item\".\"pairwise_agreement_id\" IS NULL"
+        },
+        "brief_item_no_means_no_is_universal": {
+          "name": "brief_item_no_means_no_is_universal",
+          "value": "\"brief_item\".\"item_key\" IS DISTINCT FROM 'no_means_no' OR \"brief_item\".\"layer\" = 'universal'"
+        },
+        "brief_item_shape_iff_subject": {
+          "name": "brief_item_shape_iff_subject",
+          "value": "(\"brief_item\".\"subject_party_id\" IS NULL) = (\"brief_item\".\"shape\" IS NULL)"
+        },
+        "brief_item_drafter_item_has_wording": {
+          "name": "brief_item_drafter_item_has_wording",
+          "value": "\"brief_item\".\"item_key\" IS NOT NULL OR \"brief_item\".\"content\" IS NOT NULL"
+        },
+        "brief_item_decide_together_has_no_value": {
+          "name": "brief_item_decide_together_has_no_value",
+          "value": "\"brief_item\".\"pending\" IS DISTINCT FROM 'decide_together' OR \"brief_item\".\"value\" IS NULL"
+        },
+        "brief_item_subject_pending_is_open_parameter": {
+          "name": "brief_item_subject_pending_is_open_parameter",
+          "value": "\"brief_item\".\"pending\" IS DISTINCT FROM 'subject' OR \"brief_item\".\"shape\" IS NOT DISTINCT FROM 'open_parameter'"
+        },
+        "brief_item_open_parameter_state": {
+          "name": "brief_item_open_parameter_state",
+          "value": "\"brief_item\".\"shape\" IS DISTINCT FROM 'open_parameter' OR (\"brief_item\".\"pending\" IS NOT DISTINCT FROM 'subject' AND \"brief_item\".\"value\" IS NULL) OR (\"brief_item\".\"pending\" IS NULL AND \"brief_item\".\"value\" IS NOT NULL)"
+        },
+        "brief_item_position_positive": {
+          "name": "brief_item_position_positive",
+          "value": "\"brief_item\".\"position\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.brief_party_presence": {
+      "name": "brief_party_presence",
+      "schema": "",
+      "columns": {
+        "brief_id": {
+          "name": "brief_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "on_site": {
+          "name": "on_site",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "brief_party_presence_in_brief_fk": {
+          "name": "brief_party_presence_in_brief_fk",
+          "tableFrom": "brief_party_presence",
+          "tableTo": "live_brief",
+          "columnsFrom": [
+            "brief_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "brief_party_presence_party_in_project_fk": {
+          "name": "brief_party_presence_party_in_project_fk",
+          "tableFrom": "brief_party_presence",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "brief_party_presence_pk": {
+          "name": "brief_party_presence_pk",
+          "columns": [
+            "brief_id",
+            "party_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.brief_tick": {
+      "name": "brief_tick",
+      "schema": "",
+      "columns": {
+        "brief_item_id": {
+          "name": "brief_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "brief_tick_item_fk": {
+          "name": "brief_tick_item_fk",
+          "tableFrom": "brief_tick",
+          "tableTo": "brief_item",
+          "columnsFrom": [
+            "brief_item_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "brief_tick_party_in_project_fk": {
+          "name": "brief_tick_party_in_project_fk",
+          "tableFrom": "brief_tick",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "brief_tick_pk": {
+          "name": "brief_tick_pk",
+          "columns": [
+            "brief_item_id",
+            "party_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.live_brief": {
+      "name": "live_brief",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phase": {
+          "name": "phase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "live_brief_project_id_project_id_fk": {
+          "name": "live_brief_project_id_project_id_fk",
+          "tableFrom": "live_brief",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "live_brief_one_per_project": {
+          "name": "live_brief_one_per_project",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id"
+          ]
+        },
+        "live_brief_id_project_unique": {
+          "name": "live_brief_id_project_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "project_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "live_brief_phase_known": {
+          "name": "live_brief_phase_known",
+          "value": "\"live_brief\".\"phase\" in ('draft', 'live', 'signing', 'final')"
+        },
+        "live_brief_fingerprint_iff_signing": {
+          "name": "live_brief_fingerprint_iff_signing",
+          "value": "(\"live_brief\".\"phase\" = 'signing') = (\"live_brief\".\"fingerprint\" IS NOT NULL) AND (\"live_brief\".\"fingerprint\" IS NULL OR \"live_brief\".\"fingerprint\" ~ '^[0-9a-f]{64}$')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.account_session": {
+      "name": "account_session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_digest": {
+          "name": "token_digest",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_session_account_id_account_id_fk": {
+          "name": "account_session_account_id_account_id_fk",
+          "tableFrom": "account_session",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_session_token_digest_unique": {
+          "name": "account_session_token_digest_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_digest"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "account_session_token_digest_sha256_length": {
+          "name": "account_session_token_digest_sha256_length",
+          "value": "octet_length(\"account_session\".\"token_digest\") = 32"
+        },
+        "account_session_expires_after_creation": {
+          "name": "account_session_expires_after_creation",
+          "value": "\"account_session\".\"expires_at\" > \"account_session\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.sign_in_attempt": {
+      "name": "sign_in_attempt",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "state_digest": {
+          "name": "state_digest",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "binding_digest": {
+          "name": "binding_digest",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nonce_digest": {
+          "name": "nonce_digest",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_verifier": {
+          "name": "code_verifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "redirect_uri": {
+          "name": "redirect_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invitation_id": {
+          "name": "invitation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sign_in_attempt_invitation_id_direct_invitation_id_fk": {
+          "name": "sign_in_attempt_invitation_id_direct_invitation_id_fk",
+          "tableFrom": "sign_in_attempt",
+          "tableTo": "direct_invitation",
+          "columnsFrom": [
+            "invitation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sign_in_attempt_state_digest_unique": {
+          "name": "sign_in_attempt_state_digest_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "state_digest"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "sign_in_attempt_digests_sha256_length": {
+          "name": "sign_in_attempt_digests_sha256_length",
+          "value": "octet_length(\"sign_in_attempt\".\"state_digest\") = 32 and octet_length(\"sign_in_attempt\".\"binding_digest\") = 32 and octet_length(\"sign_in_attempt\".\"nonce_digest\") = 32"
+        },
+        "sign_in_attempt_code_verifier_shape": {
+          "name": "sign_in_attempt_code_verifier_shape",
+          "value": "\"sign_in_attempt\".\"code_verifier\" ~ '^[A-Za-z0-9_-]{43,128}$'"
+        },
+        "sign_in_attempt_provider_shape": {
+          "name": "sign_in_attempt_provider_shape",
+          "value": "\"sign_in_attempt\".\"provider\" ~ '^[a-z]{1,32}$'"
+        },
+        "sign_in_attempt_expires_after_creation": {
+          "name": "sign_in_attempt_expires_after_creation",
+          "value": "\"sign_in_attempt\".\"expires_at\" > \"sign_in_attempt\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contract": {
+      "name": "contract",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "brief_id": {
+          "name": "brief_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contract_project_id_project_id_fk": {
+          "name": "contract_project_id_project_id_fk",
+          "tableFrom": "contract",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_brief_in_project_fk": {
+          "name": "contract_brief_in_project_fk",
+          "tableFrom": "contract",
+          "tableTo": "live_brief",
+          "columnsFrom": [
+            "brief_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "contract_one_per_brief": {
+          "name": "contract_one_per_brief",
+          "nullsNotDistinct": false,
+          "columns": [
+            "brief_id"
+          ]
+        },
+        "contract_one_per_project": {
+          "name": "contract_one_per_project",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id"
+          ]
+        },
+        "contract_id_project_unique": {
+          "name": "contract_id_project_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "project_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contract_fingerprint_format": {
+          "name": "contract_fingerprint_format",
+          "value": "\"contract\".\"fingerprint\" ~ '^[0-9a-f]{64}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contract_item": {
+      "name": "contract_item",
+      "schema": "",
+      "columns": {
+        "contract_id": {
+          "name": "contract_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "layer": {
+          "name": "layer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pairwise_agreement_id": {
+          "name": "pairwise_agreement_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_party_id": {
+          "name": "subject_party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shape": {
+          "name": "shape",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "item_key": {
+          "name": "item_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approver_party_ids": {
+          "name": "approver_party_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contract_item_in_contract_fk": {
+          "name": "contract_item_in_contract_fk",
+          "tableFrom": "contract_item",
+          "tableTo": "contract",
+          "columnsFrom": [
+            "contract_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_item_pair_in_project_fk": {
+          "name": "contract_item_pair_in_project_fk",
+          "tableFrom": "contract_item",
+          "tableTo": "pairwise_agreement",
+          "columnsFrom": [
+            "project_id",
+            "pairwise_agreement_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_item_subject_in_project_fk": {
+          "name": "contract_item_subject_in_project_fk",
+          "tableFrom": "contract_item",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "subject_party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "contract_item_pk": {
+          "name": "contract_item_pk",
+          "columns": [
+            "contract_id",
+            "item_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "contract_item_one_per_position": {
+          "name": "contract_item_one_per_position",
+          "nullsNotDistinct": false,
+          "columns": [
+            "contract_id",
+            "position"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contract_item_position_positive": {
+          "name": "contract_item_position_positive",
+          "value": "\"contract_item\".\"position\" >= 1"
+        },
+        "contract_item_layer_known": {
+          "name": "contract_item_layer_known",
+          "value": "\"contract_item\".\"layer\" in ('universal', 'shared', 'money')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contract_party": {
+      "name": "contract_party",
+      "schema": "",
+      "columns": {
+        "contract_id": {
+          "name": "contract_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "on_site": {
+          "name": "on_site",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contract_party_account_id_account_id_fk": {
+          "name": "contract_party_account_id_account_id_fk",
+          "tableFrom": "contract_party",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_party_in_contract_fk": {
+          "name": "contract_party_in_contract_fk",
+          "tableFrom": "contract_party",
+          "tableTo": "contract",
+          "columnsFrom": [
+            "contract_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_party_party_in_project_fk": {
+          "name": "contract_party_party_in_project_fk",
+          "tableFrom": "contract_party",
+          "tableTo": "project_party",
+          "columnsFrom": [
+            "project_id",
+            "party_id"
+          ],
+          "columnsTo": [
+            "project_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "contract_party_pk": {
+          "name": "contract_party_pk",
+          "columns": [
+            "contract_id",
+            "party_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "contract_party_account_unique": {
+          "name": "contract_party_account_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "contract_id",
+            "party_id",
+            "account_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contract_signature": {
+      "name": "contract_signature",
+      "schema": "",
+      "columns": {
+        "contract_id": {
+          "name": "contract_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "party_id": {
+          "name": "party_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signed_at": {
+          "name": "signed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ip": {
+          "name": "ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prev_hash": {
+          "name": "prev_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "record_hash": {
+          "name": "record_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contract_signature_in_contract_fk": {
+          "name": "contract_signature_in_contract_fk",
+          "tableFrom": "contract_signature",
+          "tableTo": "contract",
+          "columnsFrom": [
+            "contract_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "id",
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_signature_by_contract_party_fk": {
+          "name": "contract_signature_by_contract_party_fk",
+          "tableFrom": "contract_signature",
+          "tableTo": "contract_party",
+          "columnsFrom": [
+            "contract_id",
+            "party_id",
+            "account_id"
+          ],
+          "columnsTo": [
+            "contract_id",
+            "party_id",
+            "account_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "contract_signature_pk": {
+          "name": "contract_signature_pk",
+          "columns": [
+            "contract_id",
+            "sequence"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "contract_signature_one_per_party": {
+          "name": "contract_signature_one_per_party",
+          "nullsNotDistinct": false,
+          "columns": [
+            "contract_id",
+            "party_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contract_signature_sequence_known": {
+          "name": "contract_signature_sequence_known",
+          "value": "\"contract_signature\".\"sequence\" in (1, 2)"
+        },
+        "contract_signature_hashes_format": {
+          "name": "contract_signature_hashes_format",
+          "value": "\"contract_signature\".\"fingerprint\" ~ '^[0-9a-f]{64}$' AND \"contract_signature\".\"prev_hash\" ~ '^[0-9a-f]{64}$' AND \"contract_signature\".\"record_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "contract_signature_ip_is_host": {
+          "name": "contract_signature_ip_is_host",
+          "value": "\"contract_signature\".\"ip\" IS NULL OR masklen(\"contract_signature\".\"ip\") = CASE WHEN family(\"contract_signature\".\"ip\") = 4 THEN 32 ELSE 128 END"
+        },
+        "contract_signature_user_agent_bounded": {
+          "name": "contract_signature_user_agent_bounded",
+          "value": "\"contract_signature\".\"user_agent\" IS NULL OR char_length(\"contract_signature\".\"user_agent\") BETWEEN 1 AND 512"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.comp_card_draft": {
+      "name": "comp_card_draft",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "profile_id": {
+          "name": "profile_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tagline": {
+          "name": "tagline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "slot_hero": {
+          "name": "slot_hero",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_full_body": {
+          "name": "slot_full_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_profile_view": {
+          "name": "slot_profile_view",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_lifestyle": {
+          "name": "slot_lifestyle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot_beauty": {
+          "name": "slot_beauty",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "comp_card_draft_profile_id_professional_profile_id_fk": {
+          "name": "comp_card_draft_profile_id_professional_profile_id_fk",
+          "tableFrom": "comp_card_draft",
+          "tableTo": "professional_profile",
+          "columnsFrom": [
+            "profile_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "comp_card_draft_one_per_profile": {
+          "name": "comp_card_draft_one_per_profile",
+          "nullsNotDistinct": false,
+          "columns": [
+            "profile_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "comp_card_draft_tagline_length": {
+          "name": "comp_card_draft_tagline_length",
+          "value": "char_length(\"comp_card_draft\".\"tagline\") <= 80"
+        },
+        "comp_card_draft_slot_key_shape": {
+          "name": "comp_card_draft_slot_key_shape",
+          "value": "\"comp_card_draft\".\"slot_hero\" ~ '^[a-z0-9-]{1,40}$' and \"comp_card_draft\".\"slot_full_body\" ~ '^[a-z0-9-]{1,40}$' and \"comp_card_draft\".\"slot_profile_view\" ~ '^[a-z0-9-]{1,40}$' and \"comp_card_draft\".\"slot_lifestyle\" ~ '^[a-z0-9-]{1,40}$' and \"comp_card_draft\".\"slot_beauty\" ~ '^[a-z0-9-]{1,40}$'"
+        },
+        "comp_card_draft_slots_distinct": {
+          "name": "comp_card_draft_slots_distinct",
+          "value": "\"comp_card_draft\".\"slot_hero\" <> \"comp_card_draft\".\"slot_full_body\" and \"comp_card_draft\".\"slot_hero\" <> \"comp_card_draft\".\"slot_profile_view\" and \"comp_card_draft\".\"slot_hero\" <> \"comp_card_draft\".\"slot_lifestyle\" and \"comp_card_draft\".\"slot_hero\" <> \"comp_card_draft\".\"slot_beauty\" and \"comp_card_draft\".\"slot_full_body\" <> \"comp_card_draft\".\"slot_profile_view\" and \"comp_card_draft\".\"slot_full_body\" <> \"comp_card_draft\".\"slot_lifestyle\" and \"comp_card_draft\".\"slot_full_body\" <> \"comp_card_draft\".\"slot_beauty\" and \"comp_card_draft\".\"slot_profile_view\" <> \"comp_card_draft\".\"slot_lifestyle\" and \"comp_card_draft\".\"slot_profile_view\" <> \"comp_card_draft\".\"slot_beauty\" and \"comp_card_draft\".\"slot_lifestyle\" <> \"comp_card_draft\".\"slot_beauty\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.professional_profile": {
+      "name": "professional_profile",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "profession": {
+          "name": "profession",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "biography": {
+          "name": "biography",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "professional_profile_account_id_account_id_fk": {
+          "name": "professional_profile_account_id_account_id_fk",
+          "tableFrom": "professional_profile",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "professional_profile_one_per_account": {
+          "name": "professional_profile_one_per_account",
+          "nullsNotDistinct": false,
+          "columns": [
+            "account_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "professional_profile_display_name_length": {
+          "name": "professional_profile_display_name_length",
+          "value": "char_length(\"professional_profile\".\"display_name\") between 1 and 80 and \"professional_profile\".\"display_name\" ~ '[^[:space:]]'"
+        },
+        "professional_profile_profession_length": {
+          "name": "professional_profile_profession_length",
+          "value": "char_length(\"professional_profile\".\"profession\") <= 60"
+        },
+        "professional_profile_biography_length": {
+          "name": "professional_profile_biography_length",
+          "value": "char_length(\"professional_profile\".\"biography\") <= 600"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

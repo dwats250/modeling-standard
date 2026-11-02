@@ -6,6 +6,7 @@ import type { IdentityProvider } from '../identity/provider.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { newToken } from '../infrastructure/tokens.ts';
 import { participantFinalRecordOperations } from '../participants/final-record.ts';
+import { toolkitOperations } from '../toolkit/operations.ts';
 import type { AnnotationStore } from './annotations.ts';
 import { OPERATOR_COOKIE, createDemoPrincipalResolver } from './demo.ts';
 import { createDemoOperations, type DemoEnvironment } from './operations.ts';
@@ -21,13 +22,14 @@ import { createTestIssuer, type TestIssuer } from './test-issuer.ts';
  * Two shapes:
  *
  * - **local** (`npm run demo`, LAN or loopback, plain HTTP): the local test
- *   identity provider, one-tap operator mode. `origins` is filled in by the
- *   caller once the server knows its port; the application and the test
- *   issuer read it at request time.
+ *   identity provider, one-tap operator mode, and the B1–B3 toolkit routes
+ *   (`/me/profile`, `/me/comp-card`, `/me/portfolio`) with their synthetic
+ *   owner harness. `origins` is filled in by the caller once the server knows
+ *   its port; the application and the test issuer read it at request time.
  * - **staging** (`npm run staging`, S13, behind a local HTTPS proxy): the
  *   given providers (Google) and no test issuer, exactly one allowed origin
  *   (the pinned public HTTPS origin), `Secure` cookies, and operator mode
- *   only with the server-validated operator key.
+ *   only with the server-validated operator key. No toolkit routes.
  */
 export interface DemoApplication {
   readonly app: FastifyInstance;
@@ -87,8 +89,12 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
         ...(staging ? { key: staging.operatorKey } : {}),
         environment,
       }),
-      // The per-account final-record view is a synthetic local-demo surface.
-      // S13 staging and production do not expose this participant presentation.
+      // The owner-only toolkit routes: local synthetic demo only,
+      // never production or staging. Not operator-wrapped: they serve the
+      // signed-in account (here, a harness professional) and refuse a synthetic principal.
+      // The participant final-record projection separately resolves the
+      // authenticated participant; it is not part of staging or production.
+      ...(staging ? [] : toolkitOperations),
       ...(staging ? [] : participantFinalRecordOperations),
     ],
     allowedOrigins: origins,
