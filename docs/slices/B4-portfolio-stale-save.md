@@ -2,7 +2,7 @@
 
 <!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
-Status: Implemented as a synthetic, private local-demo slice on `feat/b4-portfolio-stale-save`, stacked on B3 (`feat/b3-portfolio-captions` at `0578151`, PR #44). Uncommitted at the time of this record, pending independent review. See "As built".
+Status: Implemented as a private synthetic local-demo slice, integrated into `main` through PR #46 after independent technical and combined integration verification. Human visual/product acceptance remains pending; this does not authorize real use. See "As built".
 
 ## Outcome
 
@@ -38,7 +38,7 @@ Merging, version history, retention, real-time presence or locking, uploads, pub
 
 **Environment (task-owned).** Worktree `/home/dustin/Projects/modeling-standard-b4-portfolio-stale-save`; PostgreSQL container `ms-b4-postgres` on `127.0.0.1:5444`; `.env` points only there. No demo service started; browser tests use their own ephemeral server.
 
-**Commands run (B4 instance only, uncommitted working tree):**
+**Original slice verification (B4 implementation worktree, 2026-10-28):**
 
 | Command | Result |
 |---|---|

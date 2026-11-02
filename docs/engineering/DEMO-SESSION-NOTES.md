@@ -1,5 +1,16 @@
 # Demonstration session — continuation note
 
+## Canonical main integration checkpoint — 2026-11-02
+
+This supersedes the October 31 integration checkpoint for current repository state. Earlier candidates remain preserved as historical test evidence, not canonical branches.
+
+- **Remote main:** `cbdf43cf79d34ba73d2dc8ce536f4df0931007c5`, after merging #45 → #41 → #42 → #43 → #44 → #46. Application features are integrated; documentation PR #47 remains open for final status alignment.
+- **Merge commits:** #45 `845f5d1`; #41 `5b77c29`; #42 `e632bd5`; #43 `b5df3b3`; #44 `6391f8f`; #46 `cbdf43c`. Stacked branches were retargeted to main and additive overlaps retained the local-only toolkit routes and S14 preview. No deployment workflow or hook was found; no service or staging changes were made.
+- **Hosted verification:** refreshed CI and GitGuardian passed on the mechanically reconciled #42, #43, and #44 heads; #45 and #46 checks were green. The canonical integration still requires post-merge final-tree verification. The October 31 candidate at `32797b2` was left unchanged and its isolated rerun passed `npm run check`, build, 647 unit/integration tests, 33 browser tests, and audit (zero findings). One parallel browser attempt collided with its task-owned demo database; the serial rerun passed.
+- **Current implemented state:** B1–B4 private synthetic toolkit drafts and S14 local-only read-only final-record preview. No professional sign-in, real uploads, public sharing, or participant signing. Manual product/visual acceptance, real Google/provider acceptance, legal/counsel review, and real-use authorization remain separate and incomplete.
+- **Reviewer access:** still not ready. No reviewer endpoint or access grant was created. The October 31 Tailscale/service observation is historical and must be rechecked before any access decision.
+- **Next:** complete documentation alignment in #47, verify final `main` and its checks, then prepare the single existing [manual acceptance](MANUAL-ACCEPTANCE.md) walkthrough for Dustin and Cory. Do not begin B5/S15 until integration is closed or a specific blocker is recorded.
+
 ## Integration and reviewer-readiness checkpoint — 2026-10-31
 
 This supersedes the October 29 integration checkpoint below for current state. The earlier candidate and evidence remain preserved and unchanged.
