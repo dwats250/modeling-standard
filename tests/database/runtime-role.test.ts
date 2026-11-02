@@ -91,7 +91,7 @@ describe('runtime and migration credentials', () => {
     });
   });
 
-  it('runtime role may update exactly the B1 profile text, the draft tagline and slots, and the B2 portfolio items and B3 captions, never owner, id or time', async () => {
+  it('runtime role may update exactly the B1 profile text, the draft tagline and slots, and the B2 portfolio items and B3 captions, never owner, id, time or the B4 revision', async () => {
     await withClient(inject('runtimeUrl'), async (c) => {
       const updatable = async (table: string) =>
         (

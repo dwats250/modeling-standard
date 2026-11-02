@@ -394,3 +394,14 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
 @media (min-width: 760px) {
   .pf-sheet.full .pf-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 }
+
+/* B4: a refused save, because the draft changed elsewhere. Edits stay put. */
+.pf-conflict { margin-bottom: 16px; padding: 14px 16px; border: 1px solid #c9962f; border-left-width: 6px; border-radius: var(--radius-sm); background: color-mix(in srgb, #c9962f 14%, var(--surface)); color: var(--ink); }
+.pf-conflict h2 { margin: 0 0 6px; font-size: 17px; }
+.pf-conflict h3 { margin: 14px 0 6px; font-size: 15px; }
+.pf-conflict p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+.pf-conflict-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.pf-conflict-actions .btn { min-height: 44px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
+.pf-conflict-list { margin: 0 0 10px; padding-left: 22px; font-size: 14.5px; }
+.pf-conflict-list li { margin: 2px 0; }
+.pf-conflict-cap { display: block; color: var(--ink-2); font-size: 13.5px; }

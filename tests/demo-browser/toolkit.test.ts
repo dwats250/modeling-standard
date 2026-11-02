@@ -22,8 +22,9 @@ import { requireEnv } from '../support/urls.ts';
  * browser contexts, A at desktop width (1280) and B at phone width (390), each
  * building their own private profile, comp-card draft and portfolio draft
  * with pointer and keyboard; unsafe text shown as text; save, reload, and a full application
- * restart; crafted requests refused. Screenshots go to
- * test-results/demo/toolkit-*.
+ * restart; crafted requests refused. B4: two tabs of one owner; the later
+ * save is refused with the edits kept, and the way on is explicit. Screenshots
+ * go to test-results/demo/toolkit-*.
  */
 
 const SHOTS = resolve('test-results/demo');
@@ -456,6 +457,107 @@ describe('the professional toolkit', () => {
     await b.ctx.close();
   });
 
+  it('A in two tabs: a stale save is refused, the edits stay, and reload or save-over is a deliberate choice (B4)', async () => {
+    // Both tabs share A's session (one browser context) and open the organizer at the same saved revision.
+    const { ctx, page: first } = await context('A tab 1', DESKTOP);
+    await chooseOwner(first, 'a');
+    await go(first, '#/me/portfolio');
+    const second = await ctx.newPage();
+    second.on('pageerror', (e) => pageErrors.push(`A tab 2: ${e.message}`));
+    second.on('console', (m) => {
+      if (m.type() === 'error') pageErrors.push(`A tab 2: ${m.text()}`);
+    });
+    await go(second, '#/me/portfolio');
+    const before = await orderKeys(first);
+    expect(before.slice(0, 2)).toEqual([k(0), k(3)]);
+    expect(await caption(first, k(0)).inputValue()).toBe('Opening image');
+    const conflict = (page: Page) => page.locator('[data-conflict]');
+    type Portfolio = { draft: { items: string[]; captions: Record<string, string>; revision: number } };
+    const serverDraft = async () => ((await (await first.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft;
+    const revisionBefore = (await serverDraft()).revision;
+
+    // ---- Tab 2 saves first ----
+    await caption(second, k(3)).fill('From the second tab');
+    await second.locator('button.tk-save:visible').click();
+    await idle(second);
+    await expect.poll(() => status(second).getAttribute('data-state')).toBe('saved');
+    expect((await serverDraft()).revision).toBe(revisionBefore + 1);
+
+    // ---- Tab 1, unaware, edits and saves: refused, nothing overwritten, every edit still there ----
+    await caption(first, k(0)).fill('First tab edit');
+    await move(first, k(0), 'down').click();
+    const edited = await orderKeys(first);
+    expect(edited.slice(0, 2)).toEqual([k(3), k(0)]);
+    expect(await conflict(first).isVisible()).toBe(false);
+    await first.locator('button.tk-save:visible').click();
+    await idle(first);
+    await expect.poll(() => conflict(first).isVisible()).toBe(true);
+    expect(await conflict(first).locator('h2').innerText()).toBe('Not saved: this portfolio changed elsewhere');
+    expect(await conflict(first).innerText()).toContain('Your edits on this screen are kept');
+    expect(await status(first).getAttribute('data-state')).toBe('error');
+    expect(await status(first).innerText()).toContain('Not saved');
+    expect(await orderKeys(first)).toEqual(edited);
+    expect(await caption(first, k(0)).inputValue()).toBe('First tab edit');
+    expect(await previewCaptions(first, '.tk-aside')).toEqual({ [k(0)]: 'First tab edit' });
+    // The server still has tab 2's version; tab 1 has not been refreshed behind the person's back.
+    expect(await serverDraft()).toMatchObject({ items: before, captions: { [k(0)]: 'Opening image', [k(3)]: 'From the second tab' }, revision: revisionBefore + 1 });
+    expect(await caption(first, k(3)).inputValue()).toBe('');
+    expect(await first.locator('[data-conflict-latest]').innerText()).toBe('');
+    await shot(first, 'desktop-portfolio-conflict');
+
+    // ---- Review the saved version: shown beside the edits, which stay ----
+    await conflict(first).locator('[data-action="review"]').click();
+    await idle(first);
+    const latest = first.locator('[data-conflict-latest]');
+    await expect.poll(() => latest.innerText()).toContain('Saved version');
+    expect(await latest.locator('.pf-conflict-list li').evaluateAll((nodes) => nodes.map((n) => (n as unknown as { dataset: { key: string } }).dataset.key))).toEqual(before);
+    expect(await latest.innerText()).toContain('From the second tab');
+    expect(await orderKeys(first)).toEqual(edited);
+    expect(await caption(first, k(0)).inputValue()).toBe('First tab edit');
+    expect(await serverDraft()).toMatchObject({ revision: revisionBefore + 1 });
+
+    // ---- The explicit reload: only now do the edits give way to the saved version ----
+    await conflict(first).locator('[data-action="load"]').click();
+    await idle(first);
+    expect(await conflict(first).isVisible()).toBe(false);
+    expect(await orderKeys(first)).toEqual(before);
+    expect(await caption(first, k(0)).inputValue()).toBe('Opening image');
+    expect(await caption(first, k(3)).inputValue()).toBe('From the second tab');
+    expect(await status(first).getAttribute('data-state')).toBe('saved');
+    // Based on the saved version now, tab 1's next save lands.
+    await caption(first, k(0)).fill('Opening image, tab 1');
+    await first.locator('button.tk-save:visible').click();
+    await idle(first);
+    await expect.poll(() => status(first).getAttribute('data-state')).toBe('saved');
+    expect(await serverDraft()).toMatchObject({ captions: { [k(0)]: 'Opening image, tab 1', [k(3)]: 'From the second tab' }, revision: revisionBefore + 2 });
+
+    // ---- Tab 2 is the stale one now: refused, reviews, then deliberately keeps its own edits and saves over ----
+    await caption(second, k(3)).fill('');
+    await caption(second, k(0)).fill('Opening image');
+    await second.locator('button.tk-save:visible').click();
+    await idle(second);
+    await expect.poll(() => conflict(second).isVisible()).toBe(true);
+    expect(await caption(second, k(3)).inputValue()).toBe('');
+    expect(await serverDraft()).toMatchObject({ captions: { [k(0)]: 'Opening image, tab 1', [k(3)]: 'From the second tab' } });
+    // Save without reviewing: still refused; the revision is only taken from a reviewed version.
+    await second.locator('button.tk-save:visible').click();
+    await idle(second);
+    expect(await conflict(second).isVisible()).toBe(true);
+    expect(await serverDraft()).toMatchObject({ revision: revisionBefore + 2 });
+    await conflict(second).locator('[data-action="review"]').click();
+    await idle(second);
+    await expect.poll(() => second.locator('[data-conflict-latest]').innerText()).toContain('Opening image, tab 1');
+    expect(await caption(second, k(3)).inputValue()).toBe('');
+    expect(await status(second).innerText()).toContain('Not saved');
+    await second.locator('button.tk-save:visible').click();
+    await idle(second);
+    await expect.poll(() => status(second).getAttribute('data-state')).toBe('saved');
+    expect(await conflict(second).isVisible()).toBe(false);
+    expect(await serverDraft()).toMatchObject({ items: before, captions: { [k(0)]: 'Opening image' }, revision: revisionBefore + 3 });
+    await second.close();
+    await ctx.close();
+  });
+
   it('keeps everything across a full application restart', async () => {
     await stop(running);
     running = await start();
@@ -497,7 +599,11 @@ describe('the professional toolkit', () => {
   it('raised no browser errors', () => {
     // The start screen learns what a browser is by asking for the operator's
     // shoots: 401 for no mode, 403 for a signed-in account. The browser logs
-    // those responses. Anything else is an error.
-    expect(pageErrors.filter((e) => !/Failed to load resource: the server responded with a status of 40[13]/.test(e))).toEqual([]);
+    // those responses, and the three 409s the B4 case provokes on purpose
+    // (two stale saves from tab 1 and tab 2, and tab 2's unreviewed retry).
+    // Anything else is an error.
+    const conflicts = pageErrors.filter((e) => /^A tab [12]: Failed to load resource: the server responded with a status of 409/.test(e));
+    expect(conflicts).toHaveLength(3);
+    expect(pageErrors.filter((e) => !conflicts.includes(e) && !/Failed to load resource: the server responded with a status of 40[13]/.test(e))).toEqual([]);
   });
 });
