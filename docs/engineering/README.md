@@ -36,6 +36,8 @@ npm run build       # compiles the application
 
 The [root README](../../README.md#engineering-and-local-development) contains setup commands; the [demo runbook](DEMO.md) and [staging runbook](S13-STAGING.md) provide environment-specific instructions.
 
+The concise owner-only review steps for the private toolkit draft and synthetic final-record preview are in [manual acceptance](MANUAL-ACCEPTANCE.md). This is visual/interaction review, not real-use authorization.
+
 ## Where to find implementation evidence
 
 - [STAGE-0.md](STAGE-0.md): original foundation **at its stage**, not the current whole-app state.
@@ -45,6 +47,7 @@ The [root README](../../README.md#engineering-and-local-development) contains se
 - [S11](S11-FINAL-CONTRACT.md): test/operator final-contract storage.
 - [S12](S12-PARTICIPANT-ACCESS.md): participant access.
 - [S13](S13-STAGING.md): Google sign-in and synthetic staging; [acceptance/continuation](S13-CONTINUATION.md).
+- [S14](../slices/S14-synthetic-final-record-view.md): local-demo-only, read-only participant view of a synthetic final record.
 - [B1](../slices/B1-profile-comp-card.md): private professional profile and comp-card draft (Track B), with its as-built record.
 - [B2](../slices/B2-portfolio-draft.md): private portfolio draft (Track B), stacked on B1, with its as-built record.
 - [B3](../slices/B3-portfolio-captions.md): optional captions on the private portfolio draft, stacked on B2, with its as-built record.
