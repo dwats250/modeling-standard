@@ -5,6 +5,7 @@ import { clearCookie } from '../http/cookies.ts';
 import type { IdentityProvider } from '../identity/provider.ts';
 import type { Database } from '../infrastructure/database/client.ts';
 import { newToken } from '../infrastructure/tokens.ts';
+import { participantFinalRecordOperations } from '../participants/final-record.ts';
 import { toolkitOperations } from '../toolkit/operations.ts';
 import type { AnnotationStore } from './annotations.ts';
 import { OPERATOR_COOKIE, createDemoPrincipalResolver } from './demo.ts';
@@ -88,10 +89,12 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
         ...(staging ? { key: staging.operatorKey } : {}),
         environment,
       }),
-      // B1's owner-only toolkit routes: the local synthetic demo only, never
-      // production or staging. Not operator-wrapped: they serve the signed-in
-      // account (here, a harness professional) and refuse a synthetic principal.
+      // B1's owner-only toolkit routes and the participant final-record view
+      // are local synthetic-demo surfaces only, never production or staging.
+      // The toolkit serves its signed-in harness professional; the final-record
+      // projection resolves the authenticated participant.
       ...(staging ? [] : toolkitOperations),
+      ...(staging ? [] : participantFinalRecordOperations),
     ],
     allowedOrigins: origins,
     secureCookies,
