@@ -536,6 +536,46 @@ describe('no participant route accepts a frozen or final brief (S11, AC-20)', ()
     expect(finalized.status).toBe(200);
     expect((await op.get(`/demo/projects/${shoot.projectId}/record`)).json().brief.phase).toBe('final');
     await refusedEverywhere();
+
+    // The local synthetic demo may show each authenticated account its own
+    // D10-filtered final record. This is a read-only preview, not a signing act.
+    const modelRecord = await model.client.get(`/shoots/${shoot.projectId}/final-record`);
+    const photographer = people[1]!;
+    const photographerRecord = await photographer.client.get(`/shoots/${shoot.projectId}/final-record`);
+    expect(modelRecord.status).toBe(200);
+    expect(photographerRecord.status).toBe(200);
+    const finalRecordBody = (res: Res) => res.json() as unknown as {
+      synthetic: boolean;
+      record: { partyId: string; clauses: { layer: string; between: string[] | null }[] };
+    };
+    const modelBody = finalRecordBody(modelRecord);
+    const photographerBody = finalRecordBody(photographerRecord);
+    expect(modelBody.synthetic).toBe(true);
+    expect(photographerBody.synthetic).toBe(true);
+    const modelView = modelBody.record;
+    const photographerView = photographerBody.record;
+    expect(modelView.partyId).toBe(shoot.modelPartyId);
+    expect(photographerView.partyId).toBe(shoot.photographerPartyId);
+    const modelMoney = modelView.clauses.filter((clause: { layer: string }) => clause.layer === 'money');
+    const photographerMoney = photographerView.clauses.filter((clause: { layer: string }) => clause.layer === 'money');
+    expect(modelMoney.length).toBeGreaterThan(0);
+    expect(photographerMoney.length).toBeGreaterThan(0);
+    // In this two-person photo-shoot fixture, both people are the counterparties
+    // to the same pairwise fee. Three-party filtering remains covered by the
+    // contract projection's existing pure-function tests.
+    for (const clause of [...modelMoney, ...photographerMoney]) {
+      expect(clause.between?.sort()).toEqual([shoot.modelPartyId, shoot.photographerPartyId].sort());
+    }
+    for (const body of [modelRecord.body, photographerRecord.body]) {
+      expect(body).not.toMatch(/signature|signedAt|signer|accountId|providerSubject/i);
+    }
+    expect((await new Client().get(`/shoots/${shoot.projectId}/final-record`)).status).toBe(401);
+    expect(generic404(await op.get(`/shoots/${shoot.projectId}/final-record`))).toBe(nowhere);
+
+    const unrelatedShoot = await liveShootWithLinks(op, 'straightforward');
+    const unrelatedPerson = await signedIn(unrelatedShoot.modelLink, uniqueName('Unrelated'));
+    const hidden = await unrelatedPerson.client.get(`/shoots/${shoot.projectId}/final-record`);
+    expect(generic404(hidden)).toBe(generic404(await unrelatedPerson.client.get(`/shoots/${randomUUID()}/final-record`)));
   });
 });
 
