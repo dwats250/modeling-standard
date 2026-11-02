@@ -2,12 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 import type { AnnotationStore } from './annotations.ts';
+import { fixtureImageForPath } from './fixture-images.ts';
 import type { TestIssuer } from './test-issuer.ts';
 
 /**
  * The demo's front door. It serves the demo's static pages (the participant
- * journey at `/`, the record inspector at `/inspector`), its demo
- * annotations (`/annotations.json`) and the local test identity provider's
+ * journey at `/`, the record inspector at `/inspector`), the B1 comp-card
+ * fixture images (`/media/fixtures/*`), its demo annotations (`/annotations.json`) and the local test identity provider's
  * two pages (`/test-idp/*`), and passes every other request to the real
  * application with `app.inject`. The Fastify application therefore keeps its
  * rule that every route is an operation with declared access; nothing here
@@ -31,6 +32,8 @@ const STATIC_FILES: Readonly<Record<string, { file: string; type: string }>> = {
   '/inspector': { file: 'inspector.html', type: 'text/html; charset=utf-8' },
   '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
   '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8' },
+  '/toolkit.js': { file: 'toolkit.js', type: 'text/javascript; charset=utf-8' },
+  '/toolkit.css': { file: 'toolkit.css', type: 'text/css; charset=utf-8' },
 };
 
 const SECURITY_HEADERS = {
@@ -117,6 +120,14 @@ async function handle(options: DemoServerOptions, request: IncomingMessage, resp
   const staticFile = STATIC_FILES[url.pathname];
   if (method === 'GET' && staticFile) {
     send(response, 200, staticFile.type, await readFile(new URL(staticFile.file, UI_DIR)));
+    return;
+  }
+
+  if (method === 'GET' && url.pathname.startsWith('/media/fixtures/')) {
+    // B1's generated comp-card fixtures: deterministic SVG, no external media.
+    const svg = fixtureImageForPath(url.pathname);
+    if (svg === null) send(response, 404, 'application/json; charset=utf-8', '{"error":{"code":"not_found"}}');
+    else send(response, 200, 'image/svg+xml; charset=utf-8', svg);
     return;
   }
 

@@ -35,6 +35,7 @@ describe('trigger functions', () => {
         'party_account_binding_stamp',
         'project_party_guard_roster',
         'sign_in_attempt_stamp',
+        'toolkit_row_stamp',
       ]);
       for (const f of functions.rows) {
         expect({ name: f.name, config: f.config, callable: f.callable }).toEqual({
