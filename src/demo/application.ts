@@ -22,10 +22,10 @@ import { createTestIssuer, type TestIssuer } from './test-issuer.ts';
  * Two shapes:
  *
  * - **local** (`npm run demo`, LAN or loopback, plain HTTP): the local test
- *   identity provider, one-tap operator mode, and B1's toolkit routes
- *   (`/me/profile`, `/me/comp-card`) with their synthetic owner harness. `origins` is filled in by the
- *   caller once the server knows its port; the application and the test
- *   issuer read it at request time.
+ *   identity provider, one-tap operator mode, and B1/B2's toolkit routes
+ *   (`/me/profile`, `/me/comp-card`, `/me/portfolio`) with their synthetic
+ *   owner harness. `origins` is filled in by the caller once the server knows
+ *   its port; the application and the test issuer read it at request time.
  * - **staging** (`npm run staging`, S13, behind a local HTTPS proxy): the
  *   given providers (Google) and no test issuer, exactly one allowed origin
  *   (the pinned public HTTPS origin), `Secure` cookies, and operator mode
@@ -89,10 +89,11 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
         ...(staging ? { key: staging.operatorKey } : {}),
         environment,
       }),
-      // B1's owner-only toolkit routes and the participant final-record view
-      // are local synthetic-demo surfaces only, never production or staging.
-      // The toolkit serves its signed-in harness professional; the final-record
-      // projection resolves the authenticated participant.
+      // B1/B2's owner-only toolkit routes: the local synthetic demo only,
+      // never production or staging. Not operator-wrapped: they serve the
+      // signed-in account (here, a harness professional) and refuse a synthetic principal.
+      // The participant final-record projection separately resolves the
+      // authenticated participant; it is not part of staging or production.
       ...(staging ? [] : toolkitOperations),
       ...(staging ? [] : participantFinalRecordOperations),
     ],

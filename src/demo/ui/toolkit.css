@@ -1,5 +1,6 @@
 /*
- * The professional toolkit (B1): profile, comp-card arrangement and preview.
+ * The professional toolkit (B1, B2): profile, comp-card arrangement and
+ * preview, portfolio organizing and preview.
  * Uses journey.css's tokens and components; adds only what the toolkit needs.
  * The comp card is drawn as a printed object: light paper in either theme.
  */
@@ -71,7 +72,24 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
   color: var(--ink-2);
   text-decoration: none;
 }
-.tk-tab[aria-current='page'] { background: var(--accent); color: var(--accent-ink); }
+.tk-tab[aria-current='page'],
+.tk-tab[aria-current='true'] { background: var(--accent); color: var(--accent-ink); }
+
+/* Inside a section: editing and preview. */
+.screen-body > .tk-tabs + .tk-subtabs { margin-top: 8px; }
+.tk-subtabs { display: flex; gap: 20px; max-width: 480px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.tk-subtab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.tk-subtab[aria-current='page'] { border-bottom-color: var(--accent); color: var(--ink); }
 
 /* ---- Forms ---- */
 
@@ -247,3 +265,128 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; }
   .cc-card.compact .cc-name { font-size: 18px; }
 }
 .tk-back { max-width: 480px; margin-left: auto; margin-right: auto; }
+
+/* ---- Portfolio (B2): organize ---- */
+
+.tk-portfolio > * + * { margin-top: 16px; }
+.pf-section-head { flex-direction: row !important; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pf-count { font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pf-note { margin-top: 10px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--ink-2); font-size: 14.5px; }
+
+.pf-order { list-style: none; margin: 8px 0 0; padding: 0; }
+.pf-item {
+  display: grid;
+  grid-template-columns: 44px auto minmax(0, 1fr);
+  grid-template-areas: 'thumb pos label' 'thumb controls controls';
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.pf-item:first-child { border-top: 0; }
+.pf-item img { grid-area: thumb; width: 44px; aspect-ratio: 4 / 5; height: auto; border-radius: 6px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
+.pf-pos { grid-area: pos; min-width: 1.6em; font: 600 15px/1 var(--serif); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pf-label { grid-area: label; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.pf-controls { grid-area: controls; display: flex; gap: 6px; }
+.pf-move {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pf-move[data-action='remove'] { margin-left: auto; color: var(--error); }
+.pf-move:disabled { opacity: 0.35; cursor: default; }
+.pf-move:focus-visible, .pf-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.pf-catalogue { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.pf-pick {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0 8px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.pf-pick img { display: block; width: 100%; aspect-ratio: 4 / 5; height: auto; object-fit: cover; }
+.pf-pick-label { padding: 6px 8px 0; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.pf-pick-state { padding: 2px 8px 0; font-size: 13px; font-weight: 700; color: var(--accent); }
+.pf-pick[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.pf-pick[aria-pressed='true'] .pf-pick-state::before { content: '✓ '; }
+.pf-pick:disabled { opacity: 0.45; cursor: default; }
+.pf-pick:disabled .pf-pick-state { color: var(--ink-3); }
+
+@media (min-width: 960px) {
+  .pf-item { grid-template-columns: 52px auto minmax(0, 1fr) auto; grid-template-areas: 'thumb pos label controls'; }
+  .pf-item img { width: 52px; }
+  .pf-catalogue { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* ---- Portfolio (B2): the sheet, a printed object like the comp card ---- */
+
+.pf-sheet {
+  --pf-paper: #fffdf9;
+  --pf-ink: #1d1b18;
+  --pf-ink-2: #6a645a;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 6%;
+  background: var(--pf-paper);
+  color: var(--pf-ink);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(30 20 5 / 0.08), 0 10px 30px rgb(30 20 5 / 0.12);
+}
+.pf-head { border-bottom: 1px solid #e6dfd3; padding-bottom: 10px; }
+.pf-kicker { font-size: 9px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--pf-ink-2); }
+.pf-name { margin-top: 4px; font: 600 18px/1.15 var(--serif); letter-spacing: 0.12em; text-transform: uppercase; overflow-wrap: anywhere; }
+.pf-profession { margin-top: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pf-ink-2); overflow-wrap: anywhere; }
+.pf-blank {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border: 1px dashed #d6cdbf;
+  border-radius: 4px;
+  font: italic 400 15px/1.3 var(--serif);
+  color: var(--pf-ink-2);
+}
+.pf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.pf-grid li:first-child { grid-column: span 2; grid-row: span 2; }
+.pf-grid figure { position: relative; margin: 0; height: 100%; overflow: hidden; background: #eee7dc; }
+.pf-grid img { display: block; width: 100%; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.pf-grid figcaption {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  color: #fff;
+  font: 600 9px/1 var(--serif);
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+.pf-foot { font-size: 8.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #a39b8e; }
+
+.pf-sheet.full { max-width: 980px; margin-left: auto; margin-right: auto; gap: 20px; }
+.pf-sheet.full .pf-kicker { font-size: 11px; }
+.pf-sheet.full .pf-name { font-size: clamp(22px, 6vw, 34px); }
+.pf-sheet.full .pf-profession { font-size: 12px; }
+.pf-sheet.full .pf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pf-sheet.full .pf-grid figcaption { left: 10px; bottom: 8px; font-size: 12px; }
+.pf-sheet.full .pf-foot { font-size: 10px; }
+@media (min-width: 760px) {
+  .pf-sheet.full .pf-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+}
