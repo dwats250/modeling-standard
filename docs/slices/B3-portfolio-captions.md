@@ -2,7 +2,7 @@
 
 <!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
-Status: Implemented as a synthetic, private local-demo slice on `feat/b3-portfolio-captions`, stacked on B2 (`feat/b2-private-portfolio-drafts` at `08eb2c7`, PR #43). See "As built".
+Status: Implemented as a private synthetic local-demo slice and merged into `main` through PR #44, after B2 (#43). Manual visual/product acceptance remains pending; this does not authorize real use. See "As built".
 
 ## Outcome
 
@@ -47,6 +47,6 @@ Uploads or image bytes, external URLs, public profiles, directory, sharing, mess
 
 **Visual evidence.** `test-results/demo/toolkit-{desktop-portfolio,desktop-portfolio-preview,phone-portfolio,phone-portfolio-preview,phone-portfolio-empty}.png` (untracked, regenerated per run).
 
-**Known limitations.** Last write wins between two tabs (addressed by B4, `B4-portfolio-stale-save.md`). A caption refused by the server (only possible by a crafted request, since the field enforces the length) is reported on the save status line, not beside the field. The preview grid's first, larger image leaves its caption below the frame at the same small size as the rest.
+**Known limitations.** B4 now prevents stale portfolio saves; see [B4](B4-portfolio-stale-save.md). A caption refused by the server (only possible by a crafted request, since the field enforces the length) is reported on the save status line, not beside the field. The preview grid's first, larger image leaves its caption below the frame at the same small size as the rest.
 
-**Integration gate.** This private synthetic slice does not authorize real use. Integrate only after B1 and B2 and owner authorization.
+**Integration status.** Integrated into `main` through PR #44 after B1 and B2. This private synthetic slice does not authorize real use; owner visual/product acceptance remains pending.

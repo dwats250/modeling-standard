@@ -2,7 +2,7 @@
 
 <!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
-Status: Implemented and pushed on `feat/b2-private-portfolio-drafts`, PR #43, stacked on B1 (`feat/b1-profile-comp-card` at `bee9f4e`, PR #41, open). See "As built".
+Status: Implemented as a private synthetic local-demo slice and merged into `main` through PR #43, after B1 (#41). Manual visual/product acceptance remains pending; this does not authorize real use. See "As built".
 Owner: Dustin (assignment); builder session `ms-builder`.
 
 ## Outcome
@@ -11,7 +11,7 @@ A synthetic signed-in professional with a B1 profile selects up to eight images 
 
 ## Product decisions required
 
-- README: Track B is the current implementation priority (private synthetic profiles and their presentation).
+- README: Track B is the professional-toolkit workstream; B2 extends the private synthetic profile with an owner-controlled portfolio draft.
 - D07 (DECIDED): profile and portfolio sit behind a separate paid boundary. B2 implements no price, tier or entitlement and calls nothing free or paid.
 - I6 / D10: no directory; owner-controlled material. B2 reads no one else's material.
 - Dustin-authorized provisional synthetic choices (reversible, not product policy): one portfolio draft per profile; an ordered list of fixture keys; at most eight images (below the ten-image catalogue, so the limit is real); an empty draft is valid; no captions or other per-image fields; up/down/remove controls; the preview layout.
@@ -59,6 +59,6 @@ Real uploads or image bytes, external URLs, captions, public profiles or states,
 
 **Visual evidence.** `test-results/demo/toolkit-{desktop-portfolio,desktop-portfolio-preview,phone-portfolio,phone-portfolio-preview,phone-portfolio-empty}.png` (untracked, regenerated per run), inspected at 1280 and 390; no horizontal overflow (asserted), controls at least 44 px (asserted on the phone).
 
-**Known limitations.** Last write wins between two tabs of the same owner. A fixture key removed from the catalogue later would stay in saved drafts (the database checks shape, not membership) and the screens would label it "Fixture". The phone preview with very few images leaves blank space beside the second. Sign-in for professionals remains deferred.
+**Known limitations.** B4 supersedes B2's earlier last-write-wins behavior for portfolio saves by rejecting stale revisions; see [B4](B4-portfolio-stale-save.md). A fixture key removed from the catalogue later would stay in saved drafts (the database checks shape, not membership) and the screens would label it "Fixture". The phone preview with very few images leaves blank space beside the second. Sign-in for professionals remains deferred.
 
-**Next action.** Review PR #43 and its CI; integrate only after its B1 dependency (PR #41) and owner authorization. Real sign-in and manual acceptance remain a separate later gate.
+**Current follow-up.** Use the consolidated [manual acceptance walkthrough](../engineering/MANUAL-ACCEPTANCE.md) for the pending visual/product review. Professional sign-in and real-use approval remain separate gates.

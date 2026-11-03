@@ -1,6 +1,6 @@
 # S14 — Synthetic participant final-record view
 
-**Status:** implemented in the local synthetic demo; automated HTTP and browser verification added. Not enabled in production or staging.
+**Status:** implemented and merged into `main` through PR #42; automated HTTP and browser verification added. Available only in the local synthetic demo, not production or staging. Manual visual/product acceptance remains pending; no participant signing or real-use authorization is implied.
 
 ## Purpose
 

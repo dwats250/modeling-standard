@@ -53,4 +53,4 @@ Merging, version history, retention, real-time presence or locking, uploads, pub
 
 **Known limitations.** The warning says "another tab or window"; it cannot tell which. The comp card and profile still have last-write-wins (outside this slice). The revision is visible to the owner in the JSON view and is a plain counter; it carries no content.
 
-**Integration gate.** This private synthetic slice does not authorize real use. Integrate only after B1–B3 and owner authorization.
+**Integration status.** Integrated into `main` through PR #46 after B1–B3. This private synthetic slice does not authorize real use; owner visual/product acceptance remains pending.

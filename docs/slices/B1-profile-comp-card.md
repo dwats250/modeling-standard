@@ -2,7 +2,7 @@
 
 <!-- This template is not implementation authority. The current Dustin-approved work order controls scope and permissions within binding product and real-use boundaries. -->
 
-Status: Implemented locally on `feat/b1-profile-comp-card` (not pushed, not merged). See "As built" below.
+Status: Implemented as a private synthetic local-demo slice and merged into `main` through PR #41. Manual visual/product acceptance remains pending; this does not authorize real use. See "As built" below.
 Owner: Dustin (assignment); builder session `ms-builder`.
 
 ## Outcome
@@ -11,7 +11,7 @@ A synthetic signed-in professional creates and edits a private profile (display 
 
 ## Product decisions required
 
-- README: Track B is the current implementation priority, starting with private synthetic profiles and comp-card drafts.
+- README: Track B is the professional-toolkit workstream; this slice implements its private synthetic profile and comp-card starting point.
 - D07 (DECIDED): profile and portfolio sit behind a separate paid boundary. Nothing here is priced, gated or called free or paid.
 - I6 / D10: no people directory; a person's professional material is owner-controlled. B1 has no reading of anyone else's material at all.
 - D10: measurements, contact details and exact location are sensitive. B1 stores none of them.
@@ -107,4 +107,4 @@ Commands (B1 instance only, `.env` on 127.0.0.1:5438):
 
 **Resources.** `ms-b1-postgres` (volume `ms-b1-pgdata`) left running for inspection; stop with `docker stop ms-b1-postgres`. Demo servers started for inspection were stopped by exact PID. Nothing else was started or changed.
 
-**Next action.** Dustin reviews `feat/b1-profile-comp-card` and decides on push and PR. Professional sign-in remains the open follow-on.
+**Current follow-up.** Use the consolidated [manual acceptance walkthrough](../engineering/MANUAL-ACCEPTANCE.md) for the pending visual/product review. Professional sign-in remains unimplemented and separate from this synthetic slice.
