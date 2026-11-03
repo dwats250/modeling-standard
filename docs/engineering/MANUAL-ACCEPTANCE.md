@@ -5,7 +5,7 @@ This walkthrough is for Cory and Dustin to judge the interaction and visual qual
 ## Readiness and setup
 
 - Run this only after the integration order in the current continuation checkpoint has been completed and the combined candidate is available. The PR branches alone are not a reviewer link.
-- **Remote reviewer access is not ready:** current live inspection found no S13 staging listener on port 3130 and no active `ms-staging` session. Asher's only Tailscale Serve route is the unrelated Options Observatory on port 80. Do not use that route for this review.
+- **Remote reviewer access is not ready (live check 2026-11-02):** no S13 staging application is listening on port 3130 and no `ms-staging` session is active. The staging PostgreSQL container is up on loopback port 5435, but that is only the database, not a review site. Asher's only Tailscale Serve route is the unrelated Options Observatory on port 80. Do not use that route for this review.
 - Until Dustin supplies a specifically authorized private reviewer URL, run the synthetic demo on loopback (`127.0.0.1`) with a task-owned demo database. Do not reuse staging, development, or another demo database. The full setup and test commands are in the [demo runbook](DEMO.md); resets are destructive to the named demo database.
 - Use Chrome or Edge. Review desktop layout, then a 390px-wide mobile viewport (a browser's responsive view is sufficient). For S14 use two separate browser profiles so each synthetic participant has its own session. For B4 use two tabs in the same synthetic-professional account.
 - Everything below uses invented identities and deterministic fixture media. Do not enter personal information or upload images; uploads are not part of this build.
