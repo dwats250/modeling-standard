@@ -3,6 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { FastifyInstance } from 'fastify';
 import type { AnnotationStore } from './annotations.ts';
 import { fixtureImageForPath } from './fixture-images.ts';
+import type { ReviewerGate } from './reviewer.ts';
 import type { TestIssuer } from './test-issuer.ts';
 
 /**
@@ -21,6 +22,11 @@ import type { TestIssuer } from './test-issuer.ts';
  * change an origin, a host or a principal. Returned: the status, the
  * body, and exactly `content-type`, `x-request-id`, `location` and every
  * `set-cookie`.
+ *
+ * In reviewer mode (`src/demo/reviewer.ts`) the gate runs first: after the
+ * Host check and before any page, file, test sign-in page or application
+ * request, the browser must hold a reviewer session. Only the gate's own
+ * pages and stylesheet are served without one.
  */
 
 const UI_DIR = new URL('./ui/', import.meta.url);
@@ -34,6 +40,11 @@ const STATIC_FILES: Readonly<Record<string, { file: string; type: string }>> = {
   '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8' },
   '/toolkit.js': { file: 'toolkit.js', type: 'text/javascript; charset=utf-8' },
   '/toolkit.css': { file: 'toolkit.css', type: 'text/css; charset=utf-8' },
+};
+
+/** Served before the reviewer gate: the gate's own stylesheet. */
+const GATE_FILES: Readonly<Record<string, { file: string; type: string }>> = {
+  '/reviewer.css': { file: 'reviewer.css', type: 'text/css; charset=utf-8' },
 };
 
 const SECURITY_HEADERS = {
@@ -60,6 +71,8 @@ export interface DemoServerOptions {
   readonly publicAuthority?: string;
   /** The local test identity provider, whose pages this server serves. */
   readonly testIssuer?: TestIssuer;
+  /** Reviewer mode: every request but the gate's own pages needs a reviewer session. */
+  readonly reviewer?: ReviewerGate;
 }
 
 async function readBody(request: IncomingMessage): Promise<Buffer | null> {
@@ -116,6 +129,26 @@ async function handle(options: DemoServerOptions, request: IncomingMessage, resp
   }
   const url = new URL(request.url ?? '/', 'http://demo.invalid');
   const method = request.method ?? 'GET';
+
+  if (options.reviewer) {
+    const gateFile = GATE_FILES[url.pathname];
+    if (method === 'GET' && gateFile) {
+      send(response, 200, gateFile.type, await readFile(new URL(gateFile.file, UI_DIR)));
+      return;
+    }
+    if (url.pathname === '/reviewer' || url.pathname.startsWith('/reviewer/')) {
+      const gateBody = method === 'POST' ? await readBody(request) : null;
+      if (method === 'POST' && gateBody === null) {
+        send(response, 413, 'application/json; charset=utf-8', '{"error":{"code":"payload_too_large"}}');
+        return;
+      }
+      if (await options.reviewer.handle(request, response, gateBody)) return;
+    }
+    if (!options.reviewer.isSignedIn(request)) {
+      options.reviewer.refuse(request, response);
+      return;
+    }
+  }
 
   const staticFile = STATIC_FILES[url.pathname];
   if (method === 'GET' && staticFile) {

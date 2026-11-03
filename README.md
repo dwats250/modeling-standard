@@ -90,7 +90,7 @@ npm run build
 
 For development, run `npm run dev`; for the compiled service, `npm run build` and `npm start`. The application exposes `GET /health`; its production entry point does **not** serve demo screens.
 
-For an interactive synthetic walkthrough, use the [local demo guide](docs/engineering/DEMO.md). For tailnet-only HTTPS staging, use the [staging runbook](docs/engineering/S13-STAGING.md). Database changes require reviewed migrations: **do not use `drizzle-kit push`**.
+For an interactive synthetic walkthrough, use the [local demo guide](docs/engineering/DEMO.md). For tailnet-only HTTPS staging, use the [staging runbook](docs/engineering/S13-STAGING.md). To show the local synthetic demo to a reviewer on another device over HTTPS, behind its own access key, see [reviewer access](docs/engineering/REVIEWER-ACCESS.md) (built; activation is an operations step). Database changes require reviewed migrations: **do not use `drizzle-kit push`**.
 
 The [engineering index](docs/engineering/README.md) explains application composition, environment boundaries, and where to find as-built records.
 
