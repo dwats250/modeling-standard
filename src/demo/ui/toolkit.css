@@ -10,7 +10,8 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; position: relative; }
 body[data-screen='toolkit'] [hidden] { display: none !important; }
 body[data-screen='toolkit'] .screen-body > * + * { margin-top: 14px; }
 body[data-screen='toolkit'] .screen-body > .tk-tabs + .tk-subtabs { margin-top: 8px; }
-.page-head h1:focus { outline: none; }
+/* Focus is moved here after navigation: keyboard users see where they are. */
+.page-head h1:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 4px; }
 
 /* Loading: a thin bar under the app header while a request or a redraw is in flight. */
 body[data-screen='toolkit'][data-busy] .screen::before {
@@ -515,7 +516,7 @@ body[data-screen='toolkit'][data-busy] .screen::before {
 }
 .pf-conflict > * + * { margin-top: 10px; }
 .pf-conflict h2 { font-size: 18px; }
-.pf-conflict h2:focus, .pf-conflict h3:focus { outline: none; }
+.pf-conflict h2:focus-visible, .pf-conflict h3:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
 .pf-conflict h3 { margin: 0; font-size: 16px; }
 .pf-conflict h4 { margin: 0 0 6px; font: 700 12px/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
 .pf-conflict p { font-size: 14.5px; color: var(--ink-2); }

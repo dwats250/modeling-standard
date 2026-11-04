@@ -127,6 +127,14 @@ const previewCaptions = (page: Page, scope: '.tk-aside' | '.pf-sheet.full') =>
       }),
     ),
   );
+/** The focused element matches :focus-visible and draws an outline (a style other than none, wider than 0). */
+const visibleFocus = (page: Page) =>
+  page.evaluate<boolean>(`(() => {
+    const node = document.activeElement;
+    if (!node || node === document.body || !node.matches(':focus-visible')) return false;
+    const style = getComputedStyle(node);
+    return style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0;
+  })()`);
 const focusedLabel = (page: Page) => page.evaluate<string | null>("document.activeElement?.getAttribute('aria-label') ?? null");
 const k = (i: number) => FIXTURE_KEYS[i]!;
 const heroSrc = (page: Page) => page.locator('.tk-aside .cc-hero img, .cc-card.full .cc-hero img').first().getAttribute('src');
@@ -581,10 +589,13 @@ describe('the professional toolkit', () => {
     await shot(page, 'phone-profile-identity');
 
     // ---- Following a tab moves focus to the new page's heading, and the heading names the page ----
-    await page.locator('.tk-tab[href="#/me/portfolio"]').click();
+    // By keyboard, so the heading takes the focus ring; a visible outline must come with it.
+    await page.locator('.tk-tab[href="#/me/portfolio"]').focus();
+    await page.keyboard.press('Enter');
     await idle(page);
     await expect.poll(activeTag).toBe('H1');
     expect(await page.locator('h1').innerText()).toBe('Organize your portfolio');
+    expect(await visibleFocus(page)).toBe(true);
 
     // ---- Portfolio on a phone: the list leads; the preview is one press away ----
     const details = page.locator('.tk-aside-details');
@@ -649,10 +660,12 @@ describe('the professional toolkit', () => {
     await expect.poll(() => status(page).getAttribute('data-state')).toBe('saved');
     await caption(second, k(9)).fill('Second tab edit');
     await pick(second, k(4)).click();
-    await second.locator('button.tk-save:visible').click();
+    await second.locator('button.tk-save:visible').focus();
+    await second.keyboard.press('Enter');
     await idle(second);
     await expect.poll(() => second.locator('[data-conflict]').isVisible()).toBe(true);
     expect(await second.evaluate<string>("document.activeElement?.closest('[data-conflict]') ? document.activeElement.tagName : ''")).toBe('H2');
+    expect(await visibleFocus(second)).toBe(true);
     expect(await second.locator('[data-conflict] [data-action="save-over"]').count()).toBe(0); // nothing to choose before reviewing
     // A review that cannot load says so in the warning and keeps the edits.
     await second.route('**/me/portfolio', (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"internal_error"}}' }) : route.fallback()));
@@ -661,9 +674,11 @@ describe('the professional toolkit', () => {
     expect(await second.locator('[data-action="review"]').isEnabled()).toBe(true);
     expect(await caption(second, k(9)).inputValue()).toBe('Second tab edit');
     await second.unroute('**/me/portfolio');
-    await second.locator('[data-action="review"]').click();
+    await second.locator('[data-action="review"]').focus();
+    await second.keyboard.press('Enter');
     await expect.poll(() => second.locator('[data-conflict-latest]').innerText()).toContain('From the first tab');
     expect(await second.evaluate<string>('document.activeElement?.tagName ?? ""')).toBe('H3');
+    expect(await visibleFocus(second)).toBe(true);
     expect(await second.locator('.pf-compare .pf-side').count()).toBe(2);
     expect(await second.locator('.pf-conflict-mine li').count()).toBe(3);
     expect(await second.locator('.pf-conflict-list li').count()).toBe(2);
