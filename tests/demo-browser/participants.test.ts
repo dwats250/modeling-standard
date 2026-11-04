@@ -339,10 +339,7 @@ describe('three people, one synthetic final record', () => {
     expect(await screen.locator('button:not(.sign-out), form, input, select, textarea').count()).toBe(0);
     expect(visible).not.toMatch(/\bsign (this|here|now)\b|history of changes|previous version/i);
 
-    // At 320 the shared top bar itself runs wide on every screen; this record's own content must still fit.
-    await page.setViewportSize({ width: 320, height: 844 });
-    expect(await page.evaluate<number>("[...document.querySelectorAll('.participant-final-record *')].filter((node) => node.getBoundingClientRect().right > window.innerWidth).length")).toBe(0);
-    for (const width of [360, 390, 1024]) {
+    for (const width of [320, 360, 390, 1024]) {
       await page.setViewportSize({ width, height: 844 });
       await shot(page, `final-record-${who}-${width}`);
       // The cards are separated, not stacked edge to edge.
@@ -351,6 +348,46 @@ describe('three people, one synthetic final record', () => {
     }
     await page.setViewportSize(PHONE);
     expect(pageErrors.splice(0).every((e) => e === `${who}: Failed to load resource: the server responded with a status of 404 (Not Found)`)).toBe(true);
+  });
+
+  // Hosted CI's fonts run wider than a developer machine's, so this also forces wide ones.
+  // Applied through the CSS object model: the demo's CSP refuses an inline style element.
+  const WIDE_TEXT = "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; letter-spacing: 0.03em !important; }";
+  const forceWideText = (page: Page) =>
+    page.evaluate(`(() => { const sheet = new CSSStyleSheet(); sheet.replaceSync(${JSON.stringify(WIDE_TEXT)}); document.adoptedStyleSheets = [sheet]; })()`);
+
+  it.each([
+    { font: 'this machine\'s fonts', wide: false },
+    { font: 'wide fonts', wide: true },
+  ])('the phone viewport never scrolls sideways, and the top bar keeps every label, with $font', async ({ wide }) => {
+    await ready();
+    const { page } = people.b;
+    for (const [screenName, hash] of [['final record', `#/brief/${projectId}`], ['participant home', '#/']] as const) {
+      await page.goto(`${base}/${hash}`);
+      await page.reload();
+      await idle(page);
+      if (wide) await forceWideText(page);
+      for (const width of [320, 360, 390]) {
+        await page.setViewportSize({ width, height: 844 });
+        const [scrollWidth, innerWidth] = await page.evaluate<[number, number]>('[document.documentElement.scrollWidth, window.innerWidth]');
+        expect({ screenName, width, scrollWidth }).toEqual({ screenName, width, scrollWidth: innerWidth });
+        expect(await page.locator('.topbar .wordmark').innerText()).toMatch(/^Modeling\s+Standard$/);
+        expect(await page.locator('.topbar .demo-pill').innerText()).toMatch(/Synthetic\s+demo/);
+        expect(await page.locator('.topbar .menu-link').innerText()).toBe('Demo');
+        expect((await page.locator('.topbar .demo-dot').boundingBox())!.width).toBe(7);
+        for (const target of ['.wordmark', '.demo-pill', '.menu-link']) {
+          const box = (await page.locator(`.topbar ${target}`).boundingBox())!;
+          expect({ target, width, inside: box.x >= 0 && box.x + box.width <= innerWidth }).toEqual({ target, width, inside: true });
+        }
+        // Stays the height the sticky signed-in band below it is positioned for.
+        expect((await page.locator('.topbar').boundingBox())!.height).toBeLessThanOrEqual(62);
+      }
+    }
+    await page.setViewportSize(PHONE);
+    await page.goto(`${base}/#/brief/${projectId}`);
+    await page.reload();
+    await idle(page);
+    pageErrors.splice(0);
   });
 
   it('says so when a person has no payment terms, or the record has no terms at all', async () => {

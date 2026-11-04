@@ -399,8 +399,10 @@ textarea.input { min-height: 76px; }
 .term .btn.tick { background: var(--surface); color: var(--accent); border-color: var(--accent); }
 @media (max-width: 480px) {
   .value-form { grid-template-columns: 1fr; }
-  .wordmark { font-size: 16px; }
-  .demo-pill { padding: 4px 9px; }
+  /* The top bar fits a narrow phone with any font: its labels wrap only when they must. */
+  .wordmark { display: flex; align-items: center; min-height: 44px; padding: 0; font-size: 16px; line-height: 1.1; white-space: normal; }
+  .demo-pill { padding: 4px 9px; line-height: 1.15; white-space: normal; }
+  .demo-dot { flex: none; }
 }
 
 /* ---- Demo control (simulation, not a party act) ---- */
