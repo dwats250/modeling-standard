@@ -17,6 +17,10 @@
 //
 // Unsaved edits are kept in memory while moving between the tabs, so a
 // look at the preview does not lose them; nothing is stored in the browser.
+//
+// Presentation only: this file decides how the toolkit's screens look, read and
+// move with a keyboard. It adds no route, no visibility rule and no persistence;
+// the server's owner-only checks and B4's stale-save refusal are untouched.
 
 export const SLOTS = [
   { key: 'hero', label: 'Hero', hint: 'The front of the card: your strongest image.' },
@@ -43,6 +47,29 @@ export function createToolkit(h) {
 
   function forOwner(owner) {
     if (memory.owner !== owner) Object.assign(memory, { owner, profile: null, card: null, portfolio: null });
+  }
+
+  // After following a link inside the toolkit the old page is gone, so focus
+  // goes to the new page's heading. Not on a first load or an in-place redraw.
+  let pendingFocus = false;
+  document.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('a[href^="#/me"]')) pendingFocus = true;
+  });
+
+  /** A save button's working state: disabled, busy and reading "Saving…"; the returned function undoes it. */
+  function lockSave(buttons) {
+    const texts = buttons.map((b) => b.textContent);
+    buttons.forEach((b) => {
+      b.disabled = true;
+      b.setAttribute('aria-busy', 'true');
+      b.textContent = 'Saving…';
+    });
+    return () =>
+      buttons.forEach((b, i) => {
+        b.disabled = false;
+        b.removeAttribute('aria-busy');
+        b.textContent = texts[i];
+      });
   }
 
   async function choose(owner) {
@@ -115,6 +142,7 @@ export function createToolkit(h) {
     const update = () => {
       node.textContent = `${input.value.length} / ${max}`;
       node.classList.toggle('over', input.value.length > max);
+      node.classList.toggle('empty', input.value.length === 0);
     };
     input.addEventListener('input', update);
     update();
@@ -138,6 +166,7 @@ export function createToolkit(h) {
     input.value = value;
     input.addEventListener('input', () => {
       row.classList.remove('has-error');
+      input.removeAttribute('aria-invalid');
       row.querySelector('.field-error').textContent = '';
       onInput(input.value);
     });
@@ -154,6 +183,7 @@ export function createToolkit(h) {
     const row = form.querySelector(`[data-field="${name}"]`);
     if (!row) return false;
     row.classList.add('has-error');
+    row.querySelector('.input')?.setAttribute('aria-invalid', 'true');
     row.querySelector('.field-error').textContent = message;
     return true;
   }
@@ -233,6 +263,27 @@ export function createToolkit(h) {
     ]);
   }
 
+  /** How the name will read on the card: initials, name, profession and the start of the biography. Text only. */
+  function identityCard() {
+    const initials = el('span', { className: 'tk-initials', attrs: { 'aria-hidden': 'true' } });
+    const name = el('p', { className: 'tk-id-name' });
+    const profession = el('p', { className: 'tk-id-profession' });
+    const bio = el('p', { className: 'tk-id-bio' });
+    const node = el('div', { className: 'tk-identity', attrs: { 'data-identity': '' } }, [initials, el('div', { className: 'tk-id-text' }, [name, profession, bio])]);
+    const paint = (values) => {
+      const shown = values.displayName.trim();
+      const letters = shown.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => Array.from(word)[0].toUpperCase());
+      initials.textContent = letters.join('') || '·';
+      name.textContent = shown || 'Your name';
+      name.classList.toggle('placeholder', shown === '');
+      profession.textContent = values.profession.trim();
+      profession.hidden = values.profession.trim() === '';
+      bio.textContent = values.biography.trim();
+      bio.hidden = values.biography.trim() === '';
+    };
+    return { node, paint };
+  }
+
   // ---- Screen: profile ----
 
   async function renderProfile(root) {
@@ -242,12 +293,14 @@ export function createToolkit(h) {
     const status = statusLine();
     const same = (a, b) => a !== null && b !== null && a.displayName === b.displayName && a.profession === b.profession && a.biography === b.biography;
     let savedTime = profile?.updatedAt ?? null;
+    const identity = identityCard();
     const refresh = () => {
       const dirty = !same(values, saved);
       memory.profile = dirty ? { ...values } : null;
       if (!saved) status.set('new', 'Not saved yet');
       else if (dirty) status.set('dirty', 'Unsaved changes');
       else status.set('saved', savedAt(savedTime));
+      identity.paint(values);
     };
     const onInput = (key) => (value) => {
       values[key] = value;
@@ -278,8 +331,8 @@ export function createToolkit(h) {
         status.set('error', 'Not saved. Check the highlighted field.');
         return;
       }
-      save.disabled = true;
-      save.setAttribute('aria-busy', 'true');
+      const unlock = lockSave([save]);
+      status.set('saving', 'Saving…');
       try {
         const result = await api('POST', '/me/profile', { displayName: values.displayName, profession: values.profession, biography: values.biography });
         const first = saved === null;
@@ -297,8 +350,7 @@ export function createToolkit(h) {
         if (error.status === 400 && applyIssues(form, error, (path) => path.split('.')[0])) status.set('error', 'Not saved. Check the highlighted fields.');
         else status.set('error', `Not saved. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
       } finally {
-        save.disabled = false;
-        save.removeAttribute('aria-busy');
+        unlock();
       }
     });
 
@@ -310,7 +362,14 @@ export function createToolkit(h) {
         heading,
         el('p', { className: 'muted', text: 'The essentials a collaborator reads first. Your comp card uses your name and profession.' }),
       ]),
-      form,
+      el('div', { className: 'tk-workspace tk-profile-workspace' }, [
+        form,
+        el('aside', { className: 'tk-aside tk-aside-profile', attrs: { 'aria-label': 'How your name appears' } }, [
+          el('p', { className: 'eyebrow', text: 'On your card' }),
+          identity.node,
+          el('p', { className: 'small muted', text: 'Your comp card and portfolio show your name and profession exactly as you write them here.' }),
+        ]),
+      ]),
       next,
     );
   }
@@ -344,12 +403,14 @@ export function createToolkit(h) {
     const previewHolder = el('div', { className: 'tk-preview-holder' });
     const same = (a, b) => a.tagline === b.tagline && SLOTS.every((s) => a.slots[s.key] === b.slots[s.key]);
     const paint = () => previewHolder.replaceChildren(compCard({ profile: view.profile, draft: values, fixtures: view.fixtures }));
+    const next = el('p', { className: 'tk-next' }, [link('Next: organize your portfolio ›', '#/me/portfolio', 'link')]);
     const refresh = () => {
       const changed = !same(values, saved);
       memory.card = changed ? { tagline: values.tagline, slots: { ...values.slots } } : null;
       if (changed) status.set('dirty', 'Unsaved changes');
       else if (view.draft.updatedAt === null) status.set('new', 'Not saved yet · a suggested arrangement');
       else status.set('saved', savedAt(view.draft.updatedAt));
+      next.hidden = changed || view.draft.updatedAt === null;
       paint();
     };
 
@@ -387,7 +448,7 @@ export function createToolkit(h) {
       const current = el('span', { className: 'tk-current' });
       const set = el('fieldset', { className: 'tk-slot', attrs: { 'data-slot': slot.key } }, [
         el('legend', {}, [el('strong', { text: slot.label }), el('span', { className: 'small muted', text: ` · ${slot.hint}` })]),
-        current,
+        el('p', { className: 'tk-current-row' }, [el('span', { className: 'tk-current-key', text: 'Chosen' }), current]),
         strip,
       ]);
       set.addEventListener('sync', () => {
@@ -414,7 +475,7 @@ export function createToolkit(h) {
     const asideSave = el('button', { className: 'btn primary block tk-save', text: 'Save comp card', attrs: { type: 'submit', form: 'tk-card-form' } });
     const saves = [save, asideSave];
     form.append(
-      el('section', { className: 'section-card tk-slots' }, [el('header', {}, [el('h2', { text: 'Images' }), el('p', { text: 'Synthetic fixture images stand in for your own work. Each image fills one slot.' })]), ...SLOTS.map(slotSet)]),
+      el('section', { className: 'section-card tk-slots' }, [el('header', {}, [el('h2', { text: 'Images' }), el('p', { text: 'Synthetic fixture images stand in for your own work. Each image fills one slot; choosing one that is already used swaps the two.' })]), ...SLOTS.map(slotSet)]),
       el('section', { className: 'section-card' }, [tagline]),
       el('div', { className: 'sticky-footer tk-footer' }, [el('div', { className: 'tk-actions' }, [status.node, save])]),
     );
@@ -422,10 +483,8 @@ export function createToolkit(h) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (save.disabled) return;
-      saves.forEach((b) => {
-        b.disabled = true;
-        b.setAttribute('aria-busy', 'true');
-      });
+      const unlock = lockSave(saves);
+      status.set('saving', 'Saving…');
       try {
         const result = await api('POST', '/me/comp-card', { tagline: values.tagline, slots: { ...values.slots } });
         view.draft = result.draft;
@@ -439,10 +498,7 @@ export function createToolkit(h) {
         else if (error.status === 400 && applyIssues(form, error, (path) => (path.startsWith('tagline') ? 'tagline' : null))) status.set('error', 'Not saved. Check the highlighted field.');
         else status.set('error', `Not saved. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
       } finally {
-        saves.forEach((b) => {
-          b.disabled = false;
-          b.removeAttribute('aria-busy');
-        });
+        unlock();
       }
     });
 
@@ -458,6 +514,7 @@ export function createToolkit(h) {
           link('Open the full preview', '#/me/card/preview', 'link'),
         ]),
       ]),
+      next,
     );
     // On a phone each strip scrolls sideways: bring its chosen image into view once on screen.
     requestAnimationFrame(() => {
@@ -549,17 +606,24 @@ export function createToolkit(h) {
     const captions = memory.portfolio ? { ...memory.portfolio.captions } : { ...savedCaptions };
     const captionMax = view.maxCaptionLength;
     const labelOf = (key) => view.fixtures.find((f) => f.key === key)?.label ?? 'Fixture';
+    const plural = (n) => `${n} ${n === 1 ? 'image' : 'images'}`;
     const status = statusLine();
     const previewHolder = el('div', { className: 'tk-preview-holder' });
+    // Spoken (not shown) feedback for moves, so reordering by keyboard says where the image went.
+    const announce = el('p', { className: 'visually-hidden', attrs: { role: 'status', 'aria-live': 'polite', 'data-announce': '' } });
     // B4: shown only after a save was refused because the draft changed
     // elsewhere. The edits on this screen are kept as they are; nothing is
     // reloaded, discarded or overwritten until the person says so.
     const conflict = el('section', { className: 'pf-conflict', attrs: { 'data-conflict': '', role: 'alert', 'aria-label': 'Save refused', hidden: '' } });
     const count = el('p', { className: 'pf-count', attrs: { 'aria-live': 'polite' } });
+    const meter = el('span', { className: 'pf-meter', attrs: { 'aria-hidden': 'true' } }, [el('span', { className: 'pf-meter-fill' })]);
     const order = el('ol', { className: 'pf-order', attrs: { 'aria-label': 'Your selection, in order' } });
-    const emptyNote = el('p', { className: 'pf-note', attrs: { 'data-empty': 'selection' }, text: 'Nothing selected yet. Add images from the fixtures below.' });
+    const choose = button('Choose images', () => catalogue.querySelector('.pf-pick:not([disabled])')?.focus(), 'btn pf-choose');
+    const emptyNote = el('div', { className: 'pf-note pf-empty', attrs: { 'data-empty': 'selection' } }, [el('p', { text: 'Nothing selected yet. Add images from the fixtures below.' }), choose]);
     const fullNote = el('p', { className: 'pf-note', attrs: { 'data-full': '' }, text: `Your portfolio is full. Remove an image to add another.` });
     const catalogue = el('ul', { className: 'pf-catalogue' });
+    const next = el('p', { className: 'tk-next' }, [link('Next: preview your portfolio ›', '#/me/portfolio/preview', 'link')]);
+    const previewCount = el('span', { className: 'pf-preview-count' });
 
     const captionOf = (key) => (captions[key] ?? '').trim();
     const same = () => items.length === saved.length && items.every((k, i) => k === saved[i] && captionOf(k) === (savedCaptions[k] ?? ''));
@@ -580,64 +644,112 @@ export function createToolkit(h) {
       conflict.hidden = true;
       conflict.replaceChildren();
     };
+
+    /** One side of the comparison: its images in order, each marked where it differs from the other side. */
+    const side = (title, list, captionsOf, otherList, otherCaptionsOf, only, className) => {
+      const rows = list.map((key, i) => {
+        const j = otherList.indexOf(key);
+        const notes = [];
+        if (j < 0) notes.push(only);
+        else {
+          if (j !== i) notes.push(`Position ${j + 1} there`);
+          if ((captionsOf[key] ?? '') !== (otherCaptionsOf[key] ?? '')) notes.push('Caption differs');
+        }
+        const caption = captionsOf[key] ?? '';
+        return el('li', { attrs: { 'data-key': key }, className: notes.length ? 'differs' : '' }, [
+          el('span', { className: 'pf-conflict-name', text: labelOf(key) }),
+          ...(caption ? [el('span', { className: 'pf-conflict-cap', text: caption })] : []),
+          ...notes.map((note) => el('span', { className: 'pf-diff', text: note })),
+        ]);
+      });
+      return { rows, node: el('div', { className: 'pf-side' }, [el('h4', { text: title }), list.length ? el('ol', { className }, rows) : el('p', { className: 'pf-conflict-none', text: 'No images' })]) };
+    };
+
     /** The warning after a refused save: what happened, that nothing was lost, and the deliberate ways on. */
+    let reviewed = false;
     const showConflict = () => {
       const latest = el('div', { className: 'pf-conflict-latest', attrs: { 'data-conflict-latest': '' } });
+      const failure = el('p', { className: 'pf-conflict-error', attrs: { 'aria-live': 'polite' } });
       const review = el('button', { className: 'btn pf-conflict-review', text: 'Review the saved version', attrs: { type: 'button', 'data-action': 'review' } });
+      const heading = el('h2', { text: 'Not saved: this portfolio changed elsewhere', attrs: { tabindex: '-1' } });
       conflict.replaceChildren(
-        el('h2', { text: 'Not saved: this portfolio changed elsewhere' }),
+        heading,
         el('p', {
-          text: 'It was saved from another tab or window after you opened it here. Your edits on this screen are kept and nothing has been overwritten. Review the saved version before deciding what to keep.',
+          text: reviewed
+            ? 'It was saved again after you last reviewed it. Your edits on this screen are kept and nothing has been overwritten. Review the saved version again before deciding what to keep.'
+            : 'It was saved from another tab or window after you opened it here. Your edits on this screen are kept and nothing has been overwritten. Review the saved version before deciding what to keep.',
         }),
         el('div', { className: 'pf-conflict-actions' }, [review]),
+        failure,
         latest,
       );
       review.addEventListener('click', async () => {
         review.disabled = true;
+        failure.textContent = '';
         let fresh;
         try {
           fresh = await api('GET', '/me/portfolio');
         } catch (error) {
           review.disabled = false;
-          status.set('error', `Could not load the saved version. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
+          failure.textContent = `Could not load the saved version. ${error.status ? refusal(error) : 'Check the connection and try again.'} Your edits are still here.`;
+          status.set('error', 'Not saved. See the warning above.');
           return;
         }
+        reviewed = true;
         // From here on, Save replaces the version just reviewed with the edits on this screen: a deliberate choice, named as such.
         adopt(fresh.draft);
-        const list = el('ol', { className: 'pf-conflict-list' }, fresh.draft.items.map((key) => el('li', { attrs: { 'data-key': key } }, [el('span', { text: labelOf(key) }), ...(fresh.draft.captions[key] ? [el('span', { className: 'pf-conflict-cap', text: fresh.draft.captions[key] })] : [])])));
+        const mine = { items: [...items], captions: Object.fromEntries(items.map((key) => [key, captionOf(key)]).filter(([, text]) => text)) };
+        const theirs = side('Saved version', fresh.draft.items, fresh.draft.captions, mine.items, mine.captions, 'Not in your edits', 'pf-conflict-list');
+        const yours = side('Your edits', mine.items, mine.captions, fresh.draft.items, fresh.draft.captions, 'Not in the saved version', 'pf-conflict-mine');
+        const differing = theirs.rows.filter((row) => row.className === 'differs').length + yours.rows.filter((row) => row.className === 'differs').length;
+        const keep = el('button', { className: 'btn primary pf-conflict-keep', text: 'Save my edits over the saved version', attrs: { type: 'button', 'data-action': 'save-over' } });
+        keep.addEventListener('click', () => form.requestSubmit());
         const useSaved = el('button', { className: 'btn pf-conflict-load', text: 'Replace my edits with the saved version', attrs: { type: 'button', 'data-action': 'load' } });
         useSaved.addEventListener('click', () => {
           load(fresh.draft);
+          reviewed = false;
           hideConflict();
           paint();
           toast('Showing the saved version. Your edits here were set aside.');
         });
+        const title = el('h3', {
+          text: `Saved version (${fresh.draft.items.length ? plural(fresh.draft.items.length) : 'no images'}, ${savedAt(fresh.draft.updatedAt).toLowerCase()})`,
+          attrs: { tabindex: '-1' },
+        });
         latest.replaceChildren(
-          el('h3', { text: fresh.draft.items.length ? `Saved version (${fresh.draft.items.length} ${fresh.draft.items.length === 1 ? 'image' : 'images'}, ${savedAt(fresh.draft.updatedAt).toLowerCase()})` : `Saved version (no images, ${savedAt(fresh.draft.updatedAt).toLowerCase()})` }),
-          ...(fresh.draft.items.length ? [list] : []),
-          el('p', { text: 'Keep your edits and press Save to replace the saved version with them, or:' }),
-          el('div', { className: 'pf-conflict-actions' }, [useSaved]),
+          title,
+          el('p', { className: 'pf-conflict-sum', text: differing === 0 ? 'Your edits and the saved version show the same images, order and captions.' : 'Marked below: what differs between the saved version and your edits.' }),
+          el('div', { className: 'pf-compare' }, [theirs.node, yours.node]),
+          el('p', { className: 'pf-conflict-choose', text: 'Choose how to go on. Neither happens until you press it.' }),
+          el('div', { className: 'pf-choices' }, [
+            el('div', { className: 'pf-choice' }, [keep, el('p', { text: 'The saved version above is replaced by your edits.' })]),
+            el('div', { className: 'pf-choice' }, [useSaved, el('p', { text: 'Your edits on this screen are set aside.' })]),
+          ]),
         );
         review.hidden = true;
         refresh();
-        useSaved.focus();
+        title.focus();
       });
       conflict.hidden = false;
-      conflict.scrollIntoView?.({ block: 'nearest' });
+      conflict.scrollIntoView?.({ block: 'start' });
+      heading.focus({ preventScroll: true });
     };
     const refresh = () => {
       const changed = !same();
       memory.portfolio = changed ? { items: [...items], captions: { ...captions } } : null;
-      if (!conflict.hidden && changed) status.set('error', 'Not saved. See the warning above.');
+      if (!conflict.hidden) status.set('error', 'Not saved. See the warning above.');
       else if (changed) status.set('dirty', 'Unsaved changes');
       else if (view.draft.updatedAt === null) status.set('new', 'Not saved yet');
       else status.set('saved', savedAt(view.draft.updatedAt));
+      next.hidden = changed || view.draft.updatedAt === null || items.length === 0 || !conflict.hidden;
+      previewCount.textContent = plural(items.length);
       previewHolder.replaceChildren(portfolioSheet({ profile: view.profile, items, captions, fixtures: view.fixtures }));
     };
 
     /** Redraws the ordered list and the catalogue; `focus` names a control to return focus to. */
     const paint = (focus) => {
       count.textContent = `${items.length} of ${max} selected`;
+      meter.firstChild.style.width = `${Math.round((items.length / max) * 100)}%`;
       emptyNote.hidden = items.length > 0;
       fullNote.hidden = items.length < max;
       order.replaceChildren(
@@ -657,6 +769,7 @@ export function createToolkit(h) {
             },
           });
           captionInput.value = captions[key] ?? '';
+          const captionCount = counter(captionInput, captionMax);
           captionInput.addEventListener('input', () => {
             captions[key] = captionInput.value;
             refresh();
@@ -664,13 +777,13 @@ export function createToolkit(h) {
           return el('li', { className: 'pf-item', attrs: { 'data-key': key } }, [
             el('img', { attrs: { src: fixtureSrc(key), alt: '', width: '400', height: '500', decoding: 'async' } }),
             el('span', { className: 'pf-pos', attrs: { 'aria-hidden': 'true' }, text: String(i + 1) }),
-            el('span', { className: 'pf-label', text: label }),
+            el('span', { className: 'pf-label' }, [el('span', { text: label }), ...(i === 0 ? [el('span', { className: 'pf-lead', text: 'Leads' })] : [])]),
             el('span', { className: 'pf-controls' }, [
               control('↑', 'up', `Move ${label} earlier`, i === 0),
               control('↓', 'down', `Move ${label} later`, i === items.length - 1),
               control('Remove', 'remove', `Remove ${label}`, false),
             ]),
-            captionInput,
+            el('div', { className: 'pf-cap-field' }, [captionInput, captionCount]),
           ]);
         }),
       );
@@ -719,12 +832,14 @@ export function createToolkit(h) {
         items.splice(at, 1);
         delete captions[key]; // an image taken out loses its caption; added again, it starts blank
         toast(`Removed ${labelOf(key)}.`);
+        announce.textContent = `Removed ${labelOf(key)}. ${plural(items.length)} selected.`;
         // Focus moves to the item that took its place, or the one before it.
-        const next = items[Math.min(at, items.length - 1)];
-        return paint(next ? { key: next, action: 'remove' } : { action: 'pick', key });
+        const after = items[Math.min(at, items.length - 1)];
+        return paint(after ? { key: after, action: 'remove' } : { action: 'pick', key });
       }
       const to = action === 'up' ? at - 1 : at + 1;
       [items[at], items[to]] = [items[to], items[at]];
+      announce.textContent = `${labelOf(key)} moved to position ${to + 1} of ${items.length}.`;
       paint({ key, action });
     });
 
@@ -736,7 +851,11 @@ export function createToolkit(h) {
       if (at >= 0) {
         items.splice(at, 1);
         delete captions[key];
-      } else items.push(key);
+        announce.textContent = `Removed ${labelOf(key)}. ${plural(items.length)} selected.`;
+      } else {
+        items.push(key);
+        announce.textContent = `Added ${labelOf(key)} at position ${items.length} of ${max}.`;
+      }
       paint({ key, action: 'pick' });
     });
 
@@ -747,9 +866,11 @@ export function createToolkit(h) {
       conflict,
       el('section', { className: 'section-card pf-selection' }, [
         el('header', { className: 'pf-section-head' }, [el('h2', { text: 'Your selection' }), count]),
+        meter,
         emptyNote,
         fullNote,
         order,
+        announce,
       ]),
       el('section', { className: 'section-card pf-add' }, [
         el('header', {}, [el('h2', { text: 'Add images' }), el('p', { text: `Synthetic fixture images stand in for your own work. Each can appear once, with a caption of up to ${captionMax} characters.` })]),
@@ -761,15 +882,14 @@ export function createToolkit(h) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (save.disabled) return;
-      saves.forEach((b) => {
-        b.disabled = true;
-        b.setAttribute('aria-busy', 'true');
-      });
+      const unlock = lockSave(saves);
+      status.set('saving', 'Saving…');
       try {
         const sent = Object.fromEntries(items.flatMap((key) => (captionOf(key) ? [[key, captionOf(key)]] : [])));
         // B4: the save names the revision this screen is based on; the server refuses it if the draft moved on.
         const result = await api('POST', '/me/portfolio', { items: [...items], captions: sent, expectedRevision: view.draft.revision });
         load(result.draft);
+        reviewed = false;
         hideConflict();
         paint();
         toast('Portfolio saved.');
@@ -780,25 +900,29 @@ export function createToolkit(h) {
         } else if (error.status === 409) status.set('error', 'Not saved. Save your profile first.');
         else status.set('error', `Not saved. ${error.status ? refusal(error) : 'Check the connection and try again.'}`);
       } finally {
-        saves.forEach((b) => {
-          b.disabled = false;
-          b.removeAttribute('aria-busy');
-        });
+        unlock();
       }
     });
 
     paint();
 
+    // On a phone the preview sits behind a heading so the list being edited stays at the top; on a wide screen it is always open beside it.
+    const wide = window.matchMedia('(min-width: 960px)');
+    const preview = el('details', { className: 'tk-aside-details' }, [
+      el('summary', {}, [el('span', { text: 'Live preview' }), previewCount]),
+      previewHolder,
+      el('div', { className: 'tk-aside-actions' }, [status.extra(), asideSave]),
+      link('Open the full preview', '#/me/portfolio/preview', 'link'),
+    ]);
+    preview.open = wide.matches;
+    wide.addEventListener('change', (event) => {
+      if (event.matches) preview.open = true;
+    });
+    refresh();
+
     root.append(
-      el('div', { className: 'tk-workspace' }, [
-        form,
-        el('aside', { className: 'tk-aside', attrs: { 'aria-label': 'Live preview' } }, [
-          el('p', { className: 'eyebrow', text: 'Live preview' }),
-          previewHolder,
-          el('div', { className: 'tk-aside-actions' }, [status.extra(), asideSave]),
-          link('Open the full preview', '#/me/portfolio/preview', 'link'),
-        ]),
-      ]),
+      el('div', { className: 'tk-workspace' }, [form, el('aside', { className: 'tk-aside', attrs: { 'aria-label': 'Live preview' } }, [el('p', { className: 'eyebrow', text: 'Live preview' }), preview])]),
+      next,
     );
   }
 
@@ -846,12 +970,35 @@ export function createToolkit(h) {
     }
     forOwner(who.owner ?? 'account');
     root.append(band(who), ...tabs(hash));
-    if (hash === '#/me') await renderProfile(root);
-    else if (hash === '#/me/card') await renderCard(root);
-    else if (hash === '#/me/card/preview') await renderPreview(root);
-    else if (hash === '#/me/portfolio') await renderPortfolio(root);
-    else if (hash === '#/me/portfolio/preview') await renderPortfolioPreview(root);
-    else root.append(el('section', { className: 'state' }, [el('p', { text: 'There is no such page in your toolkit.' })]), link('Your profile', '#/me', 'btn block'));
+    const shell = root.children.length;
+    try {
+      if (hash === '#/me') await renderProfile(root);
+      else if (hash === '#/me/card') await renderCard(root);
+      else if (hash === '#/me/card/preview') await renderPreview(root);
+      else if (hash === '#/me/portfolio') await renderPortfolio(root);
+      else if (hash === '#/me/portfolio/preview') await renderPortfolioPreview(root);
+      else root.append(el('section', { className: 'state' }, [el('p', { text: 'There is no such page in your toolkit.' })]), link('Your profile', '#/me', 'btn block'));
+    } catch (error) {
+      // A lost session is the shell's to explain; anything else stays inside the toolkit, with a way to try again.
+      if (error?.status === 401 || error?.status === 403) throw error;
+      while (root.children.length > shell) root.lastElementChild.remove();
+      root.append(
+        el('section', { className: 'state error tk-error', attrs: { role: 'alert', 'data-error': 'load' } }, [
+          el('h2', { text: 'This page could not load' }),
+          el('p', { text: error?.status ? `${refusal(error)} Nothing you saved has changed.` : 'The demo could not be reached. Check the connection; nothing you saved has changed.' }),
+        ]),
+        button('Try again', () => h.rerender(), 'btn primary block tk-retry'),
+        link('Back to your profile', '#/me', 'btn block'),
+      );
+    }
+    if (pendingFocus) {
+      pendingFocus = false;
+      const heading = root.querySelector('h1');
+      if (heading) {
+        heading.tabIndex = -1;
+        setTimeout(() => root.isConnected && heading.focus({ preventScroll: true }), 0);
+      }
+    }
   }
 
   /** A quiet entry to the toolkit for other screens (local demo only). */
