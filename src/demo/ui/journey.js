@@ -982,7 +982,11 @@ async function renderParticipant(root, projectId, route) {
           root.append(renderFinalRecord(result.record, projectId));
           return;
         } catch (recordError) {
-          if (recordError.status !== 404 && recordError.status !== 401) throw recordError;
+          if (recordError.status === 401) {
+            root.append(renderNotSignedIn());
+            return;
+          }
+          if (recordError.status !== 404) throw recordError;
         }
       }
       root.append(
@@ -1002,12 +1006,7 @@ async function renderParticipant(root, projectId, route) {
       return;
     }
     if (!route.simulated && error.status === 401) {
-      root.append(
-        el('section', { className: 'card' }, [
-          el('h1', { text: 'You’re not signed in' }),
-          el('p', { className: 'muted', text: 'Open your invitation link to sign in and come back to this shoot.' }),
-        ]),
-      );
+      root.append(renderNotSignedIn());
       return;
     }
     throw error;
@@ -1058,38 +1057,71 @@ async function renderParticipant(root, projectId, route) {
   );
 }
 
+function renderNotSignedIn() {
+  return el('section', { className: 'card' }, [
+    el('h1', { text: 'You’re not signed in' }),
+    el('p', { className: 'muted', text: 'Open your invitation link to sign in and come back to this shoot.' }),
+  ]);
+}
+
+/** Who each part of a person's final record is shared with (D10). */
+const FINAL_RECORD_SECTIONS = {
+  universal: { title: 'On set', audience: 'Shared · everyone in this shoot sees these terms' },
+  shared: { title: 'The shoot', audience: 'Shared · everyone in this shoot sees these terms' },
+  money: { title: 'Your payment terms', audience: 'Private · each payment is seen only by the two people it is between' },
+};
+
+/** Whom a pair-scoped clause is between, in the reader's own terms. */
+function betweenNote(between, me, label) {
+  if (!between) return null;
+  const other = between.find((id) => id !== me);
+  const text = between.includes(me) ? `Between you and ${label(other)}` : `Between ${[...between].sort(byLabel(label)).map(label).join(' and ')}`;
+  return el('p', { className: 'term-notes', text });
+}
+
+function finalRecordSection(layer, clauses, firstNumber, me, label, emptyText) {
+  const { title, audience } = FINAL_RECORD_SECTIONS[layer];
+  return el('div', { className: 'doc-section', attrs: { 'data-layer': layer } }, [
+    el('header', {}, [el('h2', { text: title }), el('p', { text: audience })]),
+    clauses.length
+      ? el('ol', { className: 'terms' }, clauses.map((clause, index) => el('li', { className: 'term' }, [
+          el('span', { className: 'num', text: String(firstNumber + index) }),
+          el('p', { className: 'term-text', text: clean(clause.content) }),
+          clause.value === null ? null : el('p', { className: 'term-value', text: clean(clause.value) }),
+          betweenNote(clause.between, me, label),
+        ])))
+      : el('p', { className: 'final-record-empty', text: emptyText }),
+  ]);
+}
+
 /** A local synthetic rendering of the D10-filtered final record. */
 function renderFinalRecord(record, projectId) {
+  const me = record.partyId;
   const label = labeller(projectId, record.parties.map((party) => party.id));
   const doc = el('section', { className: 'doc', attrs: { 'aria-label': 'Synthetic final record preview' } });
-  let number = 0;
-  for (const layer of LAYER_ORDER) {
+  let number = 1;
+  const appendSection = (layer, emptyText) => {
     const clauses = record.clauses.filter((clause) => clause.layer === layer);
-    if (!clauses.length) continue;
-    const list = el('ol', { className: 'terms' });
-    for (const clause of clauses) {
-      number += 1;
-      list.append(el('li', { className: 'term' }, [
-        el('span', { className: 'num', text: String(number) }),
-        el('p', { className: 'term-text', text: clean(clause.content) }),
-        clause.value === null ? null : el('p', { className: 'term-value', text: clean(clause.value) }),
-        clause.layer === 'money' && clause.between
-          ? el('p', { className: 'term-notes', text: `Private payment terms for ${clause.between.map(label).join(' and ')}.` })
-          : null,
-      ]));
-    }
-    doc.append(el('div', { className: 'doc-section', attrs: { 'data-layer': layer } }, [
-      el('header', {}, [el('h3', { text: SECTIONS[layer].title })]),
-      list,
-    ]));
-  }
+    if (!clauses.length && !emptyText) return;
+    doc.append(finalRecordSection(layer, clauses, number, me, label, emptyText));
+    number += clauses.length;
+  };
+  appendSection('universal');
+  // With no universal terms either, the empty state stands for all the shared terms.
+  appendSection('shared', record.clauses.some((clause) => clause.layer === 'universal') ? null : 'No shared terms are in this record.');
+  // Always present, so a person with no payment is told rather than left to wonder.
+  appendSection('money', 'No payment terms of yours are in this record.');
   return el('div', { className: 'participant-final-record' }, [
-    renderSignedIn(label(record.partyId)),
+    renderSignedIn(label(me)),
     el('section', { className: 'card' }, [
       el('p', { className: 'eyebrow', text: 'Synthetic demonstration' }),
       el('h1', { text: 'Your final record preview' }),
-      el('p', { className: 'simulation-note', text: 'This view uses the local operator/test finalization path. No participant performed a signing act; this is not evidence of participant signing or authorization for a real collaboration.' }),
-      el('p', { className: 'small muted', text: 'Only shared terms and your own payment terms are shown.' }),
+      el('p', { className: 'simulation-note', text: 'This view uses the local operator/test finalization path. No participant performed a signing act; this is not evidence of participant signing or authorization for a real collaboration. The demo operator’s test inspector can see the whole record.' }),
+      el('ul', { className: 'final-record-key' }, [
+        el('li', {}, [el('strong', { text: 'Shared: ' }), el('span', { text: 'every person in this shoot sees the same terms. Organizing a shoot gives no extra view.' })]),
+        el('li', {}, [el('strong', { text: 'Private: ' }), el('span', { text: 'you see only your own payment terms, nobody else’s.' })]),
+        el('li', {}, [el('strong', { text: 'Final terms only: ' }), el('span', { text: 'this record keeps no change history.' })]),
+      ]),
     ]),
     doc,
     link('Back to home', '#/', 'btn block'),

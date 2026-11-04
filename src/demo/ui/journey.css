@@ -478,6 +478,20 @@ body:not(.show-eng) .eng { display: none !important; }
   .presence-row { grid-template-columns: 1fr 260px; align-items: center; }
 }
 
+/* S14: a person's synthetic final record. */
+.participant-final-record > * + * { margin-top: 20px; }
+.participant-final-record .doc-section > header h2 { font-size: 19px; }
+.participant-final-record .doc-section > header p { overflow-wrap: anywhere; }
+.participant-final-record .doc-section[data-layer='money'] { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+.participant-final-record .doc-section[data-layer='money'] > header p { color: var(--ink-2); font-weight: 600; }
+.participant-final-record .doc-section[data-layer='money'] .term + .term { border-top-color: var(--line-strong); }
+.participant-final-record .doc-section[data-layer='money'] .term-notes { color: var(--ink-2); }
+.participant-final-record .term-notes { overflow-wrap: anywhere; }
+.participant-final-record .final-record-empty { padding: 8px 18px 18px; color: var(--ink-2); font-style: italic; }
+.participant-final-record .final-record-key { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
+.participant-final-record .final-record-key li + li { margin-top: 6px; }
+.participant-final-record .final-record-key strong { color: var(--ink); }
+
 /* S12: invitations (operator), the signed-in band, and the test provider's page. */
 .invite-list { list-style: none; margin: 12px 0 8px; padding: 0; border-top: 1px solid var(--line); }
 .invite-row { display: grid; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
