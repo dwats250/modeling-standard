@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { request as httpRequest, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
@@ -7,9 +8,12 @@ import { databaseBoundaryProblems, readDatabaseBoundaryFacts } from '../../src/d
 import { REVIEWER_COOKIE, REVIEWER_MAX_SESSIONS, createReviewerGate, type ReviewerGate } from '../../src/demo/reviewer.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
+import { runMigrations } from '../../src/infrastructure/database/migrate.ts';
 import { newToken } from '../../src/infrastructure/tokens.ts';
 import { temporaryAnnotationStore } from '../support/annotations.ts';
 import { LogCapture } from '../support/app.ts';
+import { withClient } from '../support/sql.ts';
+import { withDatabase } from '../support/urls.ts';
 
 /**
  * Reviewer mode over real HTTP, through the real wiring (`createDemoApplication`
@@ -20,6 +24,15 @@ import { LogCapture } from '../support/app.ts';
  *
  * Everything here is negative unless it says otherwise: the point is what is
  * refused, before what, and with what left behind (nothing).
+ *
+ * The demo's synthetic professionals `a` and `b` are fixed accounts, the same
+ * rows for every test file on a server. This file asserts that a profile starts
+ * empty, and that what one reviewer saves is what it reads back, so it serves
+ * from a database of its own, not the shared test database other files write to
+ * in parallel. The name is generated for this run, so the only database it can
+ * ever drop is the one it just created, and never one left by an interrupted
+ * run. The boundary tests below read the shared database's catalogs and write
+ * nothing.
  */
 
 const PUBLIC_ORIGIN = 'https://review.example.invalid:8444';
@@ -27,6 +40,7 @@ const PUBLIC_HOST = 'review.example.invalid:8444';
 const ACCESS_KEY = newToken().token;
 const SESSION_SECONDS = 600;
 const WIRE_COOKIE = `__Host-${REVIEWER_COOKIE}`;
+const DATABASE = `ms_reviewer_http_test_${randomUUID().replaceAll('-', '')}`;
 
 let database: DatabaseHandle;
 let demo: DemoApplication;
@@ -39,8 +53,10 @@ const warnings: string[] = [];
 const clock = { offset: 0 };
 
 beforeAll(async () => {
+  await withClient(inject('adminUrl'), (c) => c.query(`CREATE DATABASE ${DATABASE}`));
+  await runMigrations(withDatabase(inject('migrationUrl'), DATABASE));
   const logger = createLogger('info', logs);
-  database = openDatabase(inject('runtimeUrl'), logger);
+  database = openDatabase(withDatabase(inject('runtimeUrl'), DATABASE), logger);
   const store = temporaryAnnotationStore();
   demo = await createDemoApplication({ db: database.db, logger, annotations: store, reviewer: { publicOrigin: PUBLIC_ORIGIN } });
   gate = createReviewerGate({ publicOrigin: PUBLIC_ORIGIN, accessKey: ACCESS_KEY, sessionSeconds: SESSION_SECONDS, now: () => Date.now() + clock.offset, warn: (m) => warnings.push(m) });
@@ -60,6 +76,7 @@ afterAll(async () => {
   await new Promise<void>((done) => server.close(() => done()));
   await demo.app.close();
   await database.close();
+  await withClient(inject('adminUrl'), (c) => c.query(`DROP DATABASE IF EXISTS ${DATABASE} WITH (FORCE)`));
 });
 
 interface Res {
