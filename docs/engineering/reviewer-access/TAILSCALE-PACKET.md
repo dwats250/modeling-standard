@@ -2,18 +2,21 @@
 
 Status: **prepared offline; nothing applied.** No policy save, validate call, device share, Serve, certificate, Funnel or other tailnet command was run to prepare this. The live policy was not seen. The work order records the tailnet as a confirmed wildcard allow-all; nothing else about it is known here.
 
-**This is a replacement, not an addition.** Under `src: *, dst: *` every narrower rule is redundant, so adding a grant for Cory limits nothing. Cory is scoped only once the wildcard is gone. With the wildcard in place, a device on Cory's identity reaches every device and port on the tailnet, so no key is handed over before this is finished.
+**This is a replacement, not an addition.** Under `src: *, dst: *` every narrower rule is redundant, so adding a grant for Cory limits nothing. Cory is scoped only once the wildcard is gone. With the wildcard in place, Cory's exposure depends on what kind of identity Cory has: a tailnet member reaches every device and port, and a share recipient reaches every port on the shared machine, because `*` as a source includes `autogroup:shared`. Either is too much, so no key is handed over before this is finished.
 
 Files: [`tailscale-policy.replacement.hujson`](tailscale-policy.replacement.hujson) (the template) and `tests/reviewer-security/tailscale-policy.ts` (an offline shape check).
 
 ## Open before activation
 
-### Blocker: what answers on 8443
+### To verify at activation: what answers on 8443
 
-The packet scopes Cory to **Asher TCP 8443**, as assigned. The repository's S13 records say Serve maps `:8443` to **staging** (`127.0.0.1:3130`), and PR #48's runbook originally put reviewer mode on 8444 to avoid that. A network grant cannot tell services apart: if staging still answers on 8443, this grant lands Cory on staging, not on the reviewer gate. Dustin needs to choose one, then make the origin, Serve entry, grant and tests agree:
+The packet scopes Cory to **Asher TCP 8443**, as assigned. A network grant cannot tell services apart, so whatever answers on that port is what Cory reaches. What is known about it, by kind of evidence:
 
-- **Move staging off 8443 and serve the reviewer there.** This changes staging's pinned origin and its Google redirect URI, which S13 records.
-- **Keep staging on 8443 and serve the reviewer on another port.** Change `tcp:8443` and `asher:8443` in the template and in the checker constants.
+- **Observed:** a read-only `tailscale serve status` on Asher during independent review (2026-11-04) showed only the existing tailnet-only Options route on port 80, and no 8443 entry. This preparation did not repeat it.
+- **Historical, not current:** the S13 records (`S13-STAGING.md`, `S13-CONTINUATION.md`) describe Serve mapping `:8443` to staging on `127.0.0.1:3130`, and PR #48's runbook first put reviewer mode on 8444 to avoid that.
+- **Not known:** who owns 8443 at activation. Serve status shows Serve's entries only, so something else could still be bound to that port on the tailnet address. Staging's pinned origin in its own env file was not inspected either.
+
+So do not assume 8443 belongs to staging, and do not assume it is free. Immediately before activation, confirm with `tailscale serve status` and `ss -ltn` on Asher, and stop if anything but the reviewer would answer there. If staging is expected to return to 8443, Dustin chooses: move staging (which changes its pinned origin and Google redirect URI), or use another reviewer port and change `tcp:8443` and `asher:8443` in the template, the checker constants and the tests.
 
 ### Prerequisites only the live tailnet can answer
 
@@ -22,11 +25,11 @@ Nothing in the template has been guessed. Each is a `__PLACEHOLDER__` or a `PREF
 | # | Inspect (read-only) | Why |
 |---|---|---|
 | 1 | The **complete** live policy, saved verbatim as the rollback copy | Only the wildcard is known. `groups`, `tagOwners`, `autoApprovers`, `nodeAttrs`, `ssh`, `postures` and any others must be merged in by hand and reviewed: the template replaces only the access rules it shows |
-| 2 | Cory's **exact** identity, and how they joined: tailnet member, invited external user, or shared | Decides `__CORY_IDENTITY__`. A device share is out of scope. If `group:` cannot hold that identity type, stop and revise |
+| 2 | Cory's **exact** identity, and its kind: tailnet member, or external recipient of a machine share | Decides `__CORY_IDENTITY__`, and whether activation needs a share at all (Tailscale describes sharing as what lets external users reach a machine; members get access through policy). This packet makes no share. If one is needed, it is a separate step for Dustin to approve |
 | 3 | Dustin's exact identity, and whether Asher is owned by it or tagged | Decides `__DUSTIN_IDENTITY__`, and whether `autogroup:self` and the `ssh` rule cover Asher |
 | 4 | Asher's tailnet address, from Asher (`tailscale ip -4`). S13 recorded `100.64.34.84`; that is history, not confirmation | `__ASHER_TAILNET_IP__`, one address |
 | 5 | Every device: owner, tags, advertised routes, exit-node use | The wildcard allowed all of it silently. Each thing still needed gets an explicit grant, or it **breaks on save** |
-| 6 | The Options route: `tailscale serve status` on Asher. S13 recorded Options Observatory on Serve port 80. Check it is not also a subnet route or on another device | Decides whether `asher:80` preserves it. The test `accept` list must name the real destination |
+| 6 | The Options route: `tailscale serve status` on Asher. Independent review observed it on port 80, tailnet-only, and S13 recorded the same. Check it is not also a subnet route or on another device | Decides whether `asher:80` preserves it. The test `accept` list must name the real destination |
 | 7 | `ss -ltn` on Asher: everything listening beyond loopback | Add those ports to the reviewer's `deny` list. Tailscale tests cannot express "all other ports" |
 | 8 | How Dustin reaches Asher: Tailscale SSH or OpenSSH over the tailnet | Tailscale SSH needs the live `ssh` rule copied, or Dustin can be locked out of Asher |
 | 9 | Funnel: `tailscale funnel status`, and `nodeAttrs` in the live policy | Must be off for this service. The policy must not grant `funnel` beyond what is confirmed needed |
@@ -34,6 +37,8 @@ Nothing in the template has been guessed. Each is a `__PLACEHOLDER__` or a `PREF
 ## Decisions in the template
 
 - **Dustin gets `autogroup:self` and `asher`, not `dst: *`.** `*` also names Cory's devices. Whether a one-way rule puts a peer in the other side's device list could not be confirmed from Tailscale's documentation, so the template avoids depending on it, and check L4 below observes it.
+- **Cory is an exact identity selector, not a group,** in the grant, `tests` and `sshTests`. Tailscale's sharing documentation shows a recipient's email as a grant `src` for a shared machine, and says sharing strips groups from the recipient's tailnet. Nothing establishes that an external recipient can be a member of a group in this policy, so the template does not depend on it. The form of the identity is not assumed: it is whatever preflight item 2 finds.
+- **Unconfirmed: a share recipient's identity in `tests`.** The sharing documentation does not mention policy `tests`, and the policy syntax page lists a user as a valid `src` without addressing recipients. Only Tailscale's validation can settle this. If it rejects those entries, stop and revise; do not delete the deny tests to get past it. The live matrix below applies either way.
 - **Grants only, no `acls`.** A legacy rule would combine with the grants.
 - **No `*`, `autogroup:member` or `autogroup:shared` source anywhere**, including `ssh`: if Cory is a member or a shared user, each of those would include them. Tailscale documents `*` as a source covering `autogroup:shared`.
 
@@ -41,9 +46,9 @@ Nothing in the template has been guessed. Each is a `__PLACEHOLDER__` or a `PREF
 
 Offline:
 
-1. Complete the inspection above and resolve the 8443 blocker.
+1. Complete the inspection above, and confirm what answers on 8443.
 2. Copy the template outside the repository, fill it, merge the sections from the live policy. Do not commit a filled copy: it holds real identities.
-3. `node tests/reviewer-security/tailscale-policy.ts <filled copy> --filled` must report the shape as intended. **This is not validation:** it checks structure only, and knows nothing of what Tailscale will evaluate.
+3. `node tests/reviewer-security/tailscale-policy.ts <filled copy> --filled --reviewer=<Cory's exact identity>` must report the shape as intended. **This is not validation:** it checks structure only, and knows nothing of what Tailscale will evaluate.
 4. A second person reviews the diff between the saved live policy and the filled copy, looking for anything removed by accident.
 
 Live, each step only with Dustin's explicit go-ahead for that step:
@@ -80,7 +85,7 @@ A failed L2 to L7 means take reviewer mode down first and then diagnose.
 
 ## What the offline evidence does and does not show
 
-`tests/unit/reviewer-tailscale-policy.test.ts` runs in `npm test`. It proves that the template has the intended shape, that a wildcard added back or any widening of Cory's grant is refused, and that a copy with an unfilled value is refused. It does not show that the policy is accepted by Tailscale, that its `tests` pass, or anything about real traffic.
+`tests/unit/reviewer-tailscale-policy.test.ts` runs in `npm test`. It proves that the template has the intended shape, that a wildcard added back, any widening of Cory's grant, or putting Cory in a group is refused, and that a copy with an unfilled value, or checked against anything but one exact identity, is refused. It does not show that the policy is accepted by Tailscale, that its `tests` pass, or anything about real traffic.
 
 ## Sources
 
@@ -88,4 +93,5 @@ Read 2026-11-04. Tailscale's own validation is what counts if these differ.
 
 - [Policy file syntax](https://tailscale.com/kb/1337/policy-syntax): `tests`, `sshTests`, `*` as a source, `autogroup:self`, `hosts`, `ssh`.
 - [Grants](https://tailscale.com/kb/1324/grants): grant syntax, `ip` with `tcp:` ports, grants and legacy ACLs coexisting.
+- [Sharing](https://tailscale.com/kb/1084/sharing): a recipient's email as a grant `src`, `autogroup:shared`, groups stripped from the recipient's tailnet, what a recipient can see and reach.
 - [Tailscale changelog](https://tailscale.com/changelog): the validate API call running tests without saving.

@@ -66,7 +66,7 @@ The check runs once, at startup. A grant made afterwards is not noticed until th
 
 ## Runbook (activation; none of this has been done)
 
-The order matters: **no key reaches a reviewer until the tailnet's wildcard is replaced**, because until then the reviewer's device reaches every device and port on the tailnet.
+The order matters: **no key reaches a reviewer until the tailnet's wildcard is replaced**, because until then the reviewer's device reaches every port on Asher at least, and every device if the reviewer is a tailnet member rather than a share recipient.
 
 **Identities.** Two, deliberately. The operator (Dustin's account) prepares the database and alone can read the migration credential. `ms-reviewer` serves, holds only the runtime credential, and cannot read anything the operator keeps.
 
@@ -106,7 +106,7 @@ The order matters: **no key reaches a reviewer until the tailnet's wildcard is r
    node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url") + "\n")' > /dev/tty
    ```
 6. **Service.** Review and install [`ms-reviewer.service`](reviewer-access/ms-reviewer.service), then start it. Check the OS list below before going further. The service template has been parsed offline only.
-7. **Tailnet.** Follow the [replacement packet](reviewer-access/TAILSCALE-PACKET.md), including its blocker on port 8443. Point Serve at the serving port for exactly the configured origin. Never `tailscale serve reset`: it would remove the Options entry. Funnel stays off.
+7. **Tailnet.** Follow the [replacement packet](reviewer-access/TAILSCALE-PACKET.md), including its check of what answers on port 8443. Point Serve at the serving port for exactly the configured origin. Never `tailscale serve reset`: it would remove the Options entry. Funnel stays off.
 8. **Hand the key** to the reviewer out of band (not in a URL, chat log or screenshot). They open `https://<name>.ts.net:<port>/reviewer`.
 
 **Reset later:** stop the service, repeat step 3, reinstall the annotation file (step 4), start it. Every session ends.
@@ -117,7 +117,7 @@ The order matters: **no key reaches a reviewer until the tailnet's wildcard is r
 
 | Threat | What stands in the way | Evidence | Residual, honestly |
 |---|---|---|---|
-| **Compromised reviewer Windows device.** Malware has the browser profile, keystrokes and clipboard, and the device's tailnet identity | Tailnet scope limits it to one port on Asher. The key and session reach only synthetic data. Sessions end on restart | Gate and data scope: Automated. Network scope: **Live, and only after the wildcard is replaced** | It is a full reviewer until revoked: can read, create, edit and finalize invented records and act as the demo operator. It sees the key, so **rotate the key, restart and remove the device**. Under the current wildcard it reaches the whole tailnet |
+| **Compromised reviewer Windows device.** Malware has the browser profile, keystrokes and clipboard, and the device's tailnet identity | Tailnet scope limits it to one port on Asher. The key and session reach only synthetic data. Sessions end on restart | Gate and data scope: Automated. Network scope: **Live, and only after the wildcard is replaced** | It is a full reviewer until revoked: can read, create, edit and finalize invented records and act as the demo operator. It sees the key, so **rotate the key, restart and remove the device**. Under the current wildcard it reaches every port on Asher at least, and the whole tailnet if it is a member's device |
 | **Malicious requests:** malformed Host, Origin, paths, bodies; CSRF | Host pinned (421); Origin exact on the gate and every POST (403); bodies capped at 64 KiB (413); strict schemas (400); `SameSite=Lax`; `form-action 'self'` on the gate | Automated | The demo's pages and test issuer are demo-grade. A same-origin script could act; CSP is `script-src 'self'` and the demo's pages are the only same-origin scripts |
 | **Stolen, replayed, fixed or revoked sessions** | Opaque server-issued tokens; planted cookies replaced, never adopted; duplicates, bare names, truncated and padded tokens refused; sign-out and re-sign-in kill the old token on the server; restart kills all; absolute expiry | Automated, including across a real process restart | A stolen cookie works until expiry or revocation. No device binding; the bound is the session length |
 | **Reviewer-key bypass** | The gate runs before any file, page, annotation, test IdP page or application route; only its own pages and stylesheet precede it. Key only in a same-origin POST body, constant-time, 32 random bytes; no identity header admits anyone | Automated, path by path, GET and non-GET | The key is shared by every reviewer, so nothing tells them apart, and the only way to revoke one holder's key is to rotate it for all. It sits in plain text in the env file |
@@ -158,6 +158,7 @@ Run on 2026-11-04, on a disposable PostgreSQL on `127.0.0.1:5471` created by `te
 | `tests/reviewer-security/harness.sh run npm test` (a fresh server) | 45 files, 688 tests passed |
 | `CHROME_PATH=/usr/bin/google-chrome tests/reviewer-security/harness.sh run npm run test:demo` | 6 files, 35 tests passed |
 | `npm run check` | exit 0: typecheck, lint, no schema drift, identifiers |
+| After the later packet correction (Cory as an exact identity): `tests/unit/reviewer-tailscale-policy.test.ts` alone, with typecheck and lint | 9 tests passed; typecheck and lint exit 0. The full-suite counts in this table predate that correction |
 | `npm run build` | exit 0; no `dist/demo`, and no file in `dist` mentions the reviewer |
 | `systemd-analyze verify` and `systemd-analyze security --offline=true` on a copy of the template with the node path adjusted | verify exit 0; exposure score 1.1. These read the file: **nothing ran under it** |
 

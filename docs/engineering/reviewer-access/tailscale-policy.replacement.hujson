@@ -8,8 +8,7 @@
 // still contains one (tests/reviewer-security/tailscale-policy.ts).
 {
   "groups": {
-    "group:ms-operators": ["__DUSTIN_IDENTITY__"],
-    "group:ms-reviewers": ["__CORY_IDENTITY__"]
+    "group:ms-operators": ["__DUSTIN_IDENTITY__"]
   },
 
   "hosts": {
@@ -31,12 +30,14 @@
     // silently; this policy allows only what is listed.
 
     // Cory: one TCP port on one device. Nothing else, no app capabilities.
-    { "src": ["group:ms-reviewers"], "dst": ["asher"], "ip": ["tcp:8443"] }
+    // The exact identity, not a group: Cory may be an external share recipient,
+    // and nothing establishes that one can be a member of a group here.
+    { "src": ["__CORY_IDENTITY__"], "dst": ["asher"], "ip": ["tcp:8443"] }
   ],
 
   "ssh": [
     // PREFLIGHT: replace with the exact rules Dustin uses in the live policy.
-    // No rule here may name group:ms-reviewers, autogroup:member or a wildcard.
+    // No rule here may name Cory's identity, autogroup:member or a wildcard.
     { "action": "check", "src": ["group:ms-operators"], "dst": ["autogroup:self"], "users": ["autogroup:nonroot", "root"] }
   ],
 
@@ -49,7 +50,7 @@
   // Asher's tailnet address.
   "tests": [
     {
-      "src": "group:ms-reviewers",
+      "src": "__CORY_IDENTITY__",
       "proto": "tcp",
       "accept": ["asher:8443"],
       "deny": [
@@ -59,7 +60,7 @@
         "__ANOTHER_TAILNET_DEVICE_IP__:8443", "__ANOTHER_TAILNET_DEVICE_IP__:22"
       ]
     },
-    { "src": "group:ms-reviewers", "proto": "udp", "deny": ["asher:8443", "asher:41641"] },
+    { "src": "__CORY_IDENTITY__", "proto": "udp", "deny": ["asher:8443", "asher:41641"] },
     {
       "src": "group:ms-operators",
       "proto": "tcp",
@@ -68,6 +69,6 @@
   ],
 
   "sshTests": [
-    { "src": "group:ms-reviewers", "dst": ["asher"], "deny": ["root", "__ASHER_LOGIN_USER__"] }
+    { "src": "__CORY_IDENTITY__", "dst": ["asher"], "deny": ["root", "__ASHER_LOGIN_USER__"] }
   ]
 }
