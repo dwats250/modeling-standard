@@ -1,11 +1,13 @@
+import { accessSync, constants, lstatSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import { join } from 'node:path';
+import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import { isAbsolute, join, normalize, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ConfigError, loadAppConfig, type AppConfig } from '../config/config.ts';
 import { clearCookie, cookieValues, serializeCookie } from '../http/cookies.ts';
 import { newToken, sameDigest, tokenDigest } from '../infrastructure/tokens.ts';
 import { DEMO_DATABASE, isLoopbackHost } from './demo.ts';
-import { STAGING_DATABASE, readOwnerOnlyEnvFile } from './staging.ts';
+import { readOwnerOnlyEnvFile } from './staging.ts';
 
 /**
  * Reviewer mode: the local synthetic demo, reachable over HTTPS through a
@@ -34,10 +36,15 @@ import { STAGING_DATABASE, readOwnerOnlyEnvFile } from './staging.ts';
  *
  * Reviewer sessions are opaque 32-byte tokens held only in an `HttpOnly`,
  * `Secure`, `SameSite=Lax`, `__Host-` cookie; the server keeps only their
- * digests, in memory, with an absolute expiry. Revocation: signing out ends
- * one; restarting the process ends all (there is no persistent store to
- * leak or to forget). Rotating the key means restarting with the new key,
- * which also ends every session issued under the old one.
+ * digests, in memory, with an absolute expiry and a hard limit on how many
+ * may be open. Revocation: signing out ends one; restarting the process ends
+ * all (there is no persistent store to leak or to forget). Rotating the key
+ * means restarting with the new key, which also ends every session issued
+ * under the old one.
+ *
+ * Nothing here sandboxes the process: it can read whatever its operating
+ * system user can. The isolation it needs comes from how it is run
+ * (docs/engineering/REVIEWER-ACCESS.md).
  */
 
 export const REVIEWER_COOKIE = 'ms_reviewer';
@@ -49,6 +56,9 @@ const MAX_SESSION_SECONDS = 12 * 60 * 60;
 const FAILURE_LIMIT = 10;
 const FAILURE_WINDOW_MS = 60_000;
 const MAX_KEY_LENGTH = 256;
+/** Open sessions at most. A reviewer demo has a handful of browsers; memory must not grow with sign-ins. */
+export const REVIEWER_MAX_SESSIONS = 16;
+const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 export interface ReviewerConfig {
   readonly app: AppConfig;
@@ -58,6 +68,8 @@ export interface ReviewerConfig {
   readonly publicAuthority: string;
   readonly accessKey: string;
   readonly sessionSeconds: number;
+  /** The annotation store's directory: the one path this mode writes, outside the repository. */
+  readonly stateDir: string;
 }
 
 /**
@@ -78,7 +90,7 @@ export function loadReviewerConfig(env: Readonly<Record<string, string | undefin
     if (!isLoopbackHost(app.host)) problems.push('HOST: reviewer mode listens on loopback only (the HTTPS proxy is in front of it)');
     if (app.google !== null) problems.push('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET: must not be set in reviewer mode (local test sign-in only)');
     if (app.publicOrigin !== null) problems.push('PUBLIC_BASE_URL: must not be set in reviewer mode; set REVIEWER_PUBLIC_ORIGIN');
-    if (namesDatabase(app.databaseUrl, STAGING_DATABASE)) problems.push(`DATABASE_URL: must not name ${STAGING_DATABASE}; reviewer mode uses ${DEMO_DATABASE} only`);
+    if (!namesExactly(app.databaseUrl, DEMO_DATABASE)) problems.push(`DATABASE_URL: must name ${DEMO_DATABASE} exactly, with no query parameters`);
   }
   if (env.MIGRATION_DATABASE_URL !== undefined && env.MIGRATION_DATABASE_URL !== '') {
     problems.push('MIGRATION_DATABASE_URL: must not be set in reviewer mode (the serving process never holds the migration credential)');
@@ -108,8 +120,13 @@ export function loadReviewerConfig(env: Readonly<Record<string, string | undefin
     }
   }
 
+  const stateDir = env.REVIEWER_STATE_DIR ?? '';
+  if (!isAbsolute(stateDir) || normalize(stateDir).replace(/(?<=.)\/$/, '') !== stateDir || isInsideRepository(stateDir)) {
+    problems.push('REVIEWER_STATE_DIR: must be a normalized absolute path outside the repository');
+  }
+
   if (problems.length > 0 || !app) throw new ConfigError(problems);
-  return { app, publicOrigin, publicAuthority, accessKey, sessionSeconds };
+  return { app, publicOrigin, publicAuthority, accessKey, sessionSeconds, stateDir };
 }
 
 /** `https://host[:port]` exactly, or null. */
@@ -131,12 +148,66 @@ export function parseExactHttpsOrigin(value: string | undefined): { publicOrigin
   return { publicOrigin: url.origin, publicAuthority: url.host };
 }
 
-function namesDatabase(url: string, database: string): boolean {
+function namesExactly(url: string, database: string): boolean {
   try {
-    return new URL(url).pathname === `/${database}`;
+    const parsed = new URL(url);
+    return parsed.pathname === `/${database}` && parsed.search === '';
   } catch {
     return false;
   }
+}
+
+/** True for the repository itself or anything under it. */
+export function isInsideRepository(path: string): boolean {
+  return path === REPOSITORY_ROOT.slice(0, -1) || path.startsWith(REPOSITORY_ROOT);
+}
+
+/**
+ * Settings and credentials the process must not inherit. Settings come only
+ * from the env file; `pg` falls back to these `PG*` names when a value is
+ * absent, and a credential in the environment is one the process holds. This
+ * is a refusal of known names, not a sanitized environment: only the service
+ * definition can give it that.
+ */
+export function inheritedEnvironmentProblems(env: Readonly<Record<string, string | undefined>>): string[] {
+  const refused = /^(DATABASE_URL|MIGRATION_DATABASE_URL|POSTGRES_PASSWORD|REVIEWER_ACCESS_KEY|STAGING_OPERATOR_KEY|GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|PG[A-Z]+)$/;
+  return Object.keys(env)
+    .filter((name) => refused.test(name) && env[name] !== undefined && env[name] !== '')
+    .sort()
+    .map((name) => `${name}: must not be in the serving process's environment`);
+}
+
+/**
+ * The annotation directory must already exist as a real directory, owned by
+ * this user, closed to everyone else, writable, and outside the repository
+ * after symlinks are resolved. Reviewer bootstrap prepares it.
+ */
+export function assertReviewerStateDir(path: string): void {
+  const problem = (reason: string): ConfigError => new ConfigError([`REVIEWER_STATE_DIR: ${reason}`]);
+  let stat;
+  try {
+    stat = lstatSync(path);
+  } catch {
+    throw problem('does not exist');
+  }
+  if (!stat.isDirectory()) throw problem('must be a directory, not a symlink or a file');
+  if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) throw problem('must be owned by the user running the server');
+  if ((stat.mode & 0o077) !== 0) throw problem('must not be accessible by group or others (chmod 700)');
+  if (isInsideRepository(`${realpathSync(path)}${sep}`)) throw problem('must be outside the repository');
+  try {
+    accessSync(path, constants.W_OK);
+  } catch {
+    throw problem('must be writable by the user running the server');
+  }
+}
+
+/** Bounds slow and idle connections from whatever reaches the loopback port. The body limit is the demo server's. */
+export function applyReviewerServerLimits(server: Server): void {
+  server.maxConnections = 128;
+  server.headersTimeout = 10_000;
+  server.requestTimeout = 30_000;
+  server.keepAliveTimeout = 5_000;
+  server.maxRequestsPerSocket = 1_000;
 }
 
 /** Reads and validates reviewer mode's owner-only env file. */
@@ -164,6 +235,8 @@ export interface ReviewerGateOptions {
   readonly publicOrigin: string;
   readonly accessKey: string;
   readonly sessionSeconds?: number;
+  /** For tests: the most sessions open at once (default REVIEWER_MAX_SESSIONS). */
+  readonly maxSessions?: number;
   /** For tests: the clock. */
   readonly now?: () => number;
   /** Where refusals are counted (no key, no token, no cookie value is ever logged). */
@@ -192,6 +265,7 @@ export function createReviewerGate(options: ReviewerGateOptions): ReviewerGate {
   if (expectedDigest === null) throw new Error('the reviewer access key must be a canonical token');
   const expected: Buffer = expectedDigest;
   const sessionSeconds = options.sessionSeconds ?? DEFAULT_SESSION_SECONDS;
+  const maxSessions = options.maxSessions ?? REVIEWER_MAX_SESSIONS;
   const now = options.now ?? Date.now;
   const warn = options.warn ?? (() => {});
   const sessions = new Map<string, ReviewerSession>();
@@ -305,8 +379,18 @@ export function createReviewerGate(options: ReviewerGateOptions): ReviewerGate {
         refusedSignIn(response, 403, 'That key was not accepted.');
         return true;
       }
-      failures.length = 0;
       prune();
+      // Signing in again replaces this browser's session rather than holding two.
+      const previous = sessionFor(request.headers.cookie);
+      if (previous !== null) sessions.delete(previous);
+      // Only a key holder gets this far. Open sessions keep working; a slot
+      // comes back on sign-out, expiry or restart.
+      if (sessions.size >= maxSessions) {
+        warn('reviewer sign-in refused: session limit');
+        refusedSignIn(response, 503, 'Too many reviewer sessions are open. Try again when one has ended.');
+        return true;
+      }
+      failures.length = 0;
       const { token, digest } = newToken();
       sessions.set(digest.toString('hex'), { expiresAt: now() + sessionSeconds * 1000 });
       response.writeHead(303, {

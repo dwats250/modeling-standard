@@ -1,0 +1,73 @@
+// REPLACEMENT tailnet policy for reviewer access. NOT APPLIED. NOT COMPLETE.
+//
+// This replaces the confirmed wildcard allow-all. It is not an additive grant:
+// under a wildcard every narrower rule is meaningless, so nothing here limits
+// anyone until the wildcard is gone. See TAILSCALE-PACKET.md for what must be
+// inspected and filled before this can be used. `__NAME__` is a value no one
+// has confirmed; none has been guessed. The checker refuses a filled copy that
+// still contains one (tests/reviewer-security/tailscale-policy.ts).
+{
+  "groups": {
+    "group:ms-operators": ["__DUSTIN_IDENTITY__"],
+    "group:ms-reviewers": ["__CORY_IDENTITY__"]
+  },
+
+  "hosts": {
+    // One /32 only, read from Asher itself.
+    "asher": "__ASHER_TAILNET_IP__"
+  },
+
+  "grants": [
+    // Dustin's own devices, and every port on Asher: SSH, the Options route on
+    // port 80 and whatever else is Serving. Deliberately not `"dst": ["*"]`:
+    // that also names Cory's devices, and Cory must not be given a view of the
+    // rest of the tailnet.
+    { "src": ["group:ms-operators"], "dst": ["autogroup:self"], "ip": ["*"] },
+    { "src": ["group:ms-operators"], "dst": ["asher"], "ip": ["*"] },
+
+    // PREFLIGHT: add a rule here for anything else the live policy and device
+    // inventory show Dustin or a tagged device relies on (tagged servers, subnet
+    // routes, exit nodes as autogroup:internet). The wildcard allowed them all
+    // silently; this policy allows only what is listed.
+
+    // Cory: one TCP port on one device. Nothing else, no app capabilities.
+    { "src": ["group:ms-reviewers"], "dst": ["asher"], "ip": ["tcp:8443"] }
+  ],
+
+  "ssh": [
+    // PREFLIGHT: replace with the exact rules Dustin uses in the live policy.
+    // No rule here may name group:ms-reviewers, autogroup:member or a wildcard.
+    { "action": "check", "src": ["group:ms-operators"], "dst": ["autogroup:self"], "users": ["autogroup:nonroot", "root"] }
+  ],
+
+  // No "nodeAttrs" granting "funnel". No "acls" section: a legacy rule would
+  // combine with these grants.
+
+  // Tailscale evaluates these when the policy is validated or saved, and rejects
+  // the policy if one fails. The port list is what repository records and this
+  // machine showed on 2026-11-04; PREFLIGHT adds every other port listening on
+  // Asher's tailnet address.
+  "tests": [
+    {
+      "src": "group:ms-reviewers",
+      "proto": "tcp",
+      "accept": ["asher:8443"],
+      "deny": [
+        "asher:22", "asher:80", "asher:443", "asher:8444",
+        "asher:3000", "asher:3100", "asher:3130", "asher:3140", "asher:3141",
+        "asher:5432", "asher:5435", "asher:5441", "asher:5442", "asher:5447", "asher:5461", "asher:5471",
+        "__ANOTHER_TAILNET_DEVICE_IP__:8443", "__ANOTHER_TAILNET_DEVICE_IP__:22"
+      ]
+    },
+    { "src": "group:ms-reviewers", "proto": "udp", "deny": ["asher:8443", "asher:41641"] },
+    {
+      "src": "group:ms-operators",
+      "proto": "tcp",
+      "accept": ["asher:22", "asher:80", "asher:8443"]
+    }
+  ],
+
+  "sshTests": [
+    { "src": "group:ms-reviewers", "dst": ["asher"], "deny": ["root", "__ASHER_LOGIN_USER__"] }
+  ]
+}

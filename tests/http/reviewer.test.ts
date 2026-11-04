@@ -3,7 +3,8 @@ import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { createLogger } from '../../src/app/logger.ts';
 import { createDemoApplication, type DemoApplication } from '../../src/demo/application.ts';
-import { REVIEWER_COOKIE, createReviewerGate, type ReviewerGate } from '../../src/demo/reviewer.ts';
+import { databaseBoundaryProblems, readDatabaseBoundaryFacts } from '../../src/demo/reviewer-database.ts';
+import { REVIEWER_COOKIE, REVIEWER_MAX_SESSIONS, createReviewerGate, type ReviewerGate } from '../../src/demo/reviewer.ts';
 import { createDemoServer } from '../../src/demo/server.ts';
 import { openDatabase, type DatabaseHandle } from '../../src/infrastructure/database/client.ts';
 import { newToken } from '../../src/infrastructure/tokens.ts';
@@ -336,6 +337,101 @@ describe('reviewer sign-in', () => {
     clock.offset += 61_000;
     expect((await new Browser().signIn()).status).toBe(303);
     expect((await new Browser().signIn()).status).toBe(303);
+  });
+});
+
+describe('the limit on open reviewer sessions', () => {
+  it('at the limit a right key is refused and leaves nothing behind; open sessions keep working; a sign-out frees one slot', async () => {
+    gate.revokeAll();
+    const open: Browser[] = [];
+    for (let i = 0; i < REVIEWER_MAX_SESSIONS; i += 1) open.push(await reviewer());
+    expect(gate.size).toBe(REVIEWER_MAX_SESSIONS);
+
+    const extra = new Browser();
+    const refused = await extra.signIn();
+    expect(refused.status).toBe(503);
+    expect(refused.setCookies).toEqual([]);
+    expect(refused.body).not.toContain(ACCESS_KEY);
+    expect(gate.size).toBe(REVIEWER_MAX_SESSIONS);
+    expect(warnings).toContain('reviewer sign-in refused: session limit');
+    // Being full says nothing to someone without the key.
+    expect((await new Browser().signIn(newToken().token)).status).toBe(403);
+    for (const b of open) expect((await b.get('/demo/environment')).status).toBe(200);
+
+    expect((await open[0]!.request('POST', '/reviewer/sign-out', { raw: '' })).status).toBe(303);
+    expect(gate.size).toBe(REVIEWER_MAX_SESSIONS - 1);
+    expect((await extra.signIn()).status).toBe(303);
+    expect((await extra.get('/demo/environment')).status).toBe(200);
+    expect((await new Browser().signIn()).status).toBe(503);
+    gate.revokeAll();
+  });
+
+  it('expiry frees the slots: a full gate recovers by itself and revoked tokens stay dead', async () => {
+    gate.revokeAll();
+    const open: Browser[] = [];
+    for (let i = 0; i < REVIEWER_MAX_SESSIONS; i += 1) open.push(await reviewer());
+    expect((await new Browser().signIn()).status).toBe(503);
+    const base = clock.offset;
+    clock.offset = base + (SESSION_SECONDS - 1) * 1000;
+    expect((await new Browser().signIn()).status).toBe(503);
+    clock.offset = base + SESSION_SECONDS * 1000;
+    const fresh = new Browser();
+    expect((await fresh.signIn()).status).toBe(303);
+    expect(gate.size).toBe(1);
+    expect((await fresh.get('/demo/environment')).status).toBe(200);
+    for (const b of open) expect((await b.get('/demo/environment')).status).toBe(401);
+    gate.revokeAll();
+  });
+
+  it('repeated sign-ins from one browser hold one slot, and end the session they replace', async () => {
+    gate.revokeAll();
+    const b = await reviewer();
+    const first = b.jar.get(WIRE_COOKIE)!.value;
+    for (let i = 0; i < REVIEWER_MAX_SESSIONS * 2; i += 1) expect((await b.signIn()).status).toBe(303);
+    expect(gate.size).toBe(1);
+    expect(b.jar.get(WIRE_COOKIE)!.value).not.toBe(first);
+    expect((await new Browser().get('/demo/environment', { headers: { cookie: `${WIRE_COOKIE}=${first}` } })).status).toBe(401);
+    expect((await b.get('/demo/environment')).status).toBe(200);
+    gate.revokeAll();
+  });
+
+  it('refused keys never grow the gate: the failure record is bounded by the throttle', async () => {
+    gate.revokeAll();
+    for (let i = 0; i < 30; i += 1) await new Browser().signIn(newToken().token);
+    expect(gate.size).toBe(0);
+    expect((await new Browser().signIn()).status).toBe(429);
+  });
+});
+
+describe('the reviewer database boundary on the test server', () => {
+  // The full matrix of roles needs a superuser and a dedicated server, and runs
+  // in tests/reviewer-security. This is the part any test server can show, with
+  // real catalogs, so a migration that changes grants fails here too.
+  const factsAs = async (url: string) => {
+    const handle = openDatabase(url, createLogger('warn', logs));
+    try {
+      return await readDatabaseBoundaryFacts(handle.db);
+    } finally {
+      await handle.close();
+    }
+  };
+
+  it('the runtime role\'s real grants are exactly the reviewer\'s expected set', async () => {
+    const facts = await factsAs(inject('runtimeUrl'));
+    const problems = databaseBoundaryProblems(facts, facts.database);
+    // This server is shared with other databases, which only a dedicated server avoids.
+    expect(problems.filter((problem) => !problem.includes('may connect to other databases'))).toEqual([]);
+  });
+
+  it('refuses this test database by name, whatever the URL says, and the migration role by what it is', async () => {
+    const runtime = databaseBoundaryProblems(await factsAs(inject('runtimeUrl')));
+    expect(runtime[0]).toBe('database: connected to a database other than modeling_standard_demo');
+    const migrator = (await factsAs(inject('migrationUrl')));
+    const joined = databaseBoundaryProblems(migrator, migrator.database).join('\n');
+    expect(joined).toMatch(/CREATEDB/);
+    expect(joined).toMatch(/owns a database/);
+    expect(joined).toMatch(/owns a table/);
+    expect(joined).not.toMatch(/ms_migrator_local_only/);
   });
 });
 

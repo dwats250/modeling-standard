@@ -15,6 +15,7 @@
     "src/scripts/demo-reset.ts",
     "src/scripts/demo-export.ts",
     "src/scripts/demo-reviewer.ts",
+    "src/scripts/demo-reviewer-bootstrap.ts",
     "src/scripts/demo-fresh.ts",
     "src/scripts/staging.ts",
     "src/scripts/staging-setup.ts",
