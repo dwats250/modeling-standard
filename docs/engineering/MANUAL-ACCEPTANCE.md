@@ -5,7 +5,7 @@ This walkthrough is for Cory and Dustin to judge the interaction and visual qual
 ## Readiness and setup
 
 - Run this only after the integration order in the current continuation checkpoint has been completed and the combined candidate is available. The PR branches alone are not a reviewer link.
-- **Remote reviewer access is not ready (live check 2026-11-02):** no S13 staging application is listening on port 3130 and no `ms-staging` session is active. The staging PostgreSQL container is up on loopback port 5435, but that is only the database, not a review site. Asher's only Tailscale Serve route is the unrelated Options Observatory on port 80. Do not use that route for this review.
+- **Remote reviewer access is not ready (live check 2026-11-04):** no S13 staging application is listening on port 3130 and no `ms-staging` session is active. The local synthetic `ms-demo` is running on loopback port 3100, but is not remotely reachable. The staging and reviewer-preview PostgreSQL containers are separate loopback-only services; neither is a review site. Asher's only Tailscale Serve route is the unrelated Options Observatory on port 80; nothing is served on port 8443. Do not use that route for this review.
 - Until Dustin supplies a specifically authorized private reviewer URL, run the synthetic demo on loopback (`127.0.0.1`) with a task-owned demo database. Do not reuse staging, development, or another demo database. The full setup and test commands are in the [demo runbook](DEMO.md); resets are destructive to the named demo database.
 - Use Chrome or Edge. Review desktop layout, then a 390px-wide mobile viewport (a browser's responsive view is sufficient). For S14 use two separate browser profiles so each synthetic participant has its own session. For B4 use two tabs in the same synthetic-professional account.
 - Everything below uses invented identities and deterministic fixture media. Do not enter personal information or upload images; uploads are not part of this build.
@@ -28,6 +28,8 @@ This walkthrough is for Cory and Dustin to judge the interaction and visual qual
 4. Return each participant to the shoot and inspect “Your final record preview.” Confirm the synthetic/no-signing notice, shared terms, and only the payment terms belonging to that participant's pair. Confirm there is no signing action or signature evidence.
 5. Inspect desktop and 390px mobile widths. Confirm no horizontal overflow and that each browser remains in its own participant session.
 
+The three-party case with different payment terms for each pair is covered by automated HTTP privacy tests and a synthetic browser fixture. The product demo does not create that three-party record, so do not try to manufacture it during manual review.
+
 Expected: a read-only synthetic preview after operator/test finalization. Ticking is not signing; this preview does not authorize a real collaboration.
 
 ## Acceptance gates — keep these separate
@@ -39,7 +41,7 @@ Expected: a read-only synthetic preview after operator/test finalization. Tickin
 
 ## Windows 11 preparation for Cory
 
-No development tools are needed. Wait for Dustin to send a private reviewer link and access instructions; none is ready today.
+No development tools are needed. Wait for Dustin to send a private reviewer link and access instructions; none is ready yet. The local loopback demo is not a substitute for that link.
 
 1. Install Tailscale for Windows only when Dustin sends the approved invitation, then sign in and accept that invitation. Do not join or browse unrelated machines or services.
 2. Open the private bookmark Dustin provides in Chrome or Edge. If access is not yet granted or the page does not load, stop and tell Dustin; do not try alternate IP addresses or share credentials.
