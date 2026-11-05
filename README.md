@@ -33,7 +33,7 @@ The repository has progressed well beyond a planning exercise. Its implemented f
 | Collaboration core | Projects, project-local parties, account bindings, direct invitation links, and pairwise agreement structure | Demonstrated primarily with synthetic two-person photo shoots |
 | Live briefs | Draft/live lifecycle, participant-specific views, explicit terms, resolution actions, deliberate ticks, and readiness for signing | Ticking a term is **not** signing; some demonstrations use an operator |
 | Participant access | Invitation-led account sessions and routes constrained to a person's own party | No complete production participant-facing application |
-| Google and staging | Google sign-in integration and a separate synthetic HTTPS staging environment | Real-Google acceptance is partial; sign-in does not establish identity or age verification |
+| Google and staging | Google sign-in integration and a separate synthetic staging composition | Real-Google acceptance is partial; code and runbooks do not mean a staging site is currently running or approved for review. Sign-in does not establish identity or age verification |
 | Final contract records | Operator/test-only finalization of a frozen brief, append-only contract storage, a recomputable signature chain, and a local-demo-only D10-filtered final-record preview | The preview is synthetic and read-only; no participant signing or production/staging contract interface |
 | Private professional toolkit | Owner-only synthetic profile, comp-card draft/preview, ordered fixture portfolio, optional captions, and revision-protected draft saves | Local synthetic demo only; professional sign-in, real uploads, public profiles, external sharing, and payments are not implemented |
 | Development tools | Local demo, record inspector, portable snapshot, database and HTTP tests, and browser regressions | Demo exports are not the finished document-delivery experience |
@@ -47,9 +47,9 @@ See the [demo guide](docs/engineering/DEMO.md), [participant access](docs/engine
 Two complementary workstreams serve **one product**:
 
 - **Track A — Collaboration and agreement engine:** briefs, participation, agreement, and evidence.
-- **Track B — Professional toolkit:** identity, presentation, and eventually other professional tools, starting with **private synthetic profiles and comp-card drafts**.
+- **Track B — Professional toolkit:** identity and presentation, with implemented private synthetic profiles, comp cards, fixture-backed portfolios, captions, and stale-save protection (B1–B4).
 
-Track B has implemented synthetic slices B1–B4: a private profile and comp-card editor/preview, ordered fixture-backed portfolio drafts with captions, and stale-save conflict protection. Track A includes S14, a local-demo-only read-only final-record preview filtered by D10. These demonstrations use synthetic account selection; professional Google sign-in is not implemented. Real uploads, external sharing, and public profiles are not built. The combined application changes have been merged to `main`; focused visual/product acceptance by Dustin and Cory remains pending.
+Track A includes S14, a local-demo-only read-only final-record preview filtered by D10. Both demonstrations use synthetic account selection; professional Google sign-in is not implemented. Real uploads, external sharing, and public profiles are not built. These integrated capabilities still need focused visual/product acceptance by Dustin and Cory.
 
 Participant signing, identity and adult assurance, document completion, legal prerequisites, and real-use acceptance remain incomplete. Youth and guardian workflows are deferred. **A working demo does not authorize real use.**
 
@@ -110,8 +110,15 @@ Dustin created both the earlier Replit-era repository hosted under Cory's GitHub
 - [Slice specifications](docs/slices/): bounded work and acceptance evidence.
 - [Product invariants](planning/B-product-invariants.md): sourced outcomes distinguished from proposed mechanisms; read alongside later decisions.
 - [Agent instructions](CLAUDE.md) and [Codex instructions](AGENTS.md): identical repository-level operating contracts.
+- [Manual acceptance](docs/engineering/MANUAL-ACCEPTANCE.md): the synthetic product walkthrough and its separate product, provider, security, legal, and real-use gates.
 - [Historical planning](planning/README.md) and [research](research/): reconstruction, provenance, exploratory designs, and engineering lessons.
 
 The original ratified [vision](https://github.com/seeravenproductions/ShootBriefGenerator/blob/bfbf5f1/docs/VISION.md) and [product doctrine](https://github.com/seeravenproductions/ShootBriefGenerator/blob/bfbf5f1/docs/PRODUCT-DOCTRINE.md) remain traceable at their pinned commit. Later [Cory reconciliation records](decisions/2026-10-09-15-cory-reconciliation.md) govern where they explicitly supersede earlier rulings.
 
 Previous proposals, prototypes, and development history remain evidence—not automatic authority for today's implementation.
+
+### For Cory: getting oriented and asking Claude
+
+Start with this README for what exists, [current decisions](decisions/README.md) for Cory's binding rulings and remaining product questions, and the [engineering index](docs/engineering/README.md) for how the application is put together. The [manual acceptance guide](docs/engineering/MANUAL-ACCEPTANCE.md) is for reviewing the synthetic experience, not approving real use.
+
+For a product conversation with Claude, a useful prompt is: “Explain this experience in ordinary language. Separate what is implemented, what is synthetic-only, what is planned, and what remains gated. Cite the current decision or engineering document for each important claim. If a product choice is mine, state the exact question and its consequence; do not infer my answer from old plans or existing code.”

@@ -43,7 +43,7 @@ Real uploads or image bytes, external URLs, captions, public profiles or states,
 
 **B1 touched only where B2 needed it.** The chooser, teaser and Demo menu text now name the portfolio; the comp card's Preview moved from the section tabs to the comp card's own editing/preview row (same address). B1's browser test changed accordingly: two heading strings and one selector (`.tk-subtab` for the comp-card preview link).
 
-**Environment (task-owned).** Worktree `/home/dustin/Projects/modeling-standard-b2`; container `ms-b2-postgres` on `127.0.0.1:5440` (volume `ms-b2-pgdata`, provisioned from this worktree's `db/provision.sql`); untracked `.env` with only the 5440 URLs and `CHROME_PATH=/usr/bin/google-chrome`. No demo service was started; browser tests use their own ephemeral server.
+**Environment (task-owned).** Worktree `$HOME/Projects/modeling-standard-b2`; container `ms-b2-postgres` on `127.0.0.1:5440` (volume `ms-b2-pgdata`, provisioned from this worktree's `db/provision.sql`); untracked `.env` with only the 5440 URLs and `CHROME_PATH=/usr/bin/google-chrome`. No demo service was started; browser tests use their own ephemeral server.
 
 **Commands run (B2 instance only):**
 

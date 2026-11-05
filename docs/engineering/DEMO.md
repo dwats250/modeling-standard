@@ -2,7 +2,7 @@
 
 (Synthetic staging — the same demo over HTTPS for tailnet phones, with Google sign-in and a keyed operator mode — is S13: `docs/engineering/S13-STAGING.md`.)
 
-A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), invite each person by link, let each person sign in on their own device and act only as themselves (S12), and resolve it live to **READY TO SIGN**. It is not real-use approval (Gate 2). Sign-in is a local **test identity provider**, not Google or Apple, and verifies nothing. Signing is not built here. In the record inspector (`/inspector`) the operator can **finalize** a ready brief whose two people have both claimed their invitations: one synthetic operator act that stores the final contract (S11) and shows it, with each person's proposal rendering. It is not the signing act, and no person's screen shows a frozen or final shoot.
+A demonstration with invented people on a developer machine: compose an invented photo shoot (one photographer, one model, sent directly), invite each person by link, let each person sign in on their own device and act only as themselves (S12), and resolve it live to **READY TO SIGN**. It is not real-use approval (Gate 2). Sign-in is a local **test identity provider**, not Google or Apple, and verifies nothing. Signing is not built here. In the record inspector (`/inspector`) the operator can **finalize** a ready brief whose two people have both claimed their invitations: one synthetic operator act that stores the final contract (S11). The inspector shows the full synthetic record; after finalization, each signed-in participant can also open their own read-only, D10-filtered final-record preview (S14). Neither action is participant signing or evidence of real acceptance.
 
 ## Two people, two devices (S12)
 
@@ -55,7 +55,7 @@ Every screen has a top bar with the wordmark (back to the start), a discreet **S
 
 Stored demo text keeps its `[synthetic]` mark; the journey shows it without repeating the mark on each line, and values typed on these screens are stored marked. Engineering notes (Demo menu) reveal ids and item keys.
 
-## Professional toolkit (B1, B2, B3)
+## Professional toolkit (B1–B4)
 
 A private professional profile, comp-card draft and portfolio draft, in the same local demo (not on staging). Synthetic and provisional throughout: the fields, the five slot names, the fixture catalogue, the portfolio's eight-image limit, the 120-character captions and the layout are reversible design choices, not product policy. Slice records: `docs/slices/B1-profile-comp-card.md`, `docs/slices/B2-portfolio-draft.md`, `docs/slices/B3-portfolio-captions.md`, `docs/slices/B4-portfolio-stale-save.md`.
 

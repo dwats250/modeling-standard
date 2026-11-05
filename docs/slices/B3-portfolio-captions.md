@@ -32,7 +32,7 @@ Uploads or image bytes, external URLs, public profiles, directory, sharing, mess
 
 **Screens.** Organize: a "Caption (optional)" text field under each selected image (maxlength 120, 44 px tall, labelled "Caption for <image>"); typing updates the live preview and the save status; captions go with their image through ↑ ↓ and out with Remove. Preview (compact and full): the caption, when there is one, under its numbered image. Unsaved captions carry to the full preview and back.
 
-**Environment (task-owned).** Worktree `/home/dustin/Projects/modeling-standard-b3-portfolio-captions`; container `ms-b3-postgres` on `127.0.0.1:5441` (volume `ms-b3-pgdata`); `.env` points only there. No demo service started; browser tests use their own ephemeral server.
+**Environment (task-owned).** Worktree `$HOME/Projects/modeling-standard-b3-portfolio-captions`; container `ms-b3-postgres` on `127.0.0.1:5441` (volume `ms-b3-pgdata`); `.env` points only there. No demo service started; browser tests use their own ephemeral server.
 
 **Commands run (B3 instance only):**
 

@@ -36,7 +36,7 @@ Merging, version history, retention, real-time presence or locking, uploads, pub
 
 **Screen.** Organize: the save sends the revision the screen was opened (or last saved or reviewed) at. On `stale_revision`, a warning section (`role="alert"`, "Not saved: this portfolio changed elsewhere") appears above the selection with the edits, order, captions and live preview untouched and the status line reading "Not saved. See the warning above." One button, "Review the saved version", fetches the saved draft and lists its images and captions under the warning; from then on the screen is based on that revision, so Save, said plainly, replaces it with the edits on screen; a second button, "Replace my edits with the saved version", loads it into the editor. Nothing happens until one of those is pressed; saving again without reviewing is refused again.
 
-**Environment (task-owned).** Worktree `/home/dustin/Projects/modeling-standard-b4-portfolio-stale-save`; PostgreSQL container `ms-b4-postgres` on `127.0.0.1:5444`; `.env` points only there. No demo service started; browser tests use their own ephemeral server.
+**Environment (task-owned).** Worktree `$HOME/Projects/modeling-standard-b4-portfolio-stale-save`; PostgreSQL container `ms-b4-postgres` on `127.0.0.1:5444`; `.env` points only there. No demo service started; browser tests use their own ephemeral server.
 
 **Original slice verification (B4 implementation worktree, 2026-10-28):**
 

@@ -6,7 +6,7 @@ Date: 2026-10-20. Slice: `docs/slices/S13-google-staging.md`. Runbook and accept
 
 ## Baseline and dependency
 
-- Branch `stage-1/s13-google-staging`, worktree `/home/dustin/Projects/modeling-standard-s13`, tmux session `ms-s13`.
+- Branch `stage-1/s13-google-staging`, worktree `$HOME/Projects/modeling-standard-s13`, tmux session `ms-s13`.
 - **Built on S12, not on `main`:** branched from `stage-1/s12-participant-access` at `da8003ed5683b2c6bcac5a3798d0bad6fb28ce5f` (PR #34: open, mergeable, checks `foundation` and GitGuardian passing at that head; not merged). `main` is `57f0b63`. Merge PR #34 first; this branch then contains only S13 on top of it.
 - The plan commit from `planning/s13-google-staging` (`649f52a`) is carried as the branch's first commit, with its status line updated.
 
@@ -87,21 +87,21 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
 
 - Google client: not configured (`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` still commented out in the env file).
 - Tailscale HTTPS certificates: not enabled (`CertDomains` empty).
-- Serve before any change (keep exactly): `TCP 80 HTTP`, `asher.tail457b97.ts.net:80` `/` → `/home/dustin/Projects/options-observatory/dashboard`; Observatory answers 200.
-- Asher does not resolve its own `ts.net` name; verify from Asher with `curl --resolve asher.tail457b97.ts.net:8443:100.64.34.84 …`.
+- Serve before any change (keep exactly): `TCP 80 HTTP`, `reviewer-host.tailnet-name.ts.net:80` `/` → `$HOME/Projects/options-observatory/dashboard`; Observatory answers 200.
+- Asher does not resolve its own `ts.net` name; verify from Asher with `curl --resolve reviewer-host.tailnet-name.ts.net:8443:100.64.x.x …`.
 - GitGuardian incident 38772493 not yet dismissed (check still failing on `2b9fa95`).
 - The repository now has a Process ownership rule (after an S12 demo was stopped by a broad `pkill`; it was restarted with its data intact).
 
 ## External setup progress (2026-10-21)
 
 - Google console steps: done by Dustin (reported). Client credentials **not yet in the env file**. Helper for his own shell: `~/.config/modeling-standard/set-google-client.sh` (outside the repository; reads the secret without echo, validates both shapes, rewrites the file mode 600, prints no value).
-- Tailscale HTTPS: enabled (`CertDomains` = `asher.tail457b97.ts.net`).
+- Tailscale HTTPS: enabled (`CertDomains` = `reviewer-host.tailnet-name.ts.net`).
 - Serve: `tailscale serve --bg --https=8443 http://127.0.0.1:3130` added. Port 80 (Options Observatory) unchanged and answering 200; 8443 tailnet only; no Funnel.
-- Verified from Asher (`--resolve` to 100.64.34.84): certificate CN/SAN `asher.tail457b97.ts.net`, Let's Encrypt, valid to 2027-01-19, chain verifies. With a temporary probe of this task's own on 3130 (PID-stopped afterwards), Serve forwards `Host: asher.tail457b97.ts.net:8443` — the pinned authority — plus `X-Forwarded-*` and `Tailscale-User-*` headers, which staging does not read.
+- Verified from Asher (`--resolve` to 100.64.x.x): certificate CN/SAN `reviewer-host.tailnet-name.ts.net`, Let's Encrypt, valid to 2027-01-19, chain verifies. With a temporary probe of this task's own on 3130 (PID-stopped afterwards), Serve forwards `Host: reviewer-host.tailnet-name.ts.net:8443` — the pinned authority — plus `X-Forwarded-*` and `Tailscale-User-*` headers, which staging does not read.
 - Staging database intact: 4 shoots, 0 accounts, 0 bindings. Not reset or reseeded.
 - Google credentials entered by Dustin with the helper: both present, both valid shapes, file mode 600 (values never read into output).
 - **Staging started** in tmux `ms-staging` (`npm run staging`, cwd this worktree; PID 2985264 at start), listening on 127.0.0.1:3130 only. Not reset or reseeded.
-- Verified from Asher through Serve (`https://asher.tail457b97.ts.net:8443`):
+- Verified from Asher through Serve (`https://reviewer-host.tailnet-name.ts.net:8443`):
   - page 200, certificate verifies; no HSTS header;
   - `/demo/environment`: staging, providers `google` only, operator key required;
   - Host: anything but the pinned authority is 421 (including a forged `X-Forwarded-Host`);
@@ -115,11 +115,11 @@ Dustin authorized configuring tailnet-only Serve on HTTPS 8443 → 127.0.0.1:313
 
 ## Phone access blocker (2026-10-21, resolved)
 
-Resolved the same day: the Pixel loads `https://asher.tail457b97.ts.net:8443/` (first staging requests from it 19:13 UTC). No staging, Serve or Host-pin change was involved. The original notes follow.
+Resolved the same day: the Pixel loads `https://reviewer-host.tailnet-name.ts.net:8443/` (first staging requests from it 19:13 UTC). No staging, Serve or Host-pin change was involved. The original notes follow.
 
 
-- The Pixel (`pixel-10-pro`, 100.84.119.8) is on the tailnet and pings Asher directly. Its Chrome reports `DNS_PROBE_FINISHED_NXDOMAIN` for `https://asher.tail457b97.ts.net:8443/`, in every browser and in incognito; Dustin reports Options Observatory loads and that the phone's DNS settings are not the cause.
-- On Asher: `Self.DNSName` matches `asher.tail457b97.ts.net` byte for byte. Tailscale's resolver (100.100.100.100) answers A 100.64.34.84, with empty AAAA and HTTPS answers. Public resolvers return NXDOMAIN, and the router (192.168.0.1) returns no address. Asher itself has `--accept-dns=false`, which is why checks from Asher use `curl --resolve` (that does not test DNS). The router resolves the short names `asher` and `asher.ht.home` to the LAN address 192.168.0.69.
+- The Pixel (`reviewer-phone`, 100.x.x.x) is on the tailnet and pings Asher directly. Its Chrome reports `DNS_PROBE_FINISHED_NXDOMAIN` for `https://reviewer-host.tailnet-name.ts.net:8443/`, in every browser and in incognito; Dustin reports Options Observatory loads and that the phone's DNS settings are not the cause.
+- On Asher: `Self.DNSName` matches `reviewer-host.tailnet-name.ts.net` byte for byte. Tailscale's resolver (100.100.100.100) answers A 100.64.x.x, with empty AAAA and HTTPS answers. Public resolvers return NXDOMAIN, and the router (192.168.x.x) returns no address. Asher itself has `--accept-dns=false`, which is why checks from Asher use `curl --resolve` (that does not test DNS). The router resolves the short names `asher` and `asher.ht.home` to the LAN address 192.168.x.x.
 - No request from the phone reached staging, and Serve opened no connection to 3130 while the phone retried.
 - At Dustin's request the 8443 entry was removed and re-added (`tailscale serve --https=8443 off`, then `--bg --https=8443 http://127.0.0.1:3130`). Port 80 was untouched, and both answer 200 from Asher afterwards.
 - Unresolved: which exact URL the phone uses for Observatory (it matters: a working lookup of the full name would not return NXDOMAIN for the same name on another port), and whether the re-added entry changes anything for the phone.
@@ -157,11 +157,11 @@ The table below records what was observed then. Commands are **historical exampl
 
 | What | Where | How to stop (historical) |
 |---|---|---|
-| S12 LAN demo (two-phone test, existing data) | `http://192.168.0.69:3120/`, tmux `ms-s12-demo` | `tmux kill-session -t ms-s12-demo` |
+| S12 LAN demo (two-phone test, existing data) | `http://192.168.x.x:3120/`, tmux `ms-s12-demo` | `tmux kill-session -t ms-s12-demo` |
 | Staging Postgres | 127.0.0.1:5435, `ms-staging-postgres` | `sg docker -c "docker stop ms-staging-postgres"` |
 | S13 test Postgres (disposable) | 127.0.0.1:5436, `ms-s13-postgres` | `sg docker -c "docker rm -f ms-s13-postgres"` |
 | S13 work shell | tmux `ms-s13` | — |
-| **Staging** | `https://asher.tail457b97.ts.net:8443/` (tailnet), 127.0.0.1:3130, tmux `ms-staging` | `tmux kill-session -t ms-staging` |
+| **Staging** | `https://reviewer-host.tailnet-name.ts.net:8443/` (tailnet), 127.0.0.1:3130, tmux `ms-staging` | `tmux kill-session -t ms-staging` |
 | Tailscale Serve 8443 → 3130 | tailnet only | `tailscale serve --https=8443 off` (never `reset`) |
 
 Untouched: the presentation demo (5432/3100), S10 (5433), S12's database (5434), Options Observatory on Tailscale Serve port 80, and the other worktrees.

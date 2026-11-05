@@ -6,7 +6,7 @@ Date: 2026-10-21. Slice: `docs/slices/S11-final-contract.md`. As built: `docs/en
 
 ## Baseline
 
-- Branch `stage-1/s11-final-contract`, worktree `/home/dustin/Projects/modeling-standard-s11`, from `main` at `52216b9` (S12 and S13 merged as PRs #34 and #35). Migrations `0028` (generated) and `0029` (hand-written).
+- Branch `stage-1/s11-final-contract`, worktree `$HOME/Projects/modeling-standard-s11`, from `main` at `52216b9` (S12 and S13 merged as PRs #34 and #35). Migrations `0028` (generated) and `0029` (hand-written).
 - Scope: package §3.2 and AC-19/AC-20. No participant surface; the finalization is operator/test-only and labelled synthetic.
 - Local database for this worktree only: a disposable Postgres 17 container `ms-s11-postgres` on `127.0.0.1:5437` (data on tmpfs, provisioned by `db/provision.sql`); the worktree's untracked `.env` points at it, with `DEMO_PORT=3150`. Nothing else (the demo on 5432/3100, S10 5433, S12 5434, staging 5435/3130, S13 5436) was touched.
 

@@ -55,7 +55,7 @@ Date: 2026-10-20
 ### S13-B: staging composition (outside the build)
 
 - `npm run staging` (`src/scripts/staging.ts`) and `npm run staging:reset` reuse `createDemoApplication` with options for staging. They take these settings from the environment:
-  - `STAGING_PUBLIC_ORIGIN`: https and not loopback, for example `https://asher.tail457b97.ts.net:8443`.
+  - `STAGING_PUBLIC_ORIGIN`: https and not loopback, for example `https://reviewer-host.tailnet-name.ts.net:8443`.
   - `STAGING_PORT`: for example 3130. The server listens on `127.0.0.1` only.
   - `STAGING_OPERATOR_KEY`: at least 32 random bytes, base64url.
   - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
@@ -99,8 +99,8 @@ Date: 2026-10-20
 **Recommended: Asher itself, behind Tailscale Serve (tailnet-only HTTPS).** It costs $0, needs no new vendor, and keeps the existing server and PostgreSQL unchanged.
 
 - Node runs `npm run staging` in tmux on `127.0.0.1:3130`. PostgreSQL 17 runs in its own container, `ms-staging-postgres`, on `127.0.0.1:5435` with a named volume. It is provisioned from `db/provision.sql` like the others, and is separate from S12's test container on 5434, the presentation container on 5432 and S10's on 5433.
-- Tailscale is already installed and running on Asher, with MagicDNS on. The name is `asher.tail457b97.ts.net`. `ts.net` is on the Public Suffix List, which Google requires of redirect hosts, and Google never needs to reach the host: only the phone's browser does.
-- **What is already on Asher's Tailscale Serve:** `http://asher.tail457b97.ts.net/` (port 80, tailnet-only) serves `/home/dustin/Projects/options-observatory/dashboard`. **That is another project, so staging must not take it over.** Staging uses its own HTTPS port, 8443: `tailscale serve --bg --https=8443 http://127.0.0.1:3130`. Tailnet HTTPS certificates are not enabled yet (`CertDomains` is empty).
+- Tailscale is already installed and running on Asher, with MagicDNS on. The name is `reviewer-host.tailnet-name.ts.net`. `ts.net` is on the Public Suffix List, which Google requires of redirect hosts, and Google never needs to reach the host: only the phone's browser does.
+- **What is already on Asher's Tailscale Serve:** `http://reviewer-host.tailnet-name.ts.net/` (port 80, tailnet-only) serves `$HOME/Projects/options-observatory/dashboard`. **That is another project, so staging must not take it over.** Staging uses its own HTTPS port, 8443: `tailscale serve --bg --https=8443 http://127.0.0.1:3130`. Tailnet HTTPS certificates are not enabled yet (`CertDomains` is empty).
 - Cory's phone reaches it either by joining the tailnet or by having the Asher node shared with his tailnet, plus the Tailscale app.
 - Limits: staging is up only while Asher is on and awake. There are no backups, which is acceptable for synthetic data only. The Wi-Fi is not involved, and traffic is TLS end to end to Asher.
 
@@ -123,7 +123,7 @@ Alternatives, not recommended now:
    - Publishing status **Testing**.
    - Test users: the Google accounts that will sign in (Dustin's, Cory's, and a second account for two-phone runs). The limit is 100. *Corrected 2026-10-20:* Google documents that an app requesting only basic identity scopes (`openid`, `email`, `profile`) is exempt from the test-user list, shows those users no warning, and its authorizations do not expire after 7 days, so the list does not limit who can sign in to staging. Staging's boundaries are the tailnet, the invitations and the operator key (`docs/engineering/S13-STAGING.md`).
 2. **An OAuth client** of type Web application, with these authorized redirect URIs:
-   - `https://asher.tail457b97.ts.net:8443/sign-in/callback` (staging);
+   - `https://reviewer-host.tailnet-name.ts.net:8443/sign-in/callback` (staging);
    - `http://localhost:3130/sign-in/callback` (optional, for a local check on Asher; Google exempts loopback from https).
    No JavaScript origins are needed. Google matches the redirect URI exactly.
 3. **The client id and secret** on Asher only, in `~/.config/modeling-standard/staging.env` with mode 0600. They do not go in the repository or in chat.

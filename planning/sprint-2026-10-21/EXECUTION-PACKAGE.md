@@ -170,7 +170,7 @@ All HTTP criteria run through the real `createApp` with the **production** opera
 
 ```
 You are implementing the next Modeling Standard sprint on the repository at
-/home/dustin/Projects/modeling-standard-demo. Read CLAUDE.md and README.md first and obey
+$HOME/Projects/modeling-standard-demo. Read CLAUDE.md and README.md first and obey
 them; then read planning/sprint-2026-10-21/EXECUTION-PACKAGE.md and its three supporting
 files in full. The package is Dustin's technical authorization for exactly the scope below.
 Cory is the sole product authority; decisions/ is the only answer surface; an OPEN item is
