@@ -10,11 +10,14 @@ body[data-screen='toolkit'] .screen { max-width: 1120px; position: relative; }
 body[data-screen='toolkit'] [hidden] { display: none !important; }
 body[data-screen='toolkit'] .screen-body > * + * { margin-top: 14px; }
 body[data-screen='toolkit'] .screen-body > .tk-tabs + .tk-subtabs { margin-top: 8px; }
+body[data-screen='toolkit'] .screen-body > .page-head { margin-top: 28px; }
+body[data-screen='toolkit'] .screen-body > .page-head + * { margin-top: 20px; }
 /* Focus is moved here after navigation: keyboard users see where they are. */
 .page-head h1:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 4px; }
 
-/* Loading: a thin bar under the app header while a request or a redraw is in flight. */
-body[data-screen='toolkit'][data-busy] .screen::before {
+/* Loading: a thin bar under the app header while a request or a redraw is in flight. Held back briefly so a quick answer does not flicker. */
+body[data-busy] .screen { position: relative; }
+body[data-busy] .screen::before {
   content: '';
   position: absolute;
   top: 0;
@@ -23,16 +26,19 @@ body[data-screen='toolkit'][data-busy] .screen::before {
   height: 3px;
   border-radius: 2px;
   background: linear-gradient(90deg, transparent, var(--accent), transparent) 0 0 / 40% 100% no-repeat;
-  animation: tk-loading 1.1s ease-in-out infinite;
+  animation: tk-loading 1.1s ease-in-out 0.15s infinite backwards;
 }
 @keyframes tk-loading { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 @media (prefers-reduced-motion: reduce) {
-  body[data-screen='toolkit'][data-busy] .screen::before { animation: none; background-size: 100% 100%; opacity: 0.5; }
+  body[data-busy] .screen::before { animation: none; background-size: 100% 100%; opacity: 0.5; }
 }
+/* Before the first screen arrives. */
+#screen:empty::after { content: 'Loading…'; display: block; padding: 24px 0; color: var(--ink-2); }
 
 /* ---- Entry from other screens ---- */
 
 .tk-teaser .link { display: inline-flex; align-items: center; min-height: 44px; }
+.tk-chooser { max-width: var(--measure); margin-inline: auto; }
 .tk-chooser .btn + .btn { margin-top: 10px; }
 .tk-chooser .small { margin-top: 14px; }
 
@@ -49,6 +55,8 @@ body[data-screen='toolkit'][data-busy] .screen::before {
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
+.tk-band-text { min-width: 0; padding: 4px 0; }
+.tk-synthetic { margin-top: 1px; padding-left: 18px; font-size: 13px; color: var(--ink-2); }
 .tk-private { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
 .tk-lock {
   position: relative;
@@ -73,9 +81,11 @@ body[data-screen='toolkit'][data-busy] .screen::before {
 .tk-who .text-btn { min-height: 44px; }
 .tk-owner { font-size: 14.5px; }
 @media (max-width: 559px) {
-  .tk-band { padding: 8px 14px 0; }
-  .tk-who { width: 100%; }
-  .tk-who .tk-owner { flex: 1 1 100%; }
+  .tk-band { padding: 6px 14px 0; }
+  .tk-who { width: 100%; gap: 0 10px; border-top: 1px solid var(--line); }
+  .tk-who .small { display: none; }
+  .tk-who .tk-owner { flex: 1 1 auto; min-width: 0; font-size: 13.5px; }
+  .tk-who .text-btn { font-size: 14px; }
 }
 
 /* ---- Tabs ---- */
@@ -185,7 +195,8 @@ body[data-screen='toolkit'][data-busy] .screen::before {
 
 .tk-slot { margin: 0; padding: 14px 0 4px; border: 0; border-top: 1px solid var(--line); min-width: 0; }
 .tk-slots header + .tk-slot { border-top: 0; }
-.tk-slot legend { padding: 0; font-size: 15.5px; }
+.tk-slot legend { float: left; width: 100%; padding: 0; font-size: 15.5px; }
+.tk-slot legend + * { clear: both; }
 .tk-current-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 4px 0 8px; font-size: 14px; }
 .tk-current-key { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
 .tk-current { padding: 1px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -245,6 +256,11 @@ body[data-screen='toolkit'][data-busy] .screen::before {
   .tk-aside-actions { display: none; }
   .tk-footer { margin-left: -20px; margin-right: -20px; border-radius: 0; }
   .tk-actions .btn { flex: 1 1 100%; }
+  /* One row, so the footer leaves the screen to what is being edited. */
+  .tk-footer { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .tk-footer .tk-actions { flex-wrap: nowrap; }
+  .tk-footer .tk-status { flex: 1 1 auto; min-width: 0; font-size: 13.5px; line-height: 1.25; }
+  .tk-footer .tk-actions .btn { flex: 0 0 auto; min-width: 0; min-height: 44px; padding: 0 16px; font-size: 15px; }
 }
 
 @media (min-width: 960px) {
@@ -276,7 +292,10 @@ body[data-screen='toolkit'][data-busy] .screen::before {
 }
 .cc-side figure { margin: 0; position: relative; overflow: hidden; background: #eee7dc; }
 .cc-side img { display: block; width: 100%; height: 100%; object-fit: cover; aspect-ratio: 4 / 5; }
-.cc-nameplate { padding-top: 8%; text-align: center; }
+/* The front's image takes whatever height the back gives the card, so nothing is left blank under the name. */
+.cc-front .cc-hero { flex: 1 1 auto; aspect-ratio: 4 / 5; }
+.cc-front .cc-hero img { position: absolute; inset: 0; aspect-ratio: auto; }
+.cc-nameplate { padding-top: 7%; text-align: center; }
 .cc-name {
   font: 600 clamp(14px, 4.2vw, 22px) / 1.1 var(--serif);
   letter-spacing: 0.14em;
@@ -332,6 +351,7 @@ body[data-screen='toolkit'][data-busy] .screen::before {
   .cc-card.compact .cc-name { font-size: 18px; }
 }
 .tk-back { max-width: 480px; margin-left: auto; margin-right: auto; }
+body[data-screen='toolkit'] .screen-body > .tk-back { margin-top: 24px; }
 
 /* ---- Portfolio (B2, B3): organize ---- */
 
@@ -473,11 +493,14 @@ body[data-screen='toolkit'][data-busy] .screen::before {
   font: italic 400 15px/1.3 var(--serif);
   color: var(--pf-ink-2);
 }
-.pf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-.pf-grid li:first-child { grid-column: span 2; grid-row: span 2; }
+.pf-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; align-items: start; }
+.pf-grid li { min-width: 0; }
+.pf-grid li:first-child { grid-column: span 2; grid-row: span 2; align-self: stretch; }
 .pf-grid figure { display: flex; flex-direction: column; margin: 0; height: 100%; }
-.pf-frame { position: relative; flex: 1; overflow: hidden; background: #eee7dc; }
-.pf-grid img { display: block; width: 100%; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+/* Every frame is 4:5; only the lead may grow, to meet the bottom of the images beside it. */
+.pf-frame { position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: #eee7dc; }
+.pf-grid li:first-child .pf-frame { flex: 1 1 auto; }
+.pf-grid img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .pf-cap { padding: 4px 2px 0; font-size: 9px; line-height: 1.3; color: var(--pf-ink-2); overflow-wrap: anywhere; }
 .pf-num {
   position: absolute;
@@ -490,16 +513,19 @@ body[data-screen='toolkit'][data-busy] .screen::before {
 }
 .pf-foot { font-size: 8.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #a39b8e; }
 
-.pf-sheet.full { max-width: 980px; margin-left: auto; margin-right: auto; gap: 20px; }
+.pf-sheet.full { max-width: 880px; margin-left: auto; margin-right: auto; gap: 20px; }
 .pf-sheet.full .pf-kicker { font-size: 11px; }
 .pf-sheet.full .pf-name { font-size: clamp(22px, 6vw, 34px); }
 .pf-sheet.full .pf-profession { font-size: 12px; }
-.pf-sheet.full .pf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pf-sheet.full .pf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 8px; }
+/* Two columns: an even count leaves its last image alone on a row, so it takes the row. */
+.pf-sheet.full .pf-grid li:last-child:nth-child(even):not(:first-child) { grid-column: span 2; }
 .pf-sheet.full .pf-num { left: 10px; bottom: 8px; font-size: 12px; }
 .pf-sheet.full .pf-cap { padding-top: 6px; font-size: 13px; }
 .pf-sheet.full .pf-foot { font-size: 10px; }
 @media (min-width: 760px) {
-  .pf-sheet.full .pf-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .pf-sheet.full .pf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 14px; }
+  .pf-sheet.full .pf-grid li:last-child:nth-child(even):not(:first-child) { grid-column: auto; }
 }
 
 /* B4: a refused save, because the draft changed elsewhere. Edits stay put;

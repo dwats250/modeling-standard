@@ -10,6 +10,7 @@ import { DEMO_DATABASE, assertLoopbackListenHost, demoOperatorPrincipal, synthet
 import { ANNOTATIONS_FILE, AnnotationStore } from './annotations.ts';
 import { loadDemoFixtures, type FixtureAnnotations } from './fixtures.ts';
 import { createDemoOperations } from './operations.ts';
+import { seedShowcase } from './showcase.ts';
 
 /**
  * The synthetic databases' lifecycle: the local demo's
@@ -150,13 +151,24 @@ export async function resetDemoDatabase(options: {
   readonly migrationDatabaseUrl: string;
   /** The demo's local directory (`.demo/`): the annotation store lives here. */
   readonly demoDir: string;
+  /** Also writes the invented showcase professional (`./showcase.ts`). Off unless asked for: `--showcase`. */
+  readonly showcase?: boolean;
 }): Promise<FixtureAnnotations> {
   assertLoopbackListenHost(options.host);
-  return resetSyntheticDatabase({
+  const annotations = await resetSyntheticDatabase({
     database: DEMO_DATABASE,
     databaseUrl: options.databaseUrl,
     migrationDatabaseUrl: options.migrationDatabaseUrl,
     annotationsDir: options.demoDir,
     serverCommand: 'npm run demo',
   });
+  if (options.showcase === true) {
+    const database = openDatabase(syntheticDatabaseTarget(options.databaseUrl, DEMO_DATABASE), createLogger('warn'));
+    try {
+      await seedShowcase(database.db, new AnnotationStore(resolve(options.demoDir, ANNOTATIONS_FILE)));
+    } finally {
+      await database.close();
+    }
+  }
+  return annotations;
 }
