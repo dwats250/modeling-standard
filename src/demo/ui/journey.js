@@ -1111,12 +1111,20 @@ function renderFinalRecord(record, projectId) {
   appendSection('shared', record.clauses.some((clause) => clause.layer === 'universal') ? null : 'No shared terms are in this record.');
   // Always present, so a person with no payment is told rather than left to wonder.
   appendSection('money', 'No payment terms of yours are in this record.');
+  const people = record.parties.map((party) => party.id).sort(byLabel(label)).map((id) => (id === me ? `${label(id)} (you)` : label(id)));
+  const counts = (layers) => record.clauses.filter((clause) => layers.includes(clause.layer)).length;
   return el('div', { className: 'participant-final-record' }, [
     renderSignedIn(label(me)),
     el('section', { className: 'card' }, [
       el('p', { className: 'eyebrow', text: 'Synthetic demonstration' }),
       el('h1', { text: 'Your final record preview' }),
-      el('p', { className: 'simulation-note', text: 'This view uses the local operator/test finalization path. No participant performed a signing act; this is not evidence of participant signing or authorization for a real collaboration. The demo operator’s test inspector can see the whole record.' }),
+      el('dl', { className: 'final-record-facts' }, [
+        el('div', {}, [el('dt', { text: 'Shoot' }), el('dd', { text: shootTitle(projectId) })]),
+        el('div', {}, [el('dt', { text: 'People' }), el('dd', { text: people.join(', ') })]),
+        // Counts of this person's own record only: another pair's payment is never counted.
+        el('div', {}, [el('dt', { text: 'In your record' }), el('dd', { text: `${plural(counts(['universal', 'shared']), 'shared term')}, ${plural(counts(['money']), 'payment term')}` })]),
+      ]),
+      el('p', { className: 'final-record-notice', text: 'This view uses the local operator/test finalization path. No participant performed a signing act; this is not evidence of participant signing or authorization for a real collaboration. The demo operator’s test inspector can see the whole record.' }),
       el('ul', { className: 'final-record-key' }, [
         el('li', {}, [el('strong', { text: 'Shared: ' }), el('span', { text: 'every person in this shoot sees the same terms. Organizing a shoot gives no extra view.' })]),
         el('li', {}, [el('strong', { text: 'Private: ' }), el('span', { text: 'you see only your own payment terms, nobody else’s.' })]),
@@ -1508,9 +1516,10 @@ async function renderScreen(scrollTop) {
       renderParticipantHome(next);
     } else {
       next.replaceChildren(
-        el('section', { className: 'state error' }, [
-          el('p', { text: error.status === 404 ? 'That shoot does not exist (the demo may have been reset).' : `Could not load this screen. ${refusal(error)}` }),
+        el('section', { className: 'state error', attrs: { role: 'alert' } }, [
+          el('p', { text: error.status === 404 ? 'That shoot does not exist (the demo may have been reset).' : `Could not load this screen. ${error.status ? refusal(error) : 'The demo could not be reached.'} Nothing was changed.` }),
         ]),
+        ...(error.status === 404 ? [] : [button('Try again', () => rerender(), 'btn primary block')]),
         link('Back to start', '#/', 'btn block'),
       );
     }

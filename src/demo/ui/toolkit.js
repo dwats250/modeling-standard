@@ -105,7 +105,10 @@ export function createToolkit(h) {
   function band(who) {
     const other = who.owner === 'a' ? 'b' : 'a';
     return el('div', { className: 'tk-band', attrs: { 'data-owner': who.owner ?? 'account' } }, [
-      el('p', { className: 'tk-private' }, [el('span', { className: 'tk-lock', attrs: { 'aria-hidden': 'true' } }), el('span', { text: 'Private draft · only you can see this' })]),
+      el('div', { className: 'tk-band-text' }, [
+        el('p', { className: 'tk-private' }, [el('span', { className: 'tk-lock', attrs: { 'aria-hidden': 'true' } }), el('span', { text: 'Private draft · only you can see this' })]),
+        el('p', { className: 'tk-synthetic', text: 'Synthetic demo: the professional and the images here are invented.' }),
+      ]),
       el('div', { className: 'tk-who' }, [
         el('span', { className: 'small muted', text: 'Signed in as ' }),
         el('strong', { className: 'tk-owner', text: who.label ?? 'a signed-in test account' }),

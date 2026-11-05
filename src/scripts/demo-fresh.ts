@@ -10,6 +10,8 @@ import { resetDemoDatabase } from '../demo/reset.ts';
  * already listening on DEMO_PORT it stops and says so, before touching the
  * database. It never ends another process or another session; the reset
  * guard is unchanged (reset refuses while a demo server is connected).
+ * `-- --showcase` also writes the invented showcase professional
+ * (src/demo/showcase.ts).
  */
 
 function listening(port: number, host: string): Promise<boolean> {
@@ -38,6 +40,8 @@ if ((await listening(port, '127.0.0.1')) || (await listening(port, '::1'))) {
   process.exit(1);
 }
 
+const showcase = process.argv.includes('--showcase');
+
 try {
   const app = loadAppConfig(process.env);
   const migration = loadMigrationConfig(process.env);
@@ -49,8 +53,9 @@ try {
     databaseUrl: app.databaseUrl,
     migrationDatabaseUrl: migration.migrationDatabaseUrl,
     demoDir: resolve(process.cwd(), '.demo'),
+    showcase,
   });
-  process.stdout.write(`Demo database ${DEMO_DATABASE} reset with ${Object.keys(annotations.projects).length} synthetic projects.\n`);
+  process.stdout.write(`Demo database ${DEMO_DATABASE} reset with ${Object.keys(annotations.projects).length} synthetic projects${showcase ? ' and the invented showcase professional' : ''}.\n`);
 } catch (error) {
   const prefix = error instanceof DemoGuardError ? '' : 'Demo reset failed: ';
   process.stderr.write(`${prefix}${error instanceof Error ? error.message : 'unknown error'}\n`);
