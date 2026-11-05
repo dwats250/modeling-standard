@@ -86,7 +86,7 @@ describe('the reviewer replacement policy', () => {
 
   it('refuses a policy that stops testing what it promises', () => {
     expect(problems(mutated((p) => delete p.tests))).toMatch(/must accept the reviewer/);
-    expect(problems(mutated((p) => (p.tests![0]!.deny = p.tests![0]!.deny!.filter((d) => d !== 'asher:22'))))).toMatch(/must deny the reviewer asher:22/);
+    expect(problems(mutated((p) => (p.tests![0]!.deny = p.tests![0]!.deny!.filter((d) => d !== 'asher:5432'))))).toMatch(/must deny the reviewer asher:5432/);
     expect(problems(mutated((p) => p.tests!.pop()))).toMatch(/must accept the operator on asher:80/);
     expect(problems(mutated((p) => delete p.sshTests))).toMatch(/sshTests/);
   });

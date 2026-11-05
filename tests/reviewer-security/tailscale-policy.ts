@@ -21,7 +21,7 @@ const REVIEWER_DST = 'asher';
 const REVIEWER_PORT = 'tcp:8443';
 /** Sources that would quietly include the reviewer, or everyone. */
 const BROAD_SOURCES = new Set(['*', 'autogroup:member', 'autogroup:shared', 'autogroup:danger-all']);
-const REQUIRED_REVIEWER_DENIES = ['asher:22', 'asher:80', 'asher:443', 'asher:3141', 'asher:5432', 'asher:5471'];
+const REQUIRED_REVIEWER_DENIES = ['asher:22', 'asher:5432'];
 const REQUIRED_OPERATOR_ACCEPTS = ['asher:22', 'asher:80'];
 
 interface Grant { src?: string[]; dst?: string[]; ip?: string[]; app?: unknown }

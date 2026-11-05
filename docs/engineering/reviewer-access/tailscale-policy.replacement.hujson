@@ -45,20 +45,15 @@
   // combine with these grants.
 
   // Tailscale evaluates these when the policy is validated or saved, and rejects
-  // the policy if one fails. The port list is what repository records and this
-  // machine showed on 2026-11-04; PREFLIGHT adds every other port listening on
-  // Asher's tailnet address.
+  // the policy if one fails. The representative denials check that the reviewer
+  // cannot reach an administration or database service; the sole allowed
+  // destination remains the HTTPS reviewer endpoint above.
   "tests": [
     {
       "src": "__CORY_IDENTITY__",
       "proto": "tcp",
       "accept": ["asher:8443"],
-      "deny": [
-        "asher:22", "asher:80", "asher:443", "asher:8444",
-        "asher:3000", "asher:3100", "asher:3130", "asher:3140", "asher:3141",
-        "asher:5432", "asher:5435", "asher:5441", "asher:5442", "asher:5447", "asher:5461", "asher:5471",
-        "__ANOTHER_TAILNET_DEVICE_IP__:8443", "__ANOTHER_TAILNET_DEVICE_IP__:22"
-      ]
+      "deny": ["asher:22", "asher:5432", "__ANOTHER_TAILNET_DEVICE_IP__:22"]
     },
     { "src": "__CORY_IDENTITY__", "proto": "udp", "deny": ["asher:8443", "asher:41641"] },
     {

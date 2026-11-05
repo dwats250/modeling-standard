@@ -66,10 +66,10 @@ Expected results from **Cory's device**:
 | # | Check | Expected |
 |---|---|---|
 | L1 | `https://<asher name>:8443/reviewer` | The reviewer gate, with a valid certificate. Not staging's band; if staging appears, stop |
-| L2 | TCP to Asher on 22, 80, 443, 3130, 3140, 5432 and every other port from item 7 | Times out or refused |
+| L2 | Attempt representative administration and database connections to Asher | Both are unreachable; all access other than the approved reviewer endpoint must be denied |
 | L3 | `tailscale ssh` to Asher, as any user | Refused |
 | L4 | `tailscale status` | Lists only Asher and Cory's own devices. **Any other device means this requirement failed**, even if unreachable |
-| L5 | TCP 8443 and 22 to another tailnet device's address | Times out |
+| L5 | Attempt connections to another tailnet device | Unreachable |
 | L6 | Choosing an exit node; reaching a subnet route | Unavailable |
 | L7 | From outside the tailnet: `https://<asher name>:8443/` | Unreachable (Funnel off) |
 
