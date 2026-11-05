@@ -30,6 +30,11 @@ import { createTestIssuer, type TestIssuer } from './test-issuer.ts';
  *   given providers (Google) and no test issuer, exactly one allowed origin
  *   (the pinned public HTTPS origin), `Secure` cookies, and operator mode
  *   only with the server-validated operator key. No toolkit routes.
+ * - **reviewer** (`npm run demo:reviewer`, behind a local HTTPS proxy and
+ *   the reviewer gate, `src/demo/reviewer.ts`): the local shape — test
+ *   identity provider, one-tap operator mode, toolkit routes, the demo
+ *   database — served at exactly one pinned HTTPS origin with `Secure`
+ *   `__Host-` cookies. Never Google, never staging's database.
  */
 export interface DemoApplication {
   readonly app: FastifyInstance;
@@ -59,15 +64,24 @@ export interface StagingSettings {
   readonly providers: readonly IdentityProvider[];
 }
 
+export interface ReviewerSettings {
+  /** The pinned public HTTPS origin the reviewer's browser uses, e.g. `https://host.example.ts.net:8444`. */
+  readonly publicOrigin: string;
+}
+
 export async function createDemoApplication(options: ApplicationOptions): Promise<DemoApplication>;
+export async function createDemoApplication(options: ApplicationOptions & { reviewer: ReviewerSettings }): Promise<DemoApplication>;
 export async function createDemoApplication(options: ApplicationOptions & { staging: StagingSettings }): Promise<StagingApplication>;
-export async function createDemoApplication(options: ApplicationOptions & { staging?: StagingSettings }): Promise<DemoApplication | StagingApplication> {
+export async function createDemoApplication(options: ApplicationOptions & { staging?: StagingSettings; reviewer?: ReviewerSettings }): Promise<DemoApplication | StagingApplication> {
   // A fresh operator secret per process: restarting the server leaves operator mode.
   // It is the operator cookie's value; the operator key (staging) is never a cookie.
   const operatorSecret = newToken().token;
   const staging = options.staging;
+  const reviewer = options.reviewer;
+  if (staging && reviewer) throw new Error('reviewer mode is the local demo, never staging');
   if (staging && !staging.publicOrigin.startsWith('https://')) throw new Error('staging needs an https:// public origin');
-  const origins: string[] = staging ? [staging.publicOrigin] : [];
+  if (reviewer && !reviewer.publicOrigin.startsWith('https://')) throw new Error('reviewer mode needs an https:// public origin');
+  const origins: string[] = staging ? [staging.publicOrigin] : reviewer ? [reviewer.publicOrigin] : [];
   const issuer = staging ? undefined : await createTestIssuer({ allowedOrigins: origins });
   const providers = staging ? staging.providers : [issuer!.provider];
   const environment: DemoEnvironment = {
@@ -76,9 +90,9 @@ export async function createDemoApplication(options: ApplicationOptions & { stag
     operatorKeyRequired: staging !== undefined,
   };
   // The local demo is plain HTTP on loopback or a LAN, where a Secure cookie
-  // would never be sent back. Staging is HTTPS end to end at the browser, so
-  // its cookies are Secure and `__Host-` named, written and read.
-  const secureCookies = staging !== undefined;
+  // would never be sent back. Staging and reviewer mode are HTTPS end to end
+  // at the browser, so their cookies are Secure and `__Host-` named, written and read.
+  const secureCookies = staging !== undefined || reviewer !== undefined;
   const app = createApp({
     db: options.db,
     logger: options.logger,

@@ -49,6 +49,11 @@ export interface StagingConfig {
 
 /** The staging env file's settings. Refuses a file that is missing, not ours, or readable by others. */
 export function readStagingEnvFile(path: string): Record<string, string> {
+  return readOwnerOnlyEnvFile(path, 'staging env file');
+}
+
+/** An env file outside the repository (staging's, reviewer mode's): a regular file owned by this user and readable by nobody else. */
+export function readOwnerOnlyEnvFile(path: string, label: string): Record<string, string> {
   // Opened once, without following a symlink in the last component, and
   // checked and read through the same descriptor: what is checked is what is read.
   let fd: number;
@@ -56,16 +61,16 @@ export function readStagingEnvFile(path: string): Record<string, string> {
     fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    if (code === 'ELOOP') throw new ConfigError([`staging env file: ${path} must be a regular file, not a symlink`]);
-    throw new ConfigError([`staging env file: not found at ${path}`]);
+    if (code === 'ELOOP') throw new ConfigError([`${label}: ${path} must be a regular file, not a symlink`]);
+    throw new ConfigError([`${label}: not found at ${path}`]);
   }
   try {
     const stat = fstatSync(fd);
-    if (!stat.isFile()) throw new ConfigError([`staging env file: ${path} must be a regular file`]);
+    if (!stat.isFile()) throw new ConfigError([`${label}: ${path} must be a regular file`]);
     if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
-      throw new ConfigError([`staging env file: ${path} must be owned by the user running staging`]);
+      throw new ConfigError([`${label}: ${path} must be owned by the user running the server`]);
     }
-    if ((stat.mode & 0o077) !== 0) throw new ConfigError([`staging env file: ${path} must not be readable by group or others (chmod 600)`]);
+    if ((stat.mode & 0o077) !== 0) throw new ConfigError([`${label}: ${path} must not be readable by group or others (chmod 600)`]);
     return Object.fromEntries(Object.entries(parseEnv(readFileSync(fd, 'utf8'))).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
   } finally {
     closeSync(fd);

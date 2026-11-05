@@ -1,0 +1,72 @@
+# TEMPLATE for reviewer mode as a hardened service. NOT installed, NOT enabled,
+# NOT run. Only checked offline with `systemd-analyze verify` and
+# `systemd-analyze security --offline=true`, which parse it and do not exercise
+# it. The application enforces none of this: Node does not sandbox itself.
+# See ../REVIEWER-ACCESS.md for the prerequisites and what still needs checking
+# on the machine.
+#
+# Before use, adjust: the node path, WorkingDirectory (a root-owned checkout at
+# the exact reviewed commit, outside /home) and the listening port in the env file.
+
+[Unit]
+Description=Modeling Standard reviewer mode (synthetic demo)
+After=network.target
+
+[Service]
+Type=simple
+# A dedicated unprivileged identity: no shell, no home, no other credentials.
+User=ms-reviewer
+Group=ms-reviewer
+WorkingDirectory=/opt/modeling-standard
+# systemd gives a service a clean environment; this is everything it adds. No
+# EnvironmentFile: settings come from the owner-only file the code reads itself.
+Environment=MS_REVIEWER_ENV_FILE=/etc/ms-reviewer/reviewer.env
+ExecStart=/usr/local/bin/node src/scripts/demo-reviewer.ts
+# A restart ends every reviewer session; a refused start must stay refused.
+Restart=no
+
+# The only writable path: /var/lib/ms-reviewer (REVIEWER_STATE_DIR), mode 0700.
+StateDirectory=ms-reviewer
+StateDirectoryMode=0700
+UMask=0077
+# The whole filesystem read-only, including the checkout; /home and /root hidden.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectProc=invisible
+ProcSubset=pid
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+# MemoryDenyWriteExecute is deliberately absent: V8's JIT needs it off.
+
+# Sockets: loopback only. This stops the tailnet and the internet, not other
+# loopback services; see "Lateral movement" in REVIEWER-ACCESS.md for that.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+# Resource ceilings for a process a key holder can make work.
+MemoryMax=512M
+TasksMax=64
+LimitNOFILE=512
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target
