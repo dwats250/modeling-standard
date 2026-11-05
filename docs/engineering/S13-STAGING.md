@@ -2,6 +2,8 @@
 
 > **Acceptance status:** The recorded real-Google walkthrough was partial. See [S13-CONTINUATION.md](S13-CONTINUATION.md) for observed results and remaining unverified steps. A successful staging walkthrough does not authorize real use.
 
+Hostnames shown in this runbook are examples. Replace them only in private operator configuration; do not commit a real tailnet hostname or device address.
+
 Slice: `docs/slices/S13-google-staging.md`. Plan: `planning/s13-google-staging/PLAN.md`. Continuation: `docs/engineering/S13-CONTINUATION.md`.
 
 **What this is not.** Staging is synthetic: invented shoots, operator acts labelled as such, no real collaboration (D06 step 1; Gate 2 stays closed). Google sign-in is the door, not identity, and verifies nobody (D03, D11). Apple is not built. The automated tests use a fake Google; **real Google sign-in is verified only by the manual acceptance run below**, by whoever runs it.
@@ -31,13 +33,13 @@ phone (tailnet) ──HTTPS──▶ Tailscale Serve on Asher (TLS, :8443) ─�
 ```
 
 - Staging listens on loopback only; the only thing in front of it is Tailscale Serve on the same machine.
-- The `Host` header must be exactly the public authority (`asher.tail457b97.ts.net:8443`, case-insensitive), else 421 before anything is read. No `X-Forwarded-*`, `Forwarded` or `Tailscale-User-*` header is read; none can widen Host or Origin.
-- Every state-changing browser request needs `Origin` exactly `https://asher.tail457b97.ts.net:8443` (S12 rule), else 403.
+- The `Host` header must be exactly the public authority (`reviewer-host.tailnet-name.ts.net:8443`, case-insensitive), else 421 before anything is read. No `X-Forwarded-*`, `Forwarded` or `Tailscale-User-*` header is read; none can widen Host or Origin.
+- Every state-changing browser request needs `Origin` exactly `https://reviewer-host.tailnet-name.ts.net:8443` (S12 rule), else 403.
 - Cookies are `__Host-ms_session`, `__Host-ms_signin` and `__Host-ms_demo_operator`: `HttpOnly`, `Secure`, `Path=/`, no `Domain`; session and sign-in `SameSite=Lax` (the return from Google is a top-level GET), operator `Strict`. Staging reads only these names: a bare `ms_session`, `ms_signin` or `ms_demo_operator` is ignored, never a fallback.
 - No HSTS header: the same host name serves another site over plain HTTP on port 80 (Options Observatory), which HSTS would break.
 - Anyone with a local account on Asher is inside the boundary (they can reach 127.0.0.1:3130 and 5435 directly). The staging database's role passwords are not the repository defaults (set at provisioning, held in the env file).
 
-**Same host name over plain HTTP (closed).** Cookies are not port-isolated, so content served from `http://asher.tail457b97.ts.net/` (port 80, Options Observatory) could set cookies for staging's host if it were attacker-controlled ("cookie tossing"). Browsers accept a `__Host-` cookie only from a secure origin, with `Secure`, `Path=/` and no `Domain`, so that site can neither set nor shadow staging's cookies; the bare names it can set are never read. Verified in Chrome by `tests/demo-browser/staging.test.ts` (a plain-HTTP page on the same name tries both). The sign-in binding cookie moved from `Path=/sign-in` to `Path=/`, which `__Host-` requires.
+**Same host name over plain HTTP (closed).** Cookies are not port-isolated, so content served from `http://reviewer-host.tailnet-name.ts.net/` (port 80, Options Observatory) could set cookies for staging's host if it were attacker-controlled ("cookie tossing"). Browsers accept a `__Host-` cookie only from a secure origin, with `Secure`, `Path=/` and no `Domain`, so that site can neither set nor shadow staging's cookies; the bare names it can set are never read. Verified in Chrome by `tests/demo-browser/staging.test.ts` (a plain-HTTP page on the same name tries both). The sign-in binding cookie moved from `Path=/sign-in` to `Path=/`, which `__Host-` requires.
 
 **Who can get in.** Google decides only *which Google account* is signing in, not *whether* it may: with only `openid` requested, Google lets any Google account through a Testing-status app, listed test user or not (see Google, step 3). Staging's access boundaries are:
 
@@ -64,7 +66,7 @@ docker exec -i ms-staging-postgres psql -U postgres -c "ALTER ROLE ms_runtime PA
 
 In this tmux, Docker needs `sg docker -c "…"` (the tmux server predates the `docker` group membership).
 
-The env file `~/.config/modeling-standard/staging.env` (mode 600, never committed) holds: `DATABASE_URL` and `MIGRATION_DATABASE_URL` (5435, the new passwords), `HOST=127.0.0.1`, `PORT=3130`, `PUBLIC_BASE_URL=https://asher.tail457b97.ts.net:8443`, `LOG_LEVEL=info`, `STAGING_OPERATOR_KEY` (generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`), and — once Google exists — `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Another path: `MS_STAGING_ENV_FILE=/path`. Staging reads nothing else from the environment, so a worktree's `.env` never applies.
+The env file `~/.config/modeling-standard/staging.env` (mode 600, never committed) holds: `DATABASE_URL` and `MIGRATION_DATABASE_URL` (5435, the new passwords), `HOST=127.0.0.1`, `PORT=3130`, `PUBLIC_BASE_URL=https://reviewer-host.tailnet-name.ts.net:8443`, `LOG_LEVEL=info`, `STAGING_OPERATOR_KEY` (generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`), and — once Google exists — `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Another path: `MS_STAGING_ENV_FILE=/path`. Staging reads nothing else from the environment, so a worktree's `.env` never applies.
 
 ```
 npm run staging:setup     # create modeling_standard_staging if missing; apply migrations. Never drops; rerun after every update.
@@ -77,13 +79,13 @@ npm run staging:seed      # load the four synthetic shoots, only into an empty d
 2. **Branding:** app name, user support email, developer contact. No logo (a logo triggers brand verification).
 3. **Audience:** user type External; publishing status **Testing**. Adding **Test users** (yours, Cory's, a second account for two-phone runs; up to 100) is harmless but does **not** restrict who can sign in: Google documents that an app asking only for basic identity scopes (`openid`, `email`, `profile` or their OpenID Connect equivalents) is exempt from the test-user list, shows no unverified-app warning for them, and its authorizations do not expire after 7 days ([Manage App Audience](https://support.google.com/cloud/answer/15549945); [Using OAuth 2.0](https://developers.google.com/identity/protocols/oauth2), refresh-token expiration). Staging asks only `openid`, so any Google account can complete Google's step; who gets in is decided by the tailnet, the invitation and the operator key (Trust boundary). Staging uses no refresh token in any case.
 4. **Data access:** add no scopes (the app asks only `openid`).
-5. **Clients → Create client → Web application.** Authorized redirect URI, exactly: `https://asher.tail457b97.ts.net:8443/sign-in/callback`. No JavaScript origins. Create.
+5. **Clients → Create client → Web application.** Authorized redirect URI, exactly: `https://reviewer-host.tailnet-name.ts.net:8443/sign-in/callback`. No JavaScript origins. Create.
 6. The **client secret is shown once**: put the client id and secret straight into `~/.config/modeling-standard/staging.env` as `GOOGLE_CLIENT_ID=` and `GOOGLE_CLIENT_SECRET=` (uncomment the two lines). Not into the repository, a chat or a ticket. Lost: add a new secret on the client page, replace it in the file, delete the old one.
 7. Whether Google accepts this redirect URI is **unverified until the console accepts it**. Redirect URI changes can take minutes to hours to apply.
 
 ## Tailscale (Dustin)
 
-1. Admin console → **DNS**: MagicDNS is on (it is). Under **HTTPS Certificates**, **Enable HTTPS**. This publishes machine names (e.g. `asher.tail457b97.ts.net`) in public Certificate Transparency logs.
+1. Admin console → **DNS**: MagicDNS is on (it is). Under **HTTPS Certificates**, **Enable HTTPS**. This publishes machine names (e.g. `reviewer-host.tailnet-name.ts.net`) in public Certificate Transparency logs.
 2. On Asher: `tailscale serve --bg --https=8443 http://127.0.0.1:3130`. This adds port 8443 and leaves the existing port-80 Options Observatory entry as it is. Check with `tailscale serve status`. Remove later with `tailscale serve --https=8443 off`. Never `tailscale serve reset` (it would remove Options Observatory too).
 3. Each phone: the Tailscale app, signed in to this tailnet (Cory: invite him to the tailnet or share the `asher` machine with him; check your plan's user limit). Staging is not on the public internet (no Funnel).
 
@@ -93,7 +95,7 @@ Staging must not live inside a coding-agent process. Either:
 
 **tmux (simplest):**
 ```
-tmux new-session -d -s ms-staging -c /home/dustin/Projects/modeling-standard-s13 'npm run staging'
+tmux new-session -d -s ms-staging -c $HOME/Projects/modeling-standard-s13 'npm run staging'
 tmux attach -t ms-staging      # logs; detach with Ctrl+B D
 tmux kill-session -t ms-staging   # stop
 ```
@@ -105,7 +107,7 @@ Description=Modeling Standard synthetic staging
 After=network-online.target
 
 [Service]
-WorkingDirectory=/home/dustin/Projects/modeling-standard-s13
+WorkingDirectory=$HOME/Projects/modeling-standard-s13
 ExecStart=/usr/bin/env npm run staging
 Restart=on-failure
 
@@ -124,9 +126,9 @@ Starting staging never resets, migrates or seeds. It refuses to start without th
 
 Record who ran it, when, on which devices, and the outcome of each step. Only this run may be described as "verified against real Google".
 
-1. `tailscale serve status` shows `https://asher.tail457b97.ts.net:8443` → `http://127.0.0.1:3130`; Options Observatory still on port 80.
+1. `tailscale serve status` shows `https://reviewer-host.tailnet-name.ts.net:8443` → `http://127.0.0.1:3130`; Options Observatory still on port 80.
 2. `tmux attach -t ms-staging` shows the start banner with the public URL.
-3. On a laptop in the tailnet, open `https://asher.tail457b97.ts.net:8443/`: valid certificate, the staging band. If the page is a `misdirected_request` (421), Serve is not forwarding the public Host: stop and report (do not loosen the Host pin).
+3. On a laptop in the tailnet, open `https://reviewer-host.tailnet-name.ts.net:8443/`: valid certificate, the staging band. If the page is a `misdirected_request` (421), Serve is not forwarding the public Host: stop and report (do not loosen the Host pin).
 4. Type the operator key (from the env file) → operator mode. A wrong key is refused.
 5. Demo → **Shared, with values still open** → **Create invitation links**.
 6. Phone 1 (tailnet) opens the Model link → **Continue with Google** → Google's account chooser → test user 1 → lands on its brief, "Signed in as Model".

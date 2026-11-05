@@ -27,7 +27,7 @@ Nothing in the template has been guessed. Each is a `__PLACEHOLDER__` or a `PREF
 | 1 | The **complete** live policy, saved verbatim as the rollback copy | Only the wildcard is known. `groups`, `tagOwners`, `autoApprovers`, `nodeAttrs`, `ssh`, `postures` and any others must be merged in by hand and reviewed: the template replaces only the access rules it shows |
 | 2 | Cory's **exact** identity, and its kind: tailnet member, or external recipient of a machine share | Decides `__CORY_IDENTITY__`, and whether activation needs a share at all (Tailscale describes sharing as what lets external users reach a machine; members get access through policy). This packet makes no share. If one is needed, it is a separate step for Dustin to approve |
 | 3 | Dustin's exact identity, and whether Asher is owned by it or tagged | Decides `__DUSTIN_IDENTITY__`, and whether `autogroup:self` and the `ssh` rule cover Asher |
-| 4 | Asher's tailnet address, from Asher (`tailscale ip -4`). S13 recorded `100.64.34.84`; that is history, not confirmation | `__ASHER_TAILNET_IP__`, one address |
+| 4 | Asher's tailnet address, from Asher (`tailscale ip -4`). S13 recorded `100.64.x.x`; that is history, not confirmation | `__ASHER_TAILNET_IP__`, one address |
 | 5 | Every device: owner, tags, advertised routes, exit-node use | The wildcard allowed all of it silently. Each thing still needed gets an explicit grant, or it **breaks on save** |
 | 6 | The Options route: `tailscale serve status` on Asher. Independent review observed it on port 80, tailnet-only, and S13 recorded the same. Check it is not also a subnet route or on another device | Decides whether `asher:80` preserves it. The test `accept` list must name the real destination |
 | 7 | `ss -ltn` on Asher: everything listening beyond loopback | Add those ports to the reviewer's `deny` list. Tailscale tests cannot express "all other ports" |
@@ -66,10 +66,10 @@ Expected results from **Cory's device**:
 | # | Check | Expected |
 |---|---|---|
 | L1 | `https://<asher name>:8443/reviewer` | The reviewer gate, with a valid certificate. Not staging's band; if staging appears, stop |
-| L2 | TCP to Asher on 22, 80, 443, 3130, 3140, 5432 and every other port from item 7 | Times out or refused |
+| L2 | Attempt representative administration and database connections to Asher | Both are unreachable; all access other than the approved reviewer endpoint must be denied |
 | L3 | `tailscale ssh` to Asher, as any user | Refused |
 | L4 | `tailscale status` | Lists only Asher and Cory's own devices. **Any other device means this requirement failed**, even if unreachable |
-| L5 | TCP 8443 and 22 to another tailnet device's address | Times out |
+| L5 | Attempt connections to another tailnet device | Unreachable |
 | L6 | Choosing an exit node; reaching a subnet route | Unavailable |
 | L7 | From outside the tailnet: `https://<asher name>:8443/` | Unreachable (Funnel off) |
 

@@ -55,7 +55,7 @@ A required change to Track A tables or agreement semantics; a change to invitati
 
 | Resource | Value |
 |---|---|
-| Worktree | `/home/dustin/Projects/modeling-standard-b1` |
+| Worktree | `$HOME/Projects/modeling-standard-b1` |
 | Branch | `feat/b1-profile-comp-card` (no upstream) |
 | Base | `origin/main` at `aa9d686` (verified 2026-10-24) |
 | PostgreSQL | container `ms-b1-postgres`, `127.0.0.1:5438`, volume `ms-b1-pgdata`, provisioned by `db/provision.sql` |
