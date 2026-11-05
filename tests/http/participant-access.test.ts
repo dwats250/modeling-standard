@@ -530,8 +530,17 @@ describe('no participant route accepts a frozen or final brief (S11, AC-20)', ()
       expect((await op.get(`/demo/shoots/${shoot.projectId}/as/${shoot.modelPartyId}`)).status).toBe(404);
     };
 
+    // No final record exists until the operator's synthetic finalization: not
+    // while live, and not while frozen.
+    const noRecordYet = async () => {
+      for (const person of people) {
+        expect(generic404(await person.client.get(`/shoots/${shoot.projectId}/final-record`))).toBe(generic404(await person.client.get(`/shoots/${randomUUID()}/final-record`)));
+      }
+    };
+    await noRecordYet();
     await freezeBriefForSigning(database.db, record.brief.id);
     await refusedEverywhere();
+    await noRecordYet();
     const finalized = await op.post(`/demo/sim/briefs/${record.brief.id}/finalize`);
     expect(finalized.status).toBe(200);
     expect((await op.get(`/demo/projects/${shoot.projectId}/record`)).json().brief.phase).toBe('final');
@@ -561,8 +570,8 @@ describe('no participant route accepts a frozen or final brief (S11, AC-20)', ()
     expect(modelMoney.length).toBeGreaterThan(0);
     expect(photographerMoney.length).toBeGreaterThan(0);
     // In this two-person photo-shoot fixture, both people are the counterparties
-    // to the same pairwise fee. Three-party filtering remains covered by the
-    // contract projection's existing pure-function tests.
+    // to the same pairwise fee. Three-party filtering over HTTP is in
+    // final-record-privacy.test.ts.
     for (const clause of [...modelMoney, ...photographerMoney]) {
       expect(clause.between?.sort()).toEqual([shoot.modelPartyId, shoot.photographerPartyId].sort());
     }

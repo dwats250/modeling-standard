@@ -399,8 +399,10 @@ textarea.input { min-height: 76px; }
 .term .btn.tick { background: var(--surface); color: var(--accent); border-color: var(--accent); }
 @media (max-width: 480px) {
   .value-form { grid-template-columns: 1fr; }
-  .wordmark { font-size: 16px; }
-  .demo-pill { padding: 4px 9px; }
+  /* The top bar fits a narrow phone with any font: its labels wrap only when they must. */
+  .wordmark { display: flex; align-items: center; min-height: 44px; padding: 0; font-size: 16px; line-height: 1.1; white-space: normal; }
+  .demo-pill { padding: 4px 9px; line-height: 1.15; white-space: normal; }
+  .demo-dot { flex: none; }
 }
 
 /* ---- Demo control (simulation, not a party act) ---- */
@@ -477,6 +479,20 @@ body:not(.show-eng) .eng { display: none !important; }
   .sticky-footer { margin-left: 0; margin-right: 0; border-radius: var(--radius) var(--radius) 0 0; }
   .presence-row { grid-template-columns: 1fr 260px; align-items: center; }
 }
+
+/* S14: a person's synthetic final record. */
+.participant-final-record > * + * { margin-top: 20px; }
+.participant-final-record .doc-section > header h2 { font-size: 19px; }
+.participant-final-record .doc-section > header p { overflow-wrap: anywhere; }
+.participant-final-record .doc-section[data-layer='money'] { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+.participant-final-record .doc-section[data-layer='money'] > header p { color: var(--ink-2); font-weight: 600; }
+.participant-final-record .doc-section[data-layer='money'] .term + .term { border-top-color: var(--line-strong); }
+.participant-final-record .doc-section[data-layer='money'] .term-notes { color: var(--ink-2); }
+.participant-final-record .term-notes { overflow-wrap: anywhere; }
+.participant-final-record .final-record-empty { padding: 8px 18px 18px; color: var(--ink-2); font-style: italic; }
+.participant-final-record .final-record-key { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
+.participant-final-record .final-record-key li + li { margin-top: 6px; }
+.participant-final-record .final-record-key strong { color: var(--ink); }
 
 /* S12: invitations (operator), the signed-in band, and the test provider's page. */
 .invite-list { list-style: none; margin: 12px 0 8px; padding: 0; border-top: 1px solid var(--line); }
