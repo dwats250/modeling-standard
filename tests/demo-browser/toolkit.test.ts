@@ -127,6 +127,14 @@ const previewCaptions = (page: Page, scope: '.tk-aside' | '.pf-sheet.full') =>
       }),
     ),
   );
+/** The focused element matches :focus-visible and draws an outline (a style other than none, wider than 0). */
+const visibleFocus = (page: Page) =>
+  page.evaluate<boolean>(`(() => {
+    const node = document.activeElement;
+    if (!node || node === document.body || !node.matches(':focus-visible')) return false;
+    const style = getComputedStyle(node);
+    return style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0;
+  })()`);
 const focusedLabel = (page: Page) => page.evaluate<string | null>("document.activeElement?.getAttribute('aria-label') ?? null");
 const k = (i: number) => FIXTURE_KEYS[i]!;
 const heroSrc = (page: Page) => page.locator('.tk-aside .cc-hero img, .cc-card.full .cc-hero img').first().getAttribute('src');
@@ -558,6 +566,152 @@ describe('the professional toolkit', () => {
     await ctx.close();
   });
 
+  it('B (phone): clearer identity, ordering feedback, focus, recovery from a refused save and from a failed load (UX)', async () => {
+    const { ctx, page } = await context('B ux', PHONE);
+    await chooseOwner(page, 'b');
+    const activeTag = () => page.evaluate<string>('document.activeElement?.tagName ?? ""');
+
+    // ---- Profile: what the name will look like, as text, updating as it is typed ----
+    expect(await page.locator('.tk-identity .tk-id-name').innerText()).toBe('Jun Park');
+    expect(await page.locator('.tk-identity .tk-initials').innerText()).toBe('JP');
+    await page.locator('#displayName').fill('Jun Park Lee');
+    expect(await page.locator('.tk-identity .tk-id-name').innerText()).toBe('Jun Park Lee');
+    await page.locator('#biography').fill(UNSAFE);
+    expect(await page.locator('.tk-identity .tk-id-bio').innerText()).toContain('<img src=x onerror=');
+    expect(await page.locator('.tk-identity img, .tk-identity b').count()).toBe(0);
+    expect(await page.evaluate<unknown>('window.__pwned')).toBeUndefined();
+    await page.locator('#displayName').fill('');
+    expect(await page.locator('.tk-identity .tk-id-name').innerText()).toBe('Your name');
+    await page.locator('button.tk-save').click();
+    expect(await page.locator('#displayName').getAttribute('aria-invalid')).toBe('true');
+    await page.locator('#displayName').fill('Jun Park');
+    expect(await page.locator('#displayName').getAttribute('aria-invalid')).toBeNull();
+    await shot(page, 'phone-profile-identity');
+
+    // ---- Following a tab moves focus to the new page's heading, and the heading names the page ----
+    // By keyboard, so the heading takes the focus ring; a visible outline must come with it.
+    await page.locator('.tk-tab[href="#/me/portfolio"]').focus();
+    await page.keyboard.press('Enter');
+    await idle(page);
+    await expect.poll(activeTag).toBe('H1');
+    expect(await page.locator('h1').innerText()).toBe('Organize your portfolio');
+    expect(await visibleFocus(page)).toBe(true);
+
+    // ---- Portfolio on a phone: the list leads; the preview is one press away ----
+    const details = page.locator('.tk-aside-details');
+    expect(await details.evaluate((node) => (node as unknown as { open: boolean }).open)).toBe(false);
+    expect(await page.locator('.tk-aside-details > summary').innerText()).toContain('0 images');
+    expect((await page.locator('.tk-aside-details > summary').boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.locator('.pf-empty .pf-choose').isVisible()).toBe(true);
+    await page.locator('.pf-choose').click();
+    expect(await page.evaluate<string | null>("document.activeElement?.getAttribute('data-key') ?? null")).toBe(k(0));
+    await page.locator('.pf-meter').scrollIntoViewIfNeeded();
+    await pick(page, k(1)).click();
+    await pick(page, k(9)).click();
+    expect(await page.locator('[data-announce]').innerText()).toMatch(/^Added .+ at position 2 of 8\.$/);
+    expect(await page.locator('.pf-item .pf-lead').count()).toBe(1);
+    expect(await page.locator('.pf-item:first-child .pf-lead').count()).toBe(1);
+    expect(await page.locator('.tk-aside-details > summary').innerText()).toContain('2 images');
+    await move(page, k(1), 'down').click();
+    expect(await page.locator('[data-announce]').innerText()).toMatch(/moved to position 2 of 2\.$/);
+    expect(await orderKeys(page)).toEqual([k(9), k(1)]);
+    expect(await page.locator('.pf-item:first-child .pf-lead').count()).toBe(1);
+    // A caption shows how much of its limit is used.
+    await caption(page, k(9)).fill('Three');
+    expect(await page.locator(`.pf-item[data-key="${k(9)}"] .tk-count`).innerText()).toBe('5 / 120');
+    expect(await page.locator('.tk-next:visible').count()).toBe(0); // unsaved: no next step yet
+    await page.locator('button.tk-save:visible').click();
+    await idle(page);
+    await expect.poll(() => status(page).getAttribute('data-state')).toBe('saved');
+    expect(await page.locator('.tk-next a').innerText()).toContain('preview your portfolio');
+    await details.locator('summary').click();
+    expect(await page.locator('.tk-aside-details .pf-sheet').isVisible()).toBe(true);
+
+    // ---- A wide screen keeps the preview open beside the list ----
+    const wideCtx = await browser.newContext({ viewport: DESKTOP, storageState: await ctx.storageState() });
+    const wide = await wideCtx.newPage();
+    await go(wide, '#/me/portfolio');
+    expect(await wide.locator('.tk-aside-details .pf-sheet').isVisible()).toBe(true);
+    expect(await wide.locator('.tk-aside-details > summary').isVisible()).toBe(false);
+    await wideCtx.close();
+
+    // ---- A failed load says so, keeps the way around, and retries ----
+    await page.route('**/me/portfolio', (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"internal_error"}}' }) : route.fallback()));
+    await page.reload(); // the address is unchanged, so go() would not draw the screen again
+    await idle(page);
+    expect(await page.locator('[data-error="load"]').isVisible()).toBe(true);
+    expect(await page.locator('[data-error="load"]').innerText()).toContain('Nothing you saved has changed');
+    expect(await page.locator('.tk-tab').count()).toBe(3); // the toolkit's own navigation stays
+    await shot(page, 'phone-load-error');
+    await page.unroute('**/me/portfolio');
+    await page.locator('.tk-retry').click();
+    await idle(page);
+    await expect.poll(() => page.locator('.pf-count').innerText()).toBe(`2 of ${PORTFOLIO_MAX_ITEMS} selected`);
+
+    // ---- A refused save: focus lands on the warning; the saved version is compared with the edits ----
+    const second = await ctx.newPage();
+    second.on('console', (m) => {
+      if (m.type() === 'error') pageErrors.push(`B ux 2: ${m.text()}`);
+    });
+    await go(second, '#/me/portfolio');
+    await caption(page, k(1)).fill('From the first tab');
+    await page.locator('button.tk-save:visible').click();
+    await idle(page);
+    await expect.poll(() => status(page).getAttribute('data-state')).toBe('saved');
+    await caption(second, k(9)).fill('Second tab edit');
+    await pick(second, k(4)).click();
+    await second.locator('button.tk-save:visible').focus();
+    await second.keyboard.press('Enter');
+    await idle(second);
+    await expect.poll(() => second.locator('[data-conflict]').isVisible()).toBe(true);
+    expect(await second.evaluate<string>("document.activeElement?.closest('[data-conflict]') ? document.activeElement.tagName : ''")).toBe('H2');
+    expect(await visibleFocus(second)).toBe(true);
+    expect(await second.locator('[data-conflict] [data-action="save-over"]').count()).toBe(0); // nothing to choose before reviewing
+    // A review that cannot load says so in the warning and keeps the edits.
+    await second.route('**/me/portfolio', (route) => (route.request().method() === 'GET' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"internal_error"}}' }) : route.fallback()));
+    await second.locator('[data-action="review"]').click();
+    await expect.poll(() => second.locator('.pf-conflict-error').innerText()).toContain('Could not load the saved version');
+    expect(await second.locator('[data-action="review"]').isEnabled()).toBe(true);
+    expect(await caption(second, k(9)).inputValue()).toBe('Second tab edit');
+    await second.unroute('**/me/portfolio');
+    await second.locator('[data-action="review"]').focus();
+    await second.keyboard.press('Enter');
+    await expect.poll(() => second.locator('[data-conflict-latest]').innerText()).toContain('From the first tab');
+    expect(await second.evaluate<string>('document.activeElement?.tagName ?? ""')).toBe('H3');
+    expect(await visibleFocus(second)).toBe(true);
+    expect(await second.locator('.pf-compare .pf-side').count()).toBe(2);
+    expect(await second.locator('.pf-conflict-mine li').count()).toBe(3);
+    expect(await second.locator('.pf-conflict-list li').count()).toBe(2);
+    expect(await second.locator('.pf-conflict-mine li[data-key="' + k(4) + '"] .pf-diff').innerText()).toBe('Not in the saved version');
+    expect(await second.locator('.pf-conflict-list li[data-key="' + k(1) + '"] .pf-diff').innerText()).toContain('Caption differs');
+    expect(await second.locator('.pf-conflict-mine li[data-key="' + k(9) + '"]').innerText()).toContain('Second tab edit');
+    await shot(second, 'phone-conflict-compare');
+
+    // The saved version moves on once more before the choice is made: refused again, and said so.
+    await caption(page, k(1)).fill('First tab, again');
+    await page.locator('button.tk-save:visible').click();
+    await idle(page);
+    await expect.poll(() => status(page).getAttribute('data-state')).toBe('saved');
+    await second.locator('[data-action="save-over"]').click();
+    await idle(second);
+    await expect.poll(() => second.locator('[data-conflict]').innerText()).toContain('saved again after you last reviewed it');
+    expect(await second.locator('[data-conflict-latest]').innerText()).toBe('');
+    expect(await caption(second, k(9)).inputValue()).toBe('Second tab edit');
+    type Portfolio = { draft: { items: string[]; captions: Record<string, string> } };
+    const stored = async () => ((await (await page.request.get(`${running.base}/me/portfolio`)).json()) as Portfolio).draft;
+    expect(await stored()).toMatchObject({ items: [k(9), k(1)], captions: { [k(1)]: 'First tab, again' } });
+    // Reviewed again, the deliberate choice lands, and the warning goes.
+    await second.locator('[data-action="review"]').click();
+    await expect.poll(() => second.locator('[data-action="save-over"]').count()).toBe(1);
+    await second.locator('[data-action="save-over"]').click();
+    await idle(second);
+    await expect.poll(() => status(second).getAttribute('data-state')).toBe('saved');
+    expect(await second.locator('[data-conflict]').isVisible()).toBe(false);
+    expect(await stored()).toMatchObject({ items: [k(9), k(1), k(4)], captions: { [k(9)]: 'Second tab edit' } });
+    await second.close();
+    await ctx.close();
+  });
+
   it('keeps everything across a full application restart', async () => {
     await stop(running);
     running = await start();
@@ -601,9 +755,16 @@ describe('the professional toolkit', () => {
     // shoots: 401 for no mode, 403 for a signed-in account. The browser logs
     // those responses, and the three 409s the B4 case provokes on purpose
     // (two stale saves from tab 1 and tab 2, and tab 2's unreviewed retry).
+    // The UX case provokes two more 409s (a stale save, then a stale save-over)
+    // and two 500s it injects itself (a failed page load and a failed review).
     // Anything else is an error.
     const conflicts = pageErrors.filter((e) => /^A tab [12]: Failed to load resource: the server responded with a status of 409/.test(e));
     expect(conflicts).toHaveLength(3);
-    expect(pageErrors.filter((e) => !conflicts.includes(e) && !/Failed to load resource: the server responded with a status of 40[13]/.test(e))).toEqual([]);
+    const uxConflicts = pageErrors.filter((e) => /^B ux( 2)?: Failed to load resource: the server responded with a status of 409/.test(e));
+    expect(uxConflicts).toHaveLength(2);
+    const uxFailures = pageErrors.filter((e) => /^B ux( 2)?: Failed to load resource: the server responded with a status of 500/.test(e));
+    expect(uxFailures).toHaveLength(2);
+    const expected = [...conflicts, ...uxConflicts, ...uxFailures];
+    expect(pageErrors.filter((e) => !expected.includes(e) && !/Failed to load resource: the server responded with a status of 40[13]/.test(e))).toEqual([]);
   });
 });
