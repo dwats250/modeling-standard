@@ -35,6 +35,7 @@ The repository has progressed well beyond a planning exercise. Its implemented f
 | Participant access | Invitation-led account sessions and routes constrained to a person's own party | No complete production participant-facing application |
 | Google and staging | Google sign-in integration and a separate synthetic HTTPS staging environment | Real-Google acceptance is partial; sign-in does not establish identity or age verification |
 | Final contract records | Operator/test-only finalization of a frozen brief, append-only contract storage, a recomputable signature chain, and a local-demo-only D10-filtered final-record preview | The preview is synthetic and read-only; no participant signing or production/staging contract interface |
+| Private professional toolkit | Owner-only synthetic profile, comp-card draft/preview, ordered fixture portfolio, optional captions, and revision-protected draft saves | Local synthetic demo only; professional sign-in, real uploads, public profiles, external sharing, and payments are not implemented |
 | Development tools | Local demo, record inspector, portable snapshot, database and HTTP tests, and browser regressions | Demo exports are not the finished document-delivery experience |
 
 The current brief model has **one live brief before signing**, not a retained intermediate version history. Earlier presented-version and per-term evidence implementations were superseded; final agreement evidence belongs to the final contract.
@@ -48,7 +49,7 @@ Two complementary workstreams serve **one product**:
 - **Track A — Collaboration and agreement engine:** briefs, participation, agreement, and evidence.
 - **Track B — Professional toolkit:** identity, presentation, and eventually other professional tools, starting with **private synthetic profiles and comp-card drafts**.
 
-Track B is the current implementation priority. Its first slice, B1, adds a **private synthetic profile and comp-card draft** with an editor and preview in the local demo, using fixture images and two fixed synthetic professionals in place of sign-in. Sign-in for professionals, uploads, sharing and public profiles are not built. Authorized synthetic toolkit work can proceed without waiting for unrelated Track A decisions.
+Track B has implemented synthetic slices B1–B4: a private profile and comp-card editor/preview, ordered fixture-backed portfolio drafts with captions, and stale-save conflict protection. Track A includes S14, a local-demo-only read-only final-record preview filtered by D10. These demonstrations use synthetic account selection; professional Google sign-in is not implemented. Real uploads, external sharing, and public profiles are not built. The combined application changes have been merged to `main`; focused visual/product acceptance by Dustin and Cory remains pending.
 
 Participant signing, identity and adult assurance, document completion, legal prerequisites, and real-use acceptance remain incomplete. Youth and guardian workflows are deferred. **A working demo does not authorize real use.**
 

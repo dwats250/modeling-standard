@@ -8,7 +8,7 @@
 - **Entry points:** `src/main.ts` for the compiled application, `src/app/operation-list.ts` for the registered HTTP operation surface, and `src/demo/` for synthetic demo/staging compositions.
 - **Core domains:** `src/projects/`, `src/participants/`, `src/identity/`, and `src/contracts/`, alongside live-brief and foundational modules. Inspect actual source paths and tests when changing behavior; this index is not a generated inventory.
 - **Evidence:** Final contracts are stored append-only under runtime-role restrictions. The local synthetic demo can show each authenticated participant a read-only, D10-filtered final-record preview after operator/test finalization; this is **not** participant signing.
-- **Current priority:** Track B private synthetic professional profiles, comp-card drafts and portfolio drafts. B1 (`src/toolkit/`; [slice record](../slices/B1-profile-comp-card.md)) adds an owner-only profile and comp-card draft with a local-demo editor and preview, registered only in the local demo (not production or staging); B2 ([slice record](../slices/B2-portfolio-draft.md)) adds an owner-only, ordered portfolio draft of fixture images on the same terms; B3 ([slice record](../slices/B3-portfolio-captions.md)) adds an optional short caption under each; sign-in for professionals is deferred. Track A's collaboration and agreement foundations are already implemented in stages.
+- **Current implementation:** Track B B1–B4 provides an owner-only synthetic profile and comp-card draft, ordered fixture-backed portfolio with optional captions, and revision-based stale-save protection. Track A S14 provides a local-demo-only, read-only D10-filtered final-record preview. These routes are registered only in the local demo, not production or S13 staging. Professional sign-in, real uploads, external sharing, and public profiles are not implemented; owner visual/product acceptance remains pending.
 
 ## Environments and real-use boundary
 
@@ -51,6 +51,7 @@ The concise owner-only review steps for the private toolkit draft and synthetic 
 - [B1](../slices/B1-profile-comp-card.md): private professional profile and comp-card draft (Track B), with its as-built record.
 - [B2](../slices/B2-portfolio-draft.md): private portfolio draft (Track B), stacked on B1, with its as-built record.
 - [B3](../slices/B3-portfolio-captions.md): optional captions on the private portfolio draft, stacked on B2, with its as-built record.
+- [B4](../slices/B4-portfolio-stale-save.md): atomic revision-based stale-save rejection and editor conflict recovery, stacked on B3, with its as-built record.
 - [OCTOBER-SEMANTIC-IMPACT.md](OCTOBER-SEMANTIC-IMPACT.md): later rulings superseding earlier slice assumptions.
 - [S03–S05](S03-TERM-UNITS.md): superseded implementation records ([S04](S04-PRESENTED-VERSIONS.md), [S05](S05-TERM-AFFIRMATION.md)), retained as history.
 
